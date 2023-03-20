@@ -8,10 +8,10 @@ const CONFIG_VERSION = 1;
 
 export class ConfigStore {
   items: Record<string, Serializable> = {};
+  inMemory: boolean = false;
 
   #dir: string;
   #file: string;
-  #locked = false;
 
   constructor(name: string) {
     this.#dir = getConfigDir(require('../../package.json').build.productName);
@@ -21,7 +21,7 @@ export class ConfigStore {
     process.once('exit', () => this.serialize());
   }
 
-  init() {
+  initFromFile() {
     // Read config file.
     let config = {version: CONFIG_VERSION};
     try {
@@ -30,8 +30,12 @@ export class ConfigStore {
       if (e.code != 'ENOENT') // ignore file not exist error
         throw e;
     }
+    this.deserialize(config);
+  }
+
+  deserialize(config) {
     // Check version.
-    if (config.version > CONFIG_VERSION)
+    if (config.version && config.version > CONFIG_VERSION)
       throw new Error('Can not read config created by later versions');
     // Parse.
     for (const key in this.items)
@@ -42,8 +46,11 @@ export class ConfigStore {
     const config = {version: CONFIG_VERSION};
     for (const key in this.items)
       config[key] = this.items[key].serialize();
-    fs.ensureDirSync(this.#dir);
-    fs.writeJsonSync(this.#file, config, {spaces: 2});
+    if (!this.inMemory) {
+      fs.ensureDirSync(this.#dir);
+      fs.writeJsonSync(this.#file, config, {spaces: 2});
+    }
+    return config;
   }
 }
 

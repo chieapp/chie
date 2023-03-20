@@ -1,0 +1,39 @@
+name: chie
+
+on: push
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    continue-on-error: false
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-2022, macos-12]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Build and test
+        shell: bash
+        env:
+          DISPLAY: ':99.0'
+        run: |
+          set -e
+          npm install
+          npm test
+          npm publish --dry-run
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - run: npm install
+      - uses: JS-DevTools/npm-publish@v1
+        with:
+          token: ${{ secrets.NPM_TOKEN }}

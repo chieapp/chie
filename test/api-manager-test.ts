@@ -1,0 +1,41 @@
+import {assert} from 'chai';
+
+import APIEndpoint from '../src/model/api-endpoint';
+import apiManager from '../src/controller/api-manager';
+
+describe('APIManager', () => {
+  const apiConfig = {name: 'Tiananmen', type: 'ChatGPT', url: ''};
+
+  afterEach(() => {
+    const {config} = require('../src/controller/config-store');
+    config.deserialize({});
+  });
+
+  it('deserializes from config', () => {
+    const {config} = require('../src/controller/config-store');
+    config.deserialize({apis: {'tiananmen-8964': apiConfig}});
+    assert.ok('tiananmen-8964' in apiManager.getAllEndpoints());
+  });
+
+  it('generates id increasingly', () => {
+    const id1 = apiManager.add(new APIEndpoint(apiConfig));
+    assert.equal(id1, 'tiananmen-1');
+    const id2 = apiManager.add(new APIEndpoint(apiConfig));
+    assert.equal(id2, 'tiananmen-2');
+    const id3 = apiManager.add(new APIEndpoint(apiConfig));
+    assert.equal(id3, 'tiananmen-3');
+    apiManager.remove(id1);
+    apiManager.remove(id2);
+    const id4 = apiManager.add(new APIEndpoint(apiConfig));
+    assert.equal(id4, 'tiananmen-4');
+  });
+
+  it('handles invalid id', () => {
+    const {config} = require('../src/controller/config-store');
+    config.deserialize({apis: {'tiananmen-invalid': apiConfig}});
+    const id1 = apiManager.add(new APIEndpoint(apiConfig));
+    assert.equal(id1, 'tiananmen-1');
+    const id2 = apiManager.add(new APIEndpoint(apiConfig));
+    assert.equal(id2, 'tiananmen-2');
+  });
+});

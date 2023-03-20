@@ -50,6 +50,7 @@ export function listen(callback) {
   server.on('error', error => {
     console.error('Failed to listen for new instances', error);
   });
+  process.once('exit', deleteSocketFile);
 }
 
 export function clear() {

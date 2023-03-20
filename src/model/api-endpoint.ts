@@ -6,29 +6,37 @@ export enum APIEndpointType {
 
 export default class APIEndpoint implements Serializable {
   type: APIEndpointType;
+  name: string;
   url: string;
-  model?: string = null;
+  params: Record<string, string>[];
 
   constructor(config: object) {
     this.deserialize(config);
+  }
+
+  deserialize(config: object) {
+    if (!config ||
+        typeof config != 'object' ||
+        !(config['type'] in APIEndpointType) ||
+        typeof config['name'] != 'string' ||
+        typeof config['url'] != 'string') {
+      throw new Error(`Unknown APIEndpoint : ${JSON.stringify(config)}`);
+    }
+    this.type = config['type'];
+    this.name = config['name'];
+    this.url = config['url'];
+    if ('params' in config) {
+      if (!Array.isArray(config['params']))
+        throw new Error(`The params of APIEndpoint must be array`);
+      this.params = config['params'];
+    }
   }
 
   serialize() {
     return {
       type: this.type.toString(),
       url: this.url,
-      model: this.model,
+      params: this.params,
     };
-  }
-
-  deserialize(config: object) {
-    if (!config || typeof config != 'object')
-      throw new Error(`Unknown APIEndpoint: ${config}`);
-    if (!(config['type'] in APIEndpointType))
-      throw new Error(`Unknown APIEndpoint type: ${config['type']}`);
-    this.type = config['type'];
-    this.url = String(config['url']);
-    if (config['model'])
-      this.model = String(config['model']);
   }
 }

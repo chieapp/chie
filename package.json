@@ -1,18 +1,20 @@
 {
   "name": "chieapp",
   "version": "0.1.0",
-  "main": "src/main.js",
+  "main": "src/cli-main.js",
   "description": "Extensive desktop client for ChatGPT",
   "build": {
-    "appId": "org.chie.chieapp",
+    "appId": "org.chie.chie",
     "productName": "Chie",
     "copyright": "Copyright © 2023 Cheng Zhao"
   },
   "scripts": {
     "prepack": "tsc",
     "prestart": "tsc",
+    "pretest": "tsc",
     "start": "yode .",
     "lint": "eslint --ignore-path .gitignore .",
+    "test": "ts-mocha --require test/setup.ts test/**/*.ts",
     "build": "yackage build out",
     "dist": "yackage dist out"
   },
@@ -34,7 +36,9 @@
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "5.55.0",
     "@typescript-eslint/parser": "5.55.0",
+    "chai": "4.3.7",
     "eslint": "8.36.0",
+    "ts-mocha": "10.0.0",
     "typescript": "5.0.2",
     "yackage": "0.6.x"
   }

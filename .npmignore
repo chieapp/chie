@@ -1,0 +1,13 @@
+# TypeScript source files
+*.ts
+tsconfig.json
+
+# Everything else should keep same with .gitignore
+*.swp
+*.zip
+
+yarn.lock
+package-lock.json
+npm-debug.log
+/node_modules/
+/out/

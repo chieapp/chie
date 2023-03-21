@@ -1,4 +1,4 @@
-import APIEndpoint from '../model/api-endpoint';
+import APIEndpoint, {APIEndpointType} from '../model/api-endpoint';
 import Serializable from '../model/serializable';
 
 export class APIManager implements Serializable {
@@ -27,19 +27,30 @@ export class APIManager implements Serializable {
   }
 
   add(api: APIEndpoint) {
-    const id = this.#getNextId(api.name);
-    this.#apis[id] = api;
-    return id;
+    if (api.id)
+      throw new Error('Re-adding a managed APIEndpoint.');
+    api.id = this.#getNextId(api.name);
+    this.#apis[api.id] = api;
+    return api.id;
   }
 
   remove(id: string) {
     if (!(id in this.#apis))
-      throw new Error(`Removing unknown API id: ${id}`)
+      throw new Error(`Removing unknown API id: ${id}`);
+    this.#apis[id].id = null;
     delete this.#apis[id];
   }
 
-  getAllEndpoints() {
-    return this.#apis;
+  getEndpointById(id: string) {
+    if (!(id in this.#apis))
+      throw new Error(`Getting unknown API id: ${id}`);
+    return this.#apis[id];
+  }
+
+  getEndpointsByType(type: APIEndpointType): APIEndpoint[] {
+    return Object.keys(this.#apis)
+      .filter(k => this.#apis[k].type == type)
+      .map(k => this.#apis[k]);
   }
 
   #getNextId(name: string) {
@@ -48,7 +59,7 @@ export class APIManager implements Serializable {
       .filter(k => k.startsWith(prefix))  // id is in the form of "name-1"
       .map(n => parseInt(n.substr(prefix.length)))  // get the number part
       .filter(n => Number.isInteger(n))  // valid id must be integer
-      .sort((a: any, b: any) => b - a);  // descend
+      .sort((a: number, b: number) => b - a);  // descend
     if (ids.length == 0)
       return prefix + '1';
     const nextId = prefix + String(ids[0] + 1);

@@ -1,5 +1,7 @@
-# TypeScript source files
+# Unused source files
 *.ts
+.eslintrc.json
+.github
 tsconfig.json
 
 # Everything else should keep same with .gitignore

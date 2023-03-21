@@ -4,7 +4,7 @@ import APIEndpoint from '../src/model/api-endpoint';
 import apiManager from '../src/controller/api-manager';
 
 describe('APIManager', () => {
-  const apiConfig = {name: 'Tiananmen', type: 'ChatGPT', url: ''};
+  const apiConfig = {name: 'Tiananmen', type: 'ChatGPT', url: '', key: ''};
 
   afterEach(() => {
     const {config} = require('../src/controller/config-store');
@@ -14,7 +14,7 @@ describe('APIManager', () => {
   it('deserializes from config', () => {
     const {config} = require('../src/controller/config-store');
     config.deserialize({apis: {'tiananmen-8964': apiConfig}});
-    assert.ok('tiananmen-8964' in apiManager.getAllEndpoints());
+    assert.notEqual(apiManager.getEndpointById('tiananmen-8964'), null);
   });
 
   it('generates id increasingly', () => {

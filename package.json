@@ -28,16 +28,19 @@
     "url": "https://github.com/chie/chie/issues"
   },
   "dependencies": {
+    "@fortaine/fetch-event-source": "^3.0.6",
     "ejs": "3.1.9",
     "fetch-yode": "1.x",
     "fs-extra": "11.1.0",
-    "gui": "0.13.0"
+    "gui": "0.13.0",
+    "type-signals": "1.1.0"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "5.55.0",
     "@typescript-eslint/parser": "5.55.0",
     "chai": "4.3.7",
     "eslint": "8.36.0",
+    "mocha": "10.2.0",
     "ts-mocha": "10.0.0",
     "typescript": "5.0.2",
     "yackage": "0.6.x"

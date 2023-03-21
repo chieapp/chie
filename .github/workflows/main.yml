@@ -23,8 +23,10 @@ jobs:
         run: |
           set -e
           npm install
+          npm lint
           npm test
           npm publish --dry-run
+          npm run dist
 
   release:
     if: startsWith(github.ref, 'refs/tags/')

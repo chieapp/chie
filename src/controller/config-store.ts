@@ -8,7 +8,7 @@ const CONFIG_VERSION = 1;
 
 export class ConfigStore {
   items: Record<string, Serializable> = {};
-  inMemory: boolean = false;
+  inMemory = false;
 
   #dir: string;
   #file: string;

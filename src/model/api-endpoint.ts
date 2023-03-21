@@ -1,7 +1,8 @@
 import Serializable from './serializable';
 
 export enum APIEndpointType {
-  ChatGPT,
+  ChatGPT = 'ChatGPT',
+  BingChat = 'BingChat',
 }
 
 export default class APIEndpoint implements Serializable {

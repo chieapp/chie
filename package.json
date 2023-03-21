@@ -33,7 +33,8 @@
     "fetch-yode": "1.x",
     "fs-extra": "11.1.0",
     "gui": "0.13.0",
-    "type-signals": "1.1.0"
+    "type-signals": "1.1.0",
+    "ws": "8.13.0"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "5.55.0",

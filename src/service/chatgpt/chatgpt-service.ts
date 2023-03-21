@@ -9,11 +9,7 @@ export default class ChatGPTService extends ChatService {
     super(endpoint);
   }
 
-  async sendMessage(message: ChatMessage, options: {signal?: AbortSignal} = {}) {
-    if (this.pendingMessage)
-      throw new Error('There is pending message being received.');
-    this.history.push(message);
-
+  async sendMessageImpl(message, options) {
     // Start request.
     const response = await fetch(this.endpoint.url, {
       body: JSON.stringify({
@@ -48,12 +44,6 @@ export default class ChatGPTService extends ChatService {
     for await (const chunk of bodyToIterator(response.body)) {
       parser.feed(decoder.decode(chunk));
     }
-
-    // The pendingMessage should be cleared after parsing.
-    if (this.pendingMessage) {
-      this.pendingMessage = null;
-      throw new Error('The pending message is not cleared.');
-    }
   }
 
   #parseMessage(message) {
@@ -72,22 +62,17 @@ export default class ChatGPTService extends ChatService {
     // Parse the finish_reason.
     const response = {
       id: data.id,
-      complete: true,
       filtered: false,
       pending: false,
     };
     switch (choice.finish_reason) {
-      case 'stop':  // all delta received
+      case 'stop':  // all delta received, no more action
+      case 'length':  // ignored for now
         break;
       case null:
-        response.complete = false;
         response.pending = true;
         break;
-      case 'length':
-        response.complete = false;
-        break;
       case 'content_filter':
-        response.complete = true;
         response.filtered = true;
         break;
       default:
@@ -97,6 +82,9 @@ export default class ChatGPTService extends ChatService {
     const partial: Partial<ChatMessage> = {};
     if (choice.delta.content)
       partial.content = choice.delta.content;
+    // Beginning of content may include some white spaces.
+    if (partial.content && (!this.pendingMessage || !this.pendingMessage.content))
+      partial.content = partial.content.trimLeft();
     if (choice.delta.role) {
       const key = capitalize(choice.delta.role) as keyof typeof ChatRole;
       partial.role = ChatRole[key];

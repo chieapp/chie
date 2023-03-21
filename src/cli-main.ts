@@ -17,7 +17,7 @@ async function cliMain() {
     endpoint = available[0];
   } else {
     // Create a temporary one from env if not exist.
-    if (!process.env['OPENAI_KEY']) {
+    if (!process.env['OPENAI_API_KEY']) {
       console.error('Please set the OPENAI_KEY with a valid key in it');
       process.exit(1);
     }
@@ -25,7 +25,7 @@ async function cliMain() {
       type: 'ChatGPT',
       name: 'ChatGPT CLI',
       url: 'https://api.openai.com/v1/chat/completions',
-      key: process.env['OPENAI_KEY'],
+      key: process.env['OPENAI_API_KEY'],
       params: {model: 'gpt-3.5-turbo'},
     });
   }

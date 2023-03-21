@@ -1,4 +1,4 @@
-import {fetchEventSource} from '@fortaine/fetch-event-source';
+import {createParser} from 'eventsource-parser';
 import APIEndpoint, {APIEndpointType} from '../../model/api-endpoint';
 import ChatService, {ChatRole, ChatMessage} from '../../model/chat-service';
 
@@ -14,7 +14,8 @@ export default class ChatGPTService extends ChatService {
       throw new Error('There is pending message being received.');
     this.history.push(message);
 
-    const opts = {
+    // Start request.
+    const response = await fetch(this.endpoint.url, {
       body: JSON.stringify({
         // API reference:
         // https://platform.openai.com/docs/api-reference/chat/create
@@ -31,24 +32,22 @@ export default class ChatGPTService extends ChatService {
         'Authorization': `Bearer ${this.endpoint.key}`,
       },
       signal: options.signal,
-      onmessage: this.#parseMessage.bind(this),
-    };
-    await fetchEventSource(this.endpoint.url, {
-      ...opts,
-      async onopen(response) {
-        if (response.status == 200)  // successful start
-          return;
-        // Parse the error.
-        const body = await response.json();
-        if (!body.error)
-          throw new Error(`Unexpected open from ChatGPT API: ${body}`);
-        throw new Error(body.error.message);
-      },
-      onerror(error) {
-        // Throw the error to stop.
-        throw error;
-      },
     });
+
+    // API error happened.
+    if (response.status != 200) {
+      const body = await response.json();
+      if (!body.error)
+        throw new Error(`Unexpected open from ChatGPT API: ${body}`);
+      throw new Error(body.error.message);
+    }
+
+    // Parse server sent event (SSE).
+    const parser = createParser(this.#parseMessage.bind(this));
+    const decoder = new TextDecoder();
+    for await (const chunk of bodyToIterator(response.body)) {
+      parser.feed(decoder.decode(chunk));
+    }
 
     // The pendingMessage should be cleared after parsing.
     if (this.pendingMessage) {
@@ -109,4 +108,18 @@ export default class ChatGPTService extends ChatService {
 
 function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+async function* bodyToIterator<T>(stream: ReadableStream<T>) {
+  const reader = stream.getReader();
+  try {
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done)
+        return;
+      yield value;
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }

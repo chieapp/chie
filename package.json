@@ -28,8 +28,8 @@
     "url": "https://github.com/chie/chie/issues"
   },
   "dependencies": {
-    "@fortaine/fetch-event-source": "^3.0.6",
     "ejs": "3.1.9",
+    "eventsource-parser": "0.1.0",
     "fetch-yode": "1.x",
     "fs-extra": "11.1.0",
     "gui": "0.13.0",

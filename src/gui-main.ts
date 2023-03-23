@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import gui from 'gui';
 
 import main from './main';
@@ -24,6 +26,12 @@ function guiMain() {
   win.center();
   win.activate();
   win.onClose = process.exit;
+
+  const p = fs.realpathSync(path.join(__dirname, '../assets/BlackWhiteTrayTemplate@2x.png'));
+  const tray = gui.Tray.createWithImage(gui.Image.createFromPath(p));
+
+  global.win = win;
+  global.tray = tray;
 }
 
 async function checkSingleInstanceAndStart() {

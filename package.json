@@ -1,12 +1,17 @@
 {
   "name": "chieapp",
   "version": "0.1.0",
-  "main": "src/cli-main.js",
+  "main": "dist/gui-main.js",
   "description": "Extensive desktop client for ChatGPT",
   "build": {
     "appId": "org.chie.chie",
     "productName": "Chie",
-    "copyright": "Copyright © 2023 Cheng Zhao"
+    "copyright": "Copyright © 2023 Cheng Zhao",
+    "unpackDir": "assets",
+    "icons": {
+      "mac": "assets/icon.icns",
+      "win": "assets/icon.ico"
+    }
   },
   "scripts": {
     "prepack": "tsc",
@@ -44,6 +49,6 @@
     "mocha": "10.2.0",
     "ts-mocha": "10.0.0",
     "typescript": "5.0.2",
-    "yackage": "0.6.x"
+    "yackage": "0.7.x"
   }
 }

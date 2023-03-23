@@ -1,5 +1,5 @@
 # Unused source files
-*.ts
+/src/
 .eslintrc.json
 .github
 tsconfig.json

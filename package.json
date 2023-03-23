@@ -38,10 +38,13 @@
     "fetch-yode": "1.x",
     "fs-extra": "11.1.0",
     "gui": "0.13.0",
+    "marked": "4.3.0",
     "type-signals": "1.1.0",
     "ws": "8.13.0"
   },
   "devDependencies": {
+    "@types/ejs": "3.1.2",
+    "@types/marked": "4.0.8",
     "@typescript-eslint/eslint-plugin": "5.55.0",
     "@typescript-eslint/parser": "5.55.0",
     "chai": "4.3.7",

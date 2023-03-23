@@ -2,7 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import gui from 'gui';
 
+import {APIEndpointType} from './model/api-endpoint';
+import ChatView from './view/chat-view';
+import ChatGPTService from './service/chatgpt/chatgpt-service';
 import main from './main';
+import apiManager from './controller/api-manager';
 import * as singleInstance from './util/single-instance';
 
 // Check if it is Yode.
@@ -22,15 +26,18 @@ function guiMain() {
   main();
 
   const win = gui.Window.create({});
-  win.setContentSize({width: 100, height: 100});
+  global.win = win;
+  win.setContentSize({width: 400, height: 400});
   win.center();
   win.activate();
   win.onClose = process.exit;
 
-  const p = fs.realpathSync(path.join(__dirname, '../assets/BlackWhiteTrayTemplate@2x.png'));
-  const tray = gui.Tray.createWithImage(gui.Image.createFromPath(p));
+  const endpoint = apiManager.getEndpointsByType(APIEndpointType.ChatGPT)[0];
+  const chatView = new ChatView(new ChatGPTService(endpoint));
+  win.setContentView(chatView.view);
 
-  global.win = win;
+  const p = fs.realpathSync(path.join(__dirname, '../assets/view/BlackWhiteTrayTemplate@2x.png'));
+  const tray = gui.Tray.createWithImage(gui.Image.createFromPath(p));
   global.tray = tray;
 }
 

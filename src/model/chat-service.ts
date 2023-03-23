@@ -35,12 +35,22 @@ export default abstract class ChatService {
     this.onMessage = new Signal();
   }
 
-  async sendMessage(message: ChatMessage, options: {signal?: AbortSignal} = {}) {
+  async sendMessage(message: Partial<ChatMessage>, options: {signal?: AbortSignal} = {}) {
     if (this.pendingMessage)
       throw new Error('There is pending message being received.');
-    this.history.push(message);
+    if (!message.content)
+      throw new Error('Message content can not be empty.');
+    const fullMessage = {
+      role: message.role ?? ChatRole.User,
+      content: message.content,
+    };
+    this.history.push(fullMessage);
 
-    await this.sendMessageImpl(message, options);
+    // Yode hack.
+    if (process['activateUvLoop'])
+      process['activateUvLoop']();
+
+    await this.sendMessageImpl(fullMessage, options);
 
     // The pendingMessage should be cleared after parsing.
     if (this.pendingMessage) {
@@ -55,12 +65,10 @@ export default abstract class ChatService {
     this.onPartialMessage.dispatch(message, response);
 
     // Concatenate to the pendingMessage.
-    if (!this.pendingMessage)
-      this.pendingMessage = {};
-    if (message.role) {
-      if (this.pendingMessage.role)
-        throw new Error('Overwriting role in partial message.');
-      this.pendingMessage.role = message.role;
+    if (!this.pendingMessage) {
+      if (!message.role)
+        throw new Error('First partial message should include role');
+      this.pendingMessage = {role: message.role};
     }
     if (message.content) {
       if (this.pendingMessage.content)

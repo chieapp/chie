@@ -1,0 +1,17 @@
+<div <% if (response?.pending) { %> id="pending" <% } %> class="msg folded">
+  <div class="avatar">
+    <div class="dummy"></div>
+  </div>
+  <div class="content">
+  <% if (response?.pending) { %>
+    <div id="loader">
+      LOADING...
+    </div>
+  <% } %>
+    <div class="text">
+    <% if (message.content) { %>
+      <%- message.content %>
+    <% } %>
+    </div>
+  </div>
+</div>

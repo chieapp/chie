@@ -3,7 +3,6 @@ import readline from 'node:readline/promises';
 import main from './main';
 import apiManager from './controller/api-manager';
 import APIEndpoint, {APIEndpointType} from './model/api-endpoint';
-import {ChatRole} from './model/chat-service';
 import BingChatService from './service/bingchat/bingchat-service';
 import ChatGPTService from './service/chatgpt/chatgpt-service';
 
@@ -23,13 +22,6 @@ async function cliMain() {
   let state = 'waitUser';
   chat.onPartialMessage.add((message, response) => {
     if (state == 'waitAnswer') {
-      // Print ChatGPT's name.
-      if (!message.role)
-        throw new Error('First partial message received without role.');
-      process.stdout.write(`${chat.endpoint.name}> `);
-      state = 'waitContent';
-    }
-    if (state == 'waitContent') {
       // Print content.
       if (message.content)
         process.stdout.write(message.content);
@@ -49,7 +41,8 @@ async function cliMain() {
     try {
       const content = await rl.question('User> ', {signal: ac.signal});
       state = 'waitAnswer';
-      await chat.sendMessage({role: ChatRole.User, content}, {signal: ac.signal});
+      process.stdout.write(`${chat.endpoint.name}> `);
+      await chat.sendMessage({content}, {signal: ac.signal});
     } catch (error) {
       // Ignore abort error.
       if (error.name != 'AbortError')

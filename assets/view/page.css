@@ -186,10 +186,15 @@ a:hover {
   display: block;
   height: 8px;
 }
-.text .edited-label {
-  color: #A0A0A2;
+.text .label {
   font-size: 13px;
   white-space: nowrap;
+}
+.text .edited.label {
+  color: #A0A0A2;
+}
+.text .error.label {
+  color: #E32636;
 }
 .text .at {
   color: #0576b9;

@@ -13,56 +13,35 @@
 </div>
 
 <script type="text/javascript" charset="utf-8">
+  // Global variables ======================================================
+
   // Which element is on top.
   var topElement = null
-  // Scroll to the unread marker, or bottom if not found.
-  function scrollToUnreadMarker() {
-    var marker = document.getElementById('unread-marker')
-    if (marker) {
-      var rect = marker.getBoundingClientRect()
-      window.scrollTo(0, rect.top + window.pageYOffset - (window.innerHeight / 2))
-    } else {
-      window.scrollTo(0, document.body.scrollHeight)
-    }
-  }
+  // Offset from the top element.
+  var scrollOffset = 0
+  // Mark page is resizing.
+  var ignoreNextScroll = false
+
+  // Initialization ========================================================
+
   // For IE we need to scroll after ready, as the window body's size may be
   // incorrect before showing the browser.
   // For morden browsers scrolling before showing has the best visual effect.
   var isIE = /Trident|MSIE/.test(navigator.userAgent)
   if (!isIE)
     scrollToUnreadMarker()
-  // Helper to pass callbacks to UI.
+  // Load all images.
+  loadAllImages()
+
+  // External APIs =========================================================
+
+  // External API for invoking callbacks from outside world.
   var callbacks = {}
-  var nextCallbackId = 0
   window.executeCallback = function(id, arg) {
     if (!callbacks[id])
       return
     callbacks[id](arg)
     delete callbacks[id]
-  }
-  // Helper to dynamically load an image which requires authorization.
-  function loadImage(element, url) {
-    callbacks[++nextCallbackId] = function(result) {
-      element.src = result
-    }
-    chie.fetchImage(url, nextCallbackId)
-  }
-  // Load all images.
-  function loadAllImages() {
-    var imgs = [].slice.call(document.getElementsByClassName('delayed-image'))
-    for (var i = 0; i < imgs.length; ++i) {
-      var img = imgs[i]
-      img.classList.remove('delayed-image')
-      loadImage(img, img.getAttribute('data-url'))
-    }
-  }
-  loadAllImages()
-  // Helper to convert HTML to DOM.
-  function HTMLToDOM(html) {
-    // Note: Don't use DOMParser, it has problems with applying CSS styles.
-    var wrapper = document.createElement('div')
-    wrapper.innerHTML = html
-    return wrapper.childNodes
   }
   // External API to add a new message.
   var messages = document.getElementById('messages')
@@ -71,53 +50,48 @@
     for (var i = 0; i < children.length; i++)
       messages.appendChild(children[i])
     // Scroll to bottom for new messages.
-    window.scrollTo(0, document.body.scrollHeight)
+    scrollToBottom()
     // Load images.
     loadAllImages()
   }
-  // External API to delete message.
-  window.deleteMessage = function(id) {
-    messages.removeChild(document.getElementById(id))
-  }
-  // Helper to scroll to previous top element.
-  var scrollOffset = 0
-  var ignoreNextScroll = false
-  function scrollToPreivousTopElement() {
-    ignoreNextScroll = true
-    if (topElement)
-      window.scrollTo(0, topElement.getBoundingClientRect().top + window.pageYOffset - scrollOffset)
-    else
-      window.scrollTo(0, document.body.scrollHeight)
-  }
   // External API to update pending message.
   window.updatePending = function(html, back) {
-    var msg = document.getElementById('pending').getElementsByClassName('text')[0]
-    if (msg) {
-      if (back) {
-        console.log(back, msg.innerHTML.slice(0, -back), html)
-        msg.innerHTML = msg.innerHTML.slice(0, -back) + html
-      } else
-        msg.innerHTML += html
-      scrollToPreivousTopElement()
-    }
+    var text = findPending('text')
+    if (!text)
+      return
+    // Update the message html.
+    var wasAtBottom = topElement == null
+    if (back)
+      text.innerHTML = text.innerHTML.slice(0, -back) + html
+    else
+      text.innerHTML += html
+    if (wasAtBottom)
+      scrollToBottom()
+    // Remove the loading indicator
     var loader = document.getElementById('loader')
-    loader.remove()
+    if (loader)
+      loader.remove()
   }
   window.endPending = function() {
-    var pending = document.getElementById('pending')
+    var pending = findPending()
     if (pending)
       pending.removeAttribute('id')
   }
-  // Helper function to find parent element.
-  function findParent(tagName, target) {
-    var loops = 0
-    while (target && ++loops < 4) {
-      if (target.tagName && target.tagName.toLowerCase() === tagName)
-        return target
-      target = target.parentNode
-    }
-    return null
+  window.clearPending = function() {
+    var text = findPending('text')
+    if (text)
+      text.innerHTML = ''
   }
+  window.markError = function(error) {
+    var text = findPending('text')
+    if (text) {
+      text.innerHTML += '<span class="error label">' + error + '</span>'
+      scrollToBottom()
+    }
+  }
+
+  // DOM event handlers ====================================================
+
   // Open links in actual browsers.
   window.onclick = function(event) {
     var target = findParent('a', event.target)
@@ -142,29 +116,104 @@
     }
     topElement = null
     scrollOffset = 0
-    if (window.scrollY + window.innerHeight >= document.body.scrollHeight) {
-      // At the bottom of the page.
+    // Is at page bottom?
+    if (window.scrollY + window.innerHeight >= document.body.scrollHeight)
       return
-    }
     var messages = document.getElementsByClassName('msg')
     if (messages.length === 0)
       return
     // Search backwards.
     for (var i = messages.length - 1; i >= 0;  --i) {
       var rect = messages[i].getBoundingClientRect()
-      if (rect.top < 0)
-        break
       topElement = messages[i]
       scrollOffset = rect.top
+      if (rect.top < 0)
+        break
     }
   }
   // Make sure the view is always scrolled at current message.
-  window.onresize = scrollToPreivousTopElement
+  window.onresize = function() {
+    ignoreNextScroll = true
+    if (topElement)
+      window.scrollTo(0, topElement.getBoundingClientRect().top + window.pageYOffset - scrollOffset)
+    else
+      scrollToBottom()
+  }
+
+  // Ready =================================================================
+
   // We are ready.
   chie.notifyReady()
   // See comment above on IE.
   if (isIE)
     scrollToUnreadMarker()
+
+  // Helpers ===============================================================
+
+  // Scroll to the unread marker, or bottom if not found.
+  function scrollToUnreadMarker() {
+    var marker = document.getElementById('unread-marker')
+    if (marker) {
+      var rect = marker.getBoundingClientRect()
+      window.scrollTo(0, rect.top + window.pageYOffset - (window.innerHeight / 2))
+    } else {
+      scrollToBottom()
+    }
+  }
+  // Find all delayed-image items and load them.
+  function loadAllImages() {
+    var imgs = [].slice.call(document.getElementsByClassName('delayed-image'))
+    for (var i = 0; i < imgs.length; ++i) {
+      var img = imgs[i]
+      img.classList.remove('delayed-image')
+      loadImage(img, img.getAttribute('data-url'))
+    }
+  }
+  // Helper to dynamically load an image which requires authorization.
+  var nextCallbackId = 0
+  function loadImage(element, url) {
+    callbacks[++nextCallbackId] = function(result) {
+      element.src = result
+    }
+    chie.fetchImage(url, nextCallbackId)
+  }
+  // Helper to convert HTML to DOM.
+  function HTMLToDOM(html) {
+    // Note: Don't use DOMParser, it has problems with applying CSS styles.
+    var wrapper = document.createElement('div')
+    wrapper.innerHTML = html
+    return wrapper.childNodes
+  }
+  // Find the pending message.
+  function findPending(child) {
+    var pending = document.getElementById('pending')
+    if (!pending) {
+      console.error('Unable to find the pending message.')
+      return
+    }
+    if (!child)
+      return pending
+    var text = pending.getElementsByClassName(child)[0]
+    if (!text) {
+      console.error('The pending message has no '+ child + ' element.')
+      return
+    }
+    return text
+  }
+  // Scroll to the bottom of page.
+  function scrollToBottom() {
+    window.scrollTo(0, document.body.scrollHeight)
+  }
+  // Helper function to find parent element.
+  function findParent(tagName, target) {
+    var loops = 0
+    while (target && ++loops < 4) {
+      if (target.tagName && target.tagName.toLowerCase() === tagName)
+        return target
+      target = target.parentNode
+    }
+    return null
+  }
 </script>
 </body>
 </html>

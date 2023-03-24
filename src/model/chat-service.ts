@@ -14,7 +14,7 @@ export type ChatMessage = {
 
 export type ChatResponse = {
   // Unique ID for each message.
-  id: string;
+  id?: string;
   // The content is omitted because of content filter.
   filtered: boolean;
   // This message is in progress, and waiting for more.
@@ -24,10 +24,17 @@ export type ChatResponse = {
 export default abstract class ChatService {
   endpoint: APIEndpoint;
   history: ChatMessage[] = [];
-  pendingMessage?: Partial<ChatMessage>;
 
-  onPartialMessage: Signal<(message: Partial<ChatMessage>, response: ChatResponse) => void>;
+  // Saves concatenated content of all the received partial messages.
+  pendingMessage?: Partial<ChatMessage>;
+  // The response of last partial message.
+  lastResponse?: ChatResponse;
+
+  // Abilities.
+  canRegenerate: boolean = true;
+
   onMessage: Signal<(message: ChatMessage, response: ChatResponse) => void>;
+  onPartialMessage: Signal<(message: Partial<ChatMessage>, response: ChatResponse) => void>;
 
   constructor(endpoint: APIEndpoint) {
     this.endpoint = endpoint;
@@ -38,28 +45,21 @@ export default abstract class ChatService {
   async sendMessage(message: Partial<ChatMessage>, options: {signal?: AbortSignal} = {}) {
     if (this.pendingMessage)
       throw new Error('There is pending message being received.');
-    if (!message.content)
-      throw new Error('Message content can not be empty.');
-    const fullMessage = {
+    this.history.push({
       role: message.role ?? ChatRole.User,
-      content: message.content,
-    };
-    this.history.push(fullMessage);
-
-    // Yode hack.
-    if (process['activateUvLoop'])
-      process['activateUvLoop']();
-
-    await this.sendMessageImpl(fullMessage, options);
-
-    // The pendingMessage should be cleared after parsing.
-    if (this.pendingMessage) {
-      this.pendingMessage = null;
-      throw new Error('The pending message is not cleared.');
-    }
+      content: message.content ?? '',
+    });
+    await this.#generateResponse(options);
   }
 
-  abstract sendMessageImpl(message: ChatMessage, options: {signal?: AbortSignal}): Promise<void>;
+  async regenerateResponse(options) {
+    if (this.history.length == 0)
+      throw new Error('Unable to regenerate response when there is no message.');
+    this.pendingMessage = null;
+    await this.#generateResponse(options);
+  }
+
+  abstract sendMessageImpl(options: {signal?: AbortSignal}): Promise<void>;
 
   protected handlePartialMessage(message: Partial<ChatMessage>, response: ChatResponse) {
     this.onPartialMessage.dispatch(message, response);
@@ -68,7 +68,7 @@ export default abstract class ChatService {
     if (!this.pendingMessage) {
       if (!message.role)
         throw new Error('First partial message should include role');
-      this.pendingMessage = {role: message.role};
+      this.pendingMessage = {role: message.role ?? ChatRole.Assistant};
     }
     if (message.content) {
       if (this.pendingMessage.content)
@@ -76,6 +76,8 @@ export default abstract class ChatService {
       else
         this.pendingMessage.content = message.content;
     }
+
+    this.lastResponse = response;
 
     // Send onMessage when all pending messags have been received.
     if (!response.pending) {
@@ -86,6 +88,27 @@ export default abstract class ChatService {
         content: this.pendingMessage.content.trim(),
       }, response);
       this.pendingMessage = null;
+      this.lastResponse = null;
+    }
+  }
+
+  async #generateResponse(options) {
+    try {
+      await this.sendMessageImpl(options);
+    } catch (error) {
+      // Aborted message is still normal message.
+      if (error.name != 'AbortError')
+        throw error;
+      if (this.lastResponse)
+        this.lastResponse.pending = false;
+      else
+        this.lastResponse = {pending: false, filtered: false};
+      this.handlePartialMessage({}, this.lastResponse);
+    }
+    // The pendingMessage should be cleared after parsing.
+    if (this.pendingMessage) {
+      this.pendingMessage = null;
+      throw new Error('The pending message is not cleared.');
     }
   }
 }

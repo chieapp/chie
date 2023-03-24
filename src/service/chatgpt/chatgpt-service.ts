@@ -9,7 +9,7 @@ export default class ChatGPTService extends ChatService {
     super(endpoint);
   }
 
-  async sendMessageImpl(message, options) {
+  async sendMessageImpl(options) {
     // Start request.
     const response = await fetch(this.endpoint.url, {
       body: JSON.stringify({

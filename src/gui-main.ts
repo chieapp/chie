@@ -3,8 +3,10 @@ import path from 'node:path';
 import gui from 'gui';
 
 import {APIEndpointType} from './model/api-endpoint';
+import ChatService from './model/chat-service';
 import ChatView from './view/chat-view';
 import ChatGPTService from './service/chatgpt/chatgpt-service';
+import BingChatService from './service/bingchat/bingchat-service';
 import main from './main';
 import apiManager from './controller/api-manager';
 import * as singleInstance from './util/single-instance';
@@ -32,8 +34,15 @@ function guiMain() {
   win.activate();
   win.onClose = process.exit;
 
-  const endpoint = apiManager.getEndpointsByType(APIEndpointType.ChatGPT)[0];
-  const chatView = new ChatView(new ChatGPTService(endpoint));
+  let service: ChatService;
+  if (process.argv.includes('--bingchat')) {
+    const endpoint = apiManager.getEndpointsByType(APIEndpointType.BingChat)[0];
+    service = new BingChatService(endpoint);
+  } else {
+    const endpoint = apiManager.getEndpointsByType(APIEndpointType.ChatGPT)[0];
+    service = new ChatGPTService(endpoint);
+  }
+  const chatView = new ChatView(service);
   win.setContentView(chatView.view);
 
   const p = fs.realpathSync(path.join(__dirname, '../assets/view/BlackWhiteTrayTemplate@2x.png'));

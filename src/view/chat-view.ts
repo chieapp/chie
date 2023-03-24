@@ -9,6 +9,8 @@ import ChatService, {ChatRole, ChatMessage} from '../model/chat-service';
 
 const assetsDir = path.join(__dirname, '../../assets/view');
 
+type ButtonMode = 'refresh' | 'send' | 'stop';
+
 export default class ChatView {
   // Height limitations of entry view.
   static entryHeights?: {
@@ -20,16 +22,24 @@ export default class ChatView {
   static pageTemplate?: ejs.AsyncTemplateFunction;
   static messageTemplate?: ejs.AsyncTemplateFunction;
 
+  // Button images.
+  static imageRefresh?: gui.Image;
+  static imageSend?: gui.Image;
+  static imageStop?: gui.Image;
+
   service: ChatService;
   isSending: boolean = false;
 
   view: gui.Container;
   browser: gui.Browser;
-  replyBox: gui.Container;
-  replyEntry: gui.TextEdit;
+  entry: gui.TextEdit;
+
+  button: gui.Button;
+  #buttonMode: ButtonMode = 'send';
 
   #bindings: SignalBinding[] = [];
   #pendingMessageHtml?: string;
+  #aborter?: AbortController;
 
   constructor(service: ChatService) {
     this.service = service;
@@ -47,33 +57,47 @@ export default class ChatView {
     this.#setupBrowser();
     this.view.addChildView(this.browser);
 
-    this.replyBox = gui.Container.create();
-    this.replyBox.setStyle({padding: 5});
-    this.view.addChildView(this.replyBox);
+    const inputArea = gui.Container.create();
+    inputArea.setStyle({flexDirection: 'row', padding: 5});
+    this.view.addChildView(inputArea);
 
-    this.replyEntry = gui.TextEdit.create();
+    this.entry = gui.TextEdit.create();
     if (process.platform != 'win32') {
       // Force using overlay scrollbar.
-      this.replyEntry.setOverlayScrollbar(true);
-      this.replyEntry.setScrollbarPolicy('never', 'automatic');
+      this.entry.setOverlayScrollbar(true);
+      this.entry.setScrollbarPolicy('never', 'automatic');
     }
     // Font size should be the same with messages.
     const font = gui.Font.create(gui.Font.default().getName(), 15, 'normal', 'normal');
-    this.replyEntry.setFont(font);
+    this.entry.setFont(font);
     // Calculate height for 1 and 5 lines.
     if (!ChatView.entryHeights) {
-      this.replyEntry.setText('1');
-      const min = this.replyEntry.getTextBounds().height;
-      this.replyEntry.setText('1\n2\n3\n4\n5');
-      const max = this.replyEntry.getTextBounds().height;
-      this.replyEntry.setText('');
+      this.entry.setText('1');
+      const min = this.entry.getTextBounds().height;
+      this.entry.setText('1\n2\n3\n4\n5');
+      const max = this.entry.getTextBounds().height;
+      this.entry.setText('');
       ChatView.entryHeights = {min, max};
     }
-    this.replyEntry.setStyle({height: ChatView.entryHeights.min});
+    this.entry.setStyle({flex: 1, height: ChatView.entryHeights.min});
     // Handle input events.
-    this.replyEntry.onTextChange = this.#adjustEntryHeight.bind(this);
-    this.replyEntry.shouldInsertNewLine = this.#onEnter.bind(this);
-    this.replyBox.addChildView(this.replyEntry);
+    this.entry.onTextChange = this.#onTextChange.bind(this);
+    this.entry.shouldInsertNewLine = this.#onEnter.bind(this);
+    inputArea.addChildView(this.entry);
+
+    this.button = gui.Button.create({type: 'normal'});
+    this.button.setStyle({marginLeft: 5});
+    this.button.onClick = this.#onButtonClick.bind(this);
+    // This is the only button type can have a small height.
+    if (process.platform == 'darwin')
+      this.button.setButtonStyle('round-rect');
+    if (!ChatView.imageRefresh) {
+      ChatView.imageRefresh = gui.Image.createFromPath(path.join(assetsDir, 'refresh@2x.png'));
+      ChatView.imageSend = gui.Image.createFromPath(path.join(assetsDir, 'send@2x.png'));
+      ChatView.imageStop = gui.Image.createFromPath(path.join(assetsDir, 'stop@2x.png'));
+    }
+    this.#setButtonMode('send');
+    inputArea.addChildView(this.button);
 
     this.#bindings.push(this.service.onPartialMessage.add(this.#onPartialMessage.bind(this)));
   }
@@ -94,7 +118,7 @@ export default class ChatView {
   getDraft(): string | null {
     if (this.isSending)
       return null;
-    const content = this.replyEntry.getText().trim();
+    const content = this.entry.getText().trim();
     if (content.trim().length == 0)
       return null;
     return content;
@@ -133,13 +157,24 @@ export default class ChatView {
     this.browser.addBinding('openLinkContextMenu', this.#openLinkContextMenu.bind(this));
   }
 
+  // User editing in the entry.
+  #onTextChange() {
+    this.#adjustEntryHeight();
+    const text = this.entry.getText();
+    if (text.length > 0 ||
+        this.service.history.length == 0 ||
+        !this.service.canRegenerate)
+      this.#setButtonMode('send');
+    else
+      this.#setButtonMode('refresh');
+  }
+
   // User presses Enter in the reply entry.
   #onEnter() {
     if (gui.Event.isShiftPressed())  // user wants new line
       return true;
     if (this.isSending)  // should never happen
       throw new Error('Sending message while a message is being received');
-    // Ignore empty reply.
     const content = this.getDraft();
     if (!content)
       return false;
@@ -148,17 +183,29 @@ export default class ChatView {
     this.addMessage(message);
     // Show a pending message.
     this.addMessage({role: ChatRole.Assistant}, {pending: true});
-    // Prevent editing until sent.
-    this.isSending = true;
-    this.replyEntry.setEnabled(false);
-    this.replyEntry.setText('');
-    this.#adjustEntryHeight();
-    this.service.sendMessage(message).then(() => {
-      this.replyEntry.setEnabled(true);
-    }).finally(() => {
-      this.isSending = false;
-    });
+    // Send message.
+    this.#aborter = new AbortController();
+    const promise = this.service.sendMessage(message, {signal: this.#aborter.signal});
+    this.#startSending(promise);
     return false;
+  }
+
+  // User clicks on the send button.
+  #onButtonClick() {
+    if (this.#buttonMode == 'send') {
+      this.#onEnter();
+    } else if (this.#buttonMode == 'stop') {
+      this.#aborter.abort();
+    } else if (this.#buttonMode == 'refresh') {
+      this.#pendingMessageHtml = null;
+      this.executeJavaScript('window.clearPending()');
+      this.#aborter = new AbortController();
+      const promise = this.service.regenerateResponse({signal: this.#aborter.signal});
+      this.#startSending(promise);
+    }
+    // Success of action always change button mode, which then enables the
+    // button in it.
+    this.button.setEnabled(false);
   }
 
   // Message being received.
@@ -185,19 +232,55 @@ export default class ChatView {
     this.executeJavaScript('window.endPending()');
   }
 
+  // Handle UI changes after sending messages.
+  async #startSending(promise: Promise<void>) {
+    // Prevent editing until sent.
+    this.isSending = true;
+    this.#setButtonMode('stop');
+    this.entry.setEnabled(false);
+    this.entry.setText('');
+    this.#adjustEntryHeight();
+    // Wait for sending.
+    try {
+      await promise;
+      this.entry.setEnabled(true);
+      this.entry.focus();
+    } catch (error) {
+      console.log(error);
+      await this.executeJavaScript(`window.markError(${JSON.stringify(error.message)})`);
+    } finally {
+      this.#setButtonMode(this.service.canRegenerate ? 'refresh' : 'send');
+      this.isSending = false;
+    }
+  }
+
+  // Change button mode.
+  #setButtonMode(mode: ButtonMode) {
+    if (mode == 'refresh')
+      this.button.setImage(ChatView.imageRefresh);
+    else if (mode == 'send')
+      this.button.setImage(ChatView.imageSend);
+    else if (mode == 'stop')
+      this.button.setImage(ChatView.imageStop);
+    else
+      throw new Error(`Invalid button mode: ${mode}`);
+    this.button.setEnabled(true);
+    this.#buttonMode = mode;
+  }
+
   // Automatically changes the height of entry to show all of user's inputs.
   #adjustEntryHeight() {
-    let height = this.replyEntry.getTextBounds().height;
+    let height = this.entry.getTextBounds().height;
     if (height < ChatView.entryHeights.min)
       height = ChatView.entryHeights.min;
     else if (height > ChatView.entryHeights.max)
       height = ChatView.entryHeights.max;
-    this.replyEntry.setStyle({height});
+    this.entry.setStyle({height});
   }
 
   // Browser bindings used inside the browser view.
   #notifyReady() {
-    this.replyEntry.focus();
+    this.entry.focus();
   }
 
   #fetchImage() {

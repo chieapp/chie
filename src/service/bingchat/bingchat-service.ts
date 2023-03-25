@@ -1,21 +1,13 @@
 import crypto from 'node:crypto';
 import WebSocket from 'ws';
 import APIEndpoint, {APIEndpointType} from '../../model/api-endpoint';
-import ChatService, {ChatRole, ChatMessage} from '../../model/chat-service';
-import {
-  sydneyWebSocketUrl,
-  chatArgument,
-  edgeBrowserHeaders,
-} from './bing-env';
+import ChatService, {ChatRole, ChatMessage, ChatResponse} from '../../model/chat-service';
+import {AbortError, APIError, NetworkError} from '../../model/errors';
+import {sydneyWebSocketUrl, chatArgument, edgeBrowserHeaders} from './bing-env';
 
 const nullChar = '';
 
-class AbortError extends Error {
-  name = 'AbortError';
-}
-
 export default class BingChatService extends ChatService {
-  #ws?: WebSocket;
   #session?: {
     conversationId: string,
     clientId: string,
@@ -34,23 +26,23 @@ export default class BingChatService extends ChatService {
     if (message.role != ChatRole.User)
       throw new Error('BingChat only supports sending message as user.');
 
-    // Close disconnected WebSocket.
-    if (this.#ws && this.#ws.readyState != WebSocket.OPEN)
-      this.#closeWebSocket();
-
     if (!this.#session)
       await this.#createConversation(options);
-    if (!this.#ws)
-      this.#ws = new WebSocket(sydneyWebSocketUrl);
+
+    const ws = new WebSocket(sydneyWebSocketUrl);
 
     // Handle abort signals.
-    const handler = this.#closeWebSocket.bind(this);
+    const handler = ws.terminate.bind(ws);
     if (options.signal)
       options.signal.addEventListener('abort', handler);
 
     try {
-      await this.#createWebSocketConnection(this.#ws, options);
-      await this.#sendMessageToWebSocket(this.#ws, message, options);
+      await this.#createWebSocketConnection(ws, options);
+      await this.#sendMessageToWebSocket(ws, message, options);
+      ws.close();
+    } catch (error) {
+      ws.terminate();
+      throw error;
     } finally {
       if (options.signal)
         options.signal.removeEventListener('abort', handler);
@@ -67,9 +59,9 @@ export default class BingChatService extends ChatService {
     });
     const body = await response.json();
     if (!body.result)
-      throw new Error(`Invalid response when creating conversation: ${body}`);
+      throw new APIError(`Invalid response when creating conversation: ${body}`);
     if (body.result.value != 'Success')
-      throw new Error(`Unable to create conversation: ${body.result.value} - ${body.result.message}`);
+      throw new APIError(`Unable to create conversation: ${body.result.value} - ${body.result.message}`);
     this.#session = body;
   }
 
@@ -101,16 +93,9 @@ export default class BingChatService extends ChatService {
               continue;
             this.#handlePayload(event.arguments[0].messages[0]);
           } else if (event.type == 3) {
-            if (this.lastResponse) {
-              // Finished.
-              this.lastResponse.pending = false;
-              this.handlePartialMessage({}, this.lastResponse);
-              resolve();
-            } else {
-              // Did not receive any answer, Bing cut off our conversation.
-              this.#closeWebSocket();
-              this.handlePartialMessage({}, {filtered: false, pending: false});
-            }
+            // Finished.
+            this.responseEnded();
+            resolve();
           }
         }
       });
@@ -148,7 +133,7 @@ export default class BingChatService extends ChatService {
 
     // We assume all messages are from bot.
     if (payload['author'] != 'bot')
-      throw new Error(`Unrecognized author in chat: ${payload['author']}`);
+      throw new APIError(`Unrecognized author in chat: ${payload['author']}`);
 
     const message: Partial<ChatMessage> = {role: ChatRole.Assistant};
     if (payload['text']) {
@@ -160,29 +145,22 @@ export default class BingChatService extends ChatService {
     }
     if (!message.content)  // empty delta
       return;
-    this.handlePartialMessage(message, {
+    this.handlePartialMessage(message, new ChatResponse({
       id: payload['messageId'],
       filtered: payload['offense'] == 'OffenseTrigger',
       pending: true,
-    });
-  }
-
-  #closeWebSocket() {
-    if (this.#ws) {
-      this.#ws.terminate();
-      this.#ws = null;
-    }
+    }));
   }
 }
 
 function rejectOnWebSocketError(ws: WebSocket, reject, signal?) {
   ws.once('error', (error) => {
-    reject(new Error(`Connection error: ${error}`));
+    reject(new NetworkError(`Connection error: ${error.message}`));
   });
   ws.once('close', () => {
     if (signal?.aborted)
       reject(new AbortError());
     else
-      reject(new Error('WebSocket closed without noticing'));
+      reject(new NetworkError('WebSocket closed without noticing'));
   });
 }

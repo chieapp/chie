@@ -16,10 +16,10 @@
   "scripts": {
     "prepack": "tsc",
     "prestart": "tsc",
-    "pretest": "tsc",
     "start": "yode .",
     "lint": "eslint --ignore-path .gitignore .",
-    "test": "ts-mocha --require test/setup.ts test/**/*.ts",
+    "test": "ts-mocha --require test/setup.ts test/**/*-test.ts",
+    "gctest": "yode node_modules/ts-node/dist/bin.js test/gctest.ts",
     "build": "yackage build out",
     "dist": "yackage dist out"
   },

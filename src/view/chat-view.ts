@@ -105,6 +105,8 @@ export default class ChatView {
   unload() {
     for (const binding of this.#bindings)
       binding.detach();
+    if (this.#aborter)
+      this.#aborter.abort();
   }
 
   async addMessage(message: Partial<ChatMessage>, response?: {pending: boolean}) {
@@ -118,7 +120,7 @@ export default class ChatView {
   getDraft(): string | null {
     if (this.isSending)
       return null;
-    const content = this.entry.getText().trim();
+    const content = this.entry.getText();
     if (content.trim().length == 0)
       return null;
     return content;
@@ -148,7 +150,7 @@ export default class ChatView {
     }
     // Render.
     const data = {history: this.service.history.map(messageToDom)};
-    this.browser.loadHTML(await ChatView.pageTemplate(data), 'https://app');
+    this.browser.loadHTML(await ChatView.pageTemplate(data), 'https://chie.app');
     // Add bindings to the browser.
     this.browser.setBindingName('chie');
     this.browser.addBinding('notifyReady', this.#notifyReady.bind(this));
@@ -192,20 +194,24 @@ export default class ChatView {
 
   // User clicks on the send button.
   #onButtonClick() {
+    // Success of action always change button mode, so disable button here and
+    // when the action finishes it will be enabled again.
+    this.button.setEnabled(false);
+    // Do the action depending on button mode.
     if (this.#buttonMode == 'send') {
-      this.#onEnter();
+      if (this.getDraft())
+        this.#onEnter();
+      else
+        this.button.setEnabled(true);
     } else if (this.#buttonMode == 'stop') {
       this.#aborter.abort();
     } else if (this.#buttonMode == 'refresh') {
       this.#pendingMessageHtml = null;
-      this.executeJavaScript('window.clearPending()');
+      this.executeJavaScript('window.regenerateLastMessage()');
       this.#aborter = new AbortController();
       const promise = this.service.regenerateResponse({signal: this.#aborter.signal});
       this.#startSending(promise);
     }
-    // Success of action always change button mode, which then enables the
-    // button in it.
-    this.button.setEnabled(false);
   }
 
   // Message being received.
@@ -229,6 +235,8 @@ export default class ChatView {
     if (response.pending)  // more messages coming
       return;
     this.#pendingMessageHtml = null;
+    if (response.aborted)
+      this.executeJavaScript('window.markAborted()');
     this.executeJavaScript('window.endPending()');
   }
 
@@ -246,7 +254,7 @@ export default class ChatView {
       this.entry.setEnabled(true);
       this.entry.focus();
     } catch (error) {
-      console.log(error);
+      console.error(error);
       await this.executeJavaScript(`window.markError(${JSON.stringify(error.message)})`);
     } finally {
       this.#setButtonMode(this.service.canRegenerate ? 'refresh' : 'send');

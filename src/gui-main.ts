@@ -32,7 +32,6 @@ function guiMain() {
   win.setContentSize({width: 400, height: 400});
   win.center();
   win.activate();
-  win.onClose = process.exit;
 
   let service: ChatService;
   if (process.argv.includes('--bingchat')) {
@@ -44,6 +43,11 @@ function guiMain() {
   }
   const chatView = new ChatView(service);
   win.setContentView(chatView.view);
+
+  win.onClose = () => {
+    chatView.unload();
+    process.exit(0);
+  };
 
   const p = fs.realpathSync(path.join(__dirname, '../assets/view/BlackWhiteTrayTemplate@2x.png'));
   const tray = gui.Tray.createWithImage(gui.Image.createFromPath(p));

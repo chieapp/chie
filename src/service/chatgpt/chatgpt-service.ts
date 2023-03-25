@@ -1,6 +1,7 @@
 import {createParser} from 'eventsource-parser';
 import APIEndpoint, {APIEndpointType} from '../../model/api-endpoint';
-import ChatService, {ChatRole, ChatMessage} from '../../model/chat-service';
+import ChatService, {ChatRole, ChatMessage, ChatResponse} from '../../model/chat-service';
+import {APIError, NetworkError} from '../../model/errors';
 
 export default class ChatGPTService extends ChatService {
   constructor(endpoint: APIEndpoint) {
@@ -34,8 +35,8 @@ export default class ChatGPTService extends ChatService {
     if (response.status != 200) {
       const body = await response.json();
       if (!body.error)
-        throw new Error(`Unexpected open from ChatGPT API: ${body}`);
-      throw new Error(body.error.message);
+        throw new APIError(`Unexpected open from ChatGPT API: ${body}`);
+      throw new NetworkError(body.error.message);
     }
 
     // Parse server sent event (SSE).
@@ -48,7 +49,7 @@ export default class ChatGPTService extends ChatService {
 
   #parseMessage(message) {
     if (!message.data)
-      throw new Error(`Unexpected message from ChatGPT API: ${message}`);
+      throw new APIError(`Unexpected message from ChatGPT API: ${message}`);
     // ChatGPT sends [DONE] when streaming message is finished.
     if (message.data == '[DONE]')
       return;
@@ -57,14 +58,10 @@ export default class ChatGPTService extends ChatService {
     if (data.object != 'chat.completion.chunk' ||
         !Array.isArray(data.choices) ||
         data.choices.length != 1)
-      throw new Error(`Unexpected data from ChatGPT API: ${message.data}`);
+      throw new APIError(`Unexpected data from ChatGPT API: ${message.data}`);
     const choice = data.choices[0];
     // Parse the finish_reason.
-    const response = {
-      id: data.id,
-      filtered: false,
-      pending: false,
-    };
+    const response = new ChatResponse({id: data.id});
     switch (choice.finish_reason) {
       case 'stop':  // all delta received, no more action
       case 'length':  // ignored for now
@@ -76,7 +73,7 @@ export default class ChatGPTService extends ChatService {
         response.filtered = true;
         break;
       default:
-        throw new Error(`Unknown finish_reason: ${choice.finish_reason}`);
+        throw new APIError(`Unknown finish_reason: ${choice.finish_reason}`);
     }
     // Build the message from delta.
     const partial: Partial<ChatMessage> = {};

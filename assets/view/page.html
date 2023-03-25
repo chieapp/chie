@@ -59,6 +59,7 @@
     var text = findPending('text')
     if (!text)
       return
+    removeLoader()
     // Update the message html.
     var wasAtBottom = topElement == null
     if (back)
@@ -67,20 +68,35 @@
       text.innerHTML += html
     if (wasAtBottom)
       scrollToBottom()
-    // Remove the loading indicator
-    var loader = document.getElementById('loader')
-    if (loader)
-      loader.remove()
   }
   window.endPending = function() {
     var pending = findPending()
     if (pending)
       pending.removeAttribute('id')
+    removeLoader()
   }
-  window.clearPending = function() {
+  window.regenerateLastMessage = function() {
+    var pending = document.getElementById('pending')
+    var messages = document.getElementsByClassName('msg')
+    if (messages.length == 0) {
+      console.error('No message for regenerating.')
+      return
+    }
+    var message = messages[messages.length - 1];
+    if (pending && pending != message) {
+      console.error('Pending message is not last message.')
+      pending.removeAttribute('id')
+    }
+    message.setAttribute('id', 'pending')
+    message.getElementsByClassName('text')[0].innerHTML = '';
+  }
+  window.markAborted = function(error) {
     var text = findPending('text')
-    if (text)
-      text.innerHTML = ''
+    if (text) {
+      var inlineText = text.lastElementChild ? text.lastElementChild : text
+      inlineText.innerHTML += ' <span class="edited label">(aborted)</span>'
+      scrollToBottom()
+    }
   }
   window.markError = function(error) {
     var text = findPending('text')
@@ -176,6 +192,12 @@
       element.src = result
     }
     chie.fetchImage(url, nextCallbackId)
+  }
+  // Remove the load indicator.
+  function removeLoader() {
+    var loader = document.getElementById('loader')
+    if (loader)
+      loader.remove()
   }
   // Helper to convert HTML to DOM.
   function HTMLToDOM(html) {

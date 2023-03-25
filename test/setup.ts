@@ -1,2 +1,6 @@
-const {config} = require('../src/controller/config-store');
-config.inMemory = true;
+export const mochaHooks = {
+  beforeAll() {
+    const {config} = require('../src/controller/config-store');
+    config.inMemory = true;
+  },
+};

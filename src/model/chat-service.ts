@@ -12,14 +12,20 @@ export type ChatMessage = {
   content: string;
 };
 
-export type ChatResponse = {
+export class ChatResponse {
   // Unique ID for each message.
   id?: string;
   // The content is omitted because of content filter.
-  filtered: boolean;
+  filtered: boolean = false;
   // This message is in progress, and waiting for more.
-  pending: boolean;
-};
+  pending: boolean = false;
+  // The response was aborted by user.
+  aborted: boolean = false;
+
+  constructor(init?: Partial<ChatResponse>) {
+    Object.assign(this, init);
+  }
+}
 
 export default abstract class ChatService {
   endpoint: APIEndpoint;
@@ -42,6 +48,7 @@ export default abstract class ChatService {
     this.onMessage = new Signal();
   }
 
+  // Send a message and wait for response.
   async sendMessage(message: Partial<ChatMessage>, options: {signal?: AbortSignal} = {}) {
     if (this.pendingMessage)
       throw new Error('There is pending message being received.');
@@ -52,6 +59,7 @@ export default abstract class ChatService {
     await this.#generateResponse(options);
   }
 
+  // Generate a new response for the last user message.
   async regenerateResponse(options) {
     if (this.history.length == 0)
       throw new Error('Unable to regenerate response when there is no message.');
@@ -59,8 +67,10 @@ export default abstract class ChatService {
     await this.#generateResponse(options);
   }
 
+  // Implemented by sub-classes to actually send network requests.
   abstract sendMessageImpl(options: {signal?: AbortSignal}): Promise<void>;
 
+  // Called by sub-classes when there is message delta available.
   protected handlePartialMessage(message: Partial<ChatMessage>, response: ChatResponse) {
     this.onPartialMessage.dispatch(message, response);
 
@@ -92,19 +102,33 @@ export default abstract class ChatService {
     }
   }
 
+  // Called when the response is abrupted from server's side.
+  protected responseEnded() {
+    // If there was any partial message sent, give listener an end signal.
+    if (this.pendingMessage) {
+      const response = new ChatResponse(this.lastResponse ?? {});
+      response.pending = false;
+      this.onPartialMessage.dispatch({}, response);
+    }
+    this.pendingMessage = null;
+    this.lastResponse = null;
+  }
+
   async #generateResponse(options) {
     try {
       await this.sendMessageImpl(options);
     } catch (error) {
-      // Aborted message is still normal message.
-      if (error.name != 'AbortError')
-        throw error;
-      if (this.lastResponse)
-        this.lastResponse.pending = false;
-      else
-        this.lastResponse = {pending: false, filtered: false};
-      this.handlePartialMessage({}, this.lastResponse);
+      // AbortError is not treated as error.
+      if (error.name == 'AbortError') {
+        if (!this.lastResponse)
+          this.lastResponse = new ChatResponse();
+        this.lastResponse.aborted = true;
+        this.responseEnded();
+        return;
+      }
+      throw error;
     }
+
     // The pendingMessage should be cleared after parsing.
     if (this.pendingMessage) {
       this.pendingMessage = null;

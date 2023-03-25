@@ -40,11 +40,11 @@ export default abstract class ChatService {
   canRegenerate: boolean = true;
 
   onMessage: Signal<(message: ChatMessage, response: ChatResponse) => void>;
-  onPartialMessage: Signal<(message: Partial<ChatMessage>, response: ChatResponse) => void>;
+  onMessageDelta: Signal<(delta: Partial<ChatMessage>, response: ChatResponse) => void>;
 
   constructor(endpoint: APIEndpoint) {
     this.endpoint = endpoint;
-    this.onPartialMessage = new Signal();
+    this.onMessageDelta = new Signal();
     this.onMessage = new Signal();
   }
 
@@ -71,20 +71,20 @@ export default abstract class ChatService {
   abstract sendMessageImpl(options: {signal?: AbortSignal}): Promise<void>;
 
   // Called by sub-classes when there is message delta available.
-  protected handlePartialMessage(message: Partial<ChatMessage>, response: ChatResponse) {
-    this.onPartialMessage.dispatch(message, response);
+  protected handleMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
+    this.onMessageDelta.dispatch(delta, response);
 
     // Concatenate to the pendingMessage.
     if (!this.pendingMessage) {
-      if (!message.role)
-        throw new Error('First partial message should include role');
-      this.pendingMessage = {role: message.role ?? ChatRole.Assistant};
+      if (!delta.role)
+        throw new Error('First message delta should include role');
+      this.pendingMessage = {role: delta.role ?? ChatRole.Assistant};
     }
-    if (message.content) {
+    if (delta.content) {
       if (this.pendingMessage.content)
-        this.pendingMessage.content += message.content;
+        this.pendingMessage.content += delta.content;
       else
-        this.pendingMessage.content = message.content;
+        this.pendingMessage.content = delta.content;
     }
 
     this.lastResponse = response;
@@ -108,7 +108,7 @@ export default abstract class ChatService {
     if (this.pendingMessage) {
       const response = new ChatResponse(this.lastResponse ?? {});
       response.pending = false;
-      this.onPartialMessage.dispatch({}, response);
+      this.onMessageDelta.dispatch({}, response);
     }
     this.pendingMessage = null;
     this.lastResponse = null;

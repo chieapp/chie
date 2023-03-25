@@ -3,6 +3,7 @@
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
   <style type="text/css"><%- await include('page.css') %></style>
+  <style type="text/css"><%- await include('../../node_modules/highlight.js/styles/github.css') %></style>
 </head>
 <body>
 
@@ -30,8 +31,6 @@
   var isIE = /Trident|MSIE/.test(navigator.userAgent)
   if (!isIE)
     scrollToUnreadMarker()
-  // Load all images.
-  loadAllImages()
 
   // External APIs =========================================================
 
@@ -51,8 +50,6 @@
       messages.appendChild(children[i])
     // Scroll to bottom for new messages.
     scrollToBottom()
-    // Load images.
-    loadAllImages()
   }
   // External API to update pending message.
   window.updatePending = function(html, back) {
@@ -60,12 +57,21 @@
     if (!text)
       return
     removeLoader()
-    // Update the message html.
     var wasAtBottom = topElement == null
-    if (back)
-      text.innerHTML = text.innerHTML.slice(0, -back) + html
-    else
-      text.innerHTML += html
+    // Update the message html.
+    if (back) {
+      // If the tail is something like </p>, then we can insert directly into
+      // last child instead of updating whole html.
+      const tail = text.innerHTML.slice(text.innerHTML.length - back)
+      if (tail.trim().match(/^<\/[a-z]+>$/) && html.endsWith(tail)) {
+        text.lastElementChild.insertAdjacentHTML('beforeend', html.slice(0, -back))
+      } else {
+        console.warn('Updating whole innerHTML, bad tail is', tail)
+        text.innerHTML = text.innerHTML.slice(0, -back) + html
+      }
+    } else {
+      text.insertAdjacentHTML('beforeend', html)
+    }
     if (wasAtBottom)
       scrollToBottom()
   }
@@ -74,6 +80,7 @@
     if (pending)
       pending.removeAttribute('id')
     removeLoader()
+    hightCodeBlocks()
   }
   window.regenerateLastMessage = function() {
     var pending = document.getElementById('pending')
@@ -93,8 +100,13 @@
   window.markAborted = function(error) {
     var text = findPending('text')
     if (text) {
-      var inlineText = text.lastElementChild ? text.lastElementChild : text
-      inlineText.innerHTML += ' <span class="edited label">(aborted)</span>'
+      var inlineText = text
+      // If the last child of text is an element, append into it.
+      if (text.lastElementChild &&
+          text.lastElementChild == this.lastChild &&
+          text.lastElementChild.tagName.toLowerCase() == 'p')
+        inlineText = text.lastElementChild
+      inlineText.insertAdjacentHTML('beforeend', ' <span class="edited label">(aborted)</span>')
       scrollToBottom()
     }
   }
@@ -123,6 +135,11 @@
       chie.openLinkContextMenu(target.href)
       return false
     }
+  }
+  // Move focus to entry on Tab.
+  window.onkeyup = function(event) {
+    if (event.code == 'Tab')
+      chie.focusEntry()
   }
   // Update current top element.
   window.onscroll = function() {
@@ -159,7 +176,7 @@
   // Ready =================================================================
 
   // We are ready.
-  chie.notifyReady()
+  chie.focusEntry()
   // See comment above on IE.
   if (isIE)
     scrollToUnreadMarker()
@@ -176,22 +193,23 @@
       scrollToBottom()
     }
   }
-  // Find all delayed-image items and load them.
-  function loadAllImages() {
-    var imgs = [].slice.call(document.getElementsByClassName('delayed-image'))
-    for (var i = 0; i < imgs.length; ++i) {
-      var img = imgs[i]
-      img.classList.remove('delayed-image')
-      loadImage(img, img.getAttribute('data-url'))
+  // Find all unhilighted code blocks and highlight them.
+  function hightCodeBlocks() {
+    var pres = [].slice.call(document.getElementsByClassName('unhilighted'))
+    for (var i = 0; i < pres.length; ++i) {
+      var pre = pres[i]
+      pre.classList.remove('unhilighted')
+      hightCodeBlock(pre, pre.getAttribute('lang'))
     }
   }
-  // Helper to dynamically load an image which requires authorization.
+  // Highlight a single code block.
   var nextCallbackId = 0
-  function loadImage(element, url) {
+  function hightCodeBlock(element, lang) {
     callbacks[++nextCallbackId] = function(result) {
-      element.src = result
+      if (result)
+        element.innerHTML = result
     }
-    chie.fetchImage(url, nextCallbackId)
+    chie.hightCodeBlock(element.textContent, lang, nextCallbackId)
   }
   // Remove the load indicator.
   function removeLoader() {

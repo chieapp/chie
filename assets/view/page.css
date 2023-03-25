@@ -182,10 +182,6 @@ a:hover {
   margin-top: -4px;
 }
 
-.text .para-br {
-  display: block;
-  height: 8px;
-}
 .text .label {
   font-size: 13px;
   white-space: nowrap;
@@ -196,23 +192,11 @@ a:hover {
 .text .error.label {
   color: #E32636;
 }
-.text .at {
-  color: #0576b9;
-  text-decoration: none;
+.text > p:first-child {
+  margin-top: 0;
 }
-.text .at, .text .broadcast {
-  padding: 0 2px 1px 2px;
-  border-radius: 3px;
-}
-.text .at {
-  background: #EAF5FC;
-}
-.text .broadcast {
-  background: #FFF6D1;
-  font-weight: 700;
-}
-.text .broadcast.at {
-  font-weight: normal;
+.text > p:last-child {
+  margin-bottom: 0;
 }
 .text pre, .text code {
   font-family: Monaco, Menlo, Consolas, "Courier New", monospace;

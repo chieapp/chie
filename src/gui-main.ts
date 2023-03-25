@@ -49,7 +49,7 @@ function guiMain() {
     process.exit(0);
   };
 
-  const p = fs.realpathSync(path.join(__dirname, '../assets/view/BlackWhiteTrayTemplate@2x.png'));
+  const p = fs.realpathSync(path.join(__dirname, '../assets/icons/BlackWhiteTrayTemplate@2x.png'));
   const tray = gui.Tray.createWithImage(gui.Image.createFromPath(p));
   global.tray = tray;
 }

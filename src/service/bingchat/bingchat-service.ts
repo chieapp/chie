@@ -135,17 +135,17 @@ export default class BingChatService extends ChatService {
     if (payload['author'] != 'bot')
       throw new APIError(`Unrecognized author in chat: ${payload['author']}`);
 
-    const message: Partial<ChatMessage> = {role: ChatRole.Assistant};
+    const delta: Partial<ChatMessage> = {role: ChatRole.Assistant};
     if (payload['text']) {
       // BingChat always return full text, while we want only deltas.
       if (!this.pendingMessage || !this.pendingMessage.content)
-        message.content = payload['text'];
+        delta.content = payload['text'];
       else
-        message.content = payload['text'].substr(this.pendingMessage.content.length);
+        delta.content = payload['text'].substr(this.pendingMessage.content.length);
     }
-    if (!message.content)  // empty delta
+    if (!delta.content)  // empty delta
       return;
-    this.handlePartialMessage(message, new ChatResponse({
+    this.handleMessageDelta(delta, new ChatResponse({
       id: payload['messageId'],
       filtered: payload['offense'] == 'OffenseTrigger',
       pending: true,

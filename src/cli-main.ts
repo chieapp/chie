@@ -20,7 +20,7 @@ async function cliMain() {
   });
   // Print ChatGPT answers with streaming interface.
   let state = 'waitUser';
-  chat.onPartialMessage.add((message, response) => {
+  chat.onMessageDelta.add((message, response) => {
     if (state == 'waitAnswer') {
       // Print content.
       if (message.content)

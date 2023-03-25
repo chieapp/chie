@@ -76,18 +76,18 @@ export default class ChatGPTService extends ChatService {
         throw new APIError(`Unknown finish_reason: ${choice.finish_reason}`);
     }
     // Build the message from delta.
-    const partial: Partial<ChatMessage> = {};
+    const delta: Partial<ChatMessage> = {};
     if (choice.delta.content)
-      partial.content = choice.delta.content;
+      delta.content = choice.delta.content;
     // Beginning of content may include some white spaces.
-    if (partial.content && (!this.pendingMessage || !this.pendingMessage.content))
-      partial.content = partial.content.trimLeft();
+    if (delta.content && (!this.pendingMessage || !this.pendingMessage.content))
+      delta.content = delta.content.trimLeft();
     if (choice.delta.role) {
       const key = capitalize(choice.delta.role) as keyof typeof ChatRole;
-      partial.role = ChatRole[key];
+      delta.role = ChatRole[key];
     }
     // ChatService will handle the rest.
-    this.handlePartialMessage(partial, response);
+    this.handleMessageDelta(delta, response);
   }
 }
 

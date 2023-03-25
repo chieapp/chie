@@ -7,10 +7,11 @@
     "appId": "org.chie.chie",
     "productName": "Chie",
     "copyright": "Copyright © 2023 Cheng Zhao",
-    "unpackDir": "assets",
+    "unpackDir": "assets/icons",
+    "ignore":  [ "assets/build" ],
     "icons": {
-      "mac": "assets/icon.icns",
-      "win": "assets/icon.ico"
+      "mac": "assets/build/icon.icns",
+      "win": "assets/build/icon.ico"
     }
   },
   "scripts": {
@@ -38,13 +39,18 @@
     "fetch-yode": "1.x",
     "fs-extra": "11.1.0",
     "gui": "0.13.0",
+    "highlight.js": "^11.7.0",
+    "html-escaper": "3.0.3",
     "marked": "4.3.0",
+    "sanitize-html": "2.10.0",
     "type-signals": "1.1.0",
     "ws": "8.13.0"
   },
   "devDependencies": {
     "@types/ejs": "3.1.2",
+    "@types/html-escaper": "3.0.0",
     "@types/marked": "4.0.8",
+    "@types/sanitize-html": "2.9.0",
     "@typescript-eslint/eslint-plugin": "5.55.0",
     "@typescript-eslint/parser": "5.55.0",
     "chai": "4.3.7",
@@ -52,6 +58,6 @@
     "mocha": "10.2.0",
     "ts-mocha": "10.0.0",
     "typescript": "5.0.2",
-    "yackage": "0.7.x"
+    "yackage": "0.8.x"
   }
 }

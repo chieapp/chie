@@ -1,13 +1,16 @@
 import fs from 'node:fs/promises';
+import {realpathSync} from 'node:fs';
 import path from 'node:path';
 import ejs from 'ejs';
 import gui from 'gui';
+import hljs from 'highlight.js';
+import {escape} from 'html-escaper';
 import {SignalBinding} from 'type-signals';
 
-import {renderMarkdown} from './markdown';
+import {renderMarkdown, veryLikelyMarkdown} from './markdown';
 import ChatService, {ChatRole, ChatMessage} from '../model/chat-service';
 
-const assetsDir = path.join(__dirname, '../../assets/view');
+const assetsDir = path.join(__dirname, '../../assets');
 
 type ButtonMode = 'refresh' | 'send' | 'stop';
 
@@ -38,7 +41,10 @@ export default class ChatView {
   #buttonMode: ButtonMode = 'send';
 
   #bindings: SignalBinding[] = [];
-  #pendingMessageHtml?: string;
+  #parsedMessage?: {
+    isMarkdown: boolean,
+    html: string,
+  };
   #aborter?: AbortController;
 
   constructor(service: ChatService) {
@@ -92,14 +98,15 @@ export default class ChatView {
     if (process.platform == 'darwin')
       this.button.setButtonStyle('round-rect');
     if (!ChatView.imageRefresh) {
-      ChatView.imageRefresh = gui.Image.createFromPath(path.join(assetsDir, 'refresh@2x.png'));
-      ChatView.imageSend = gui.Image.createFromPath(path.join(assetsDir, 'send@2x.png'));
-      ChatView.imageStop = gui.Image.createFromPath(path.join(assetsDir, 'stop@2x.png'));
+      const create = (name) => gui.Image.createFromPath(realpathSync(path.join(assetsDir, 'icons', `${name}@2x.png`)));
+      ChatView.imageRefresh = create('refresh');
+      ChatView.imageSend = create('send');
+      ChatView.imageStop = create('stop');
     }
     this.#setButtonMode('send');
     inputArea.addChildView(this.button);
 
-    this.#bindings.push(this.service.onPartialMessage.add(this.#onPartialMessage.bind(this)));
+    this.#bindings.push(this.service.onMessageDelta.add(this.#onMessageDelta.bind(this)));
   }
 
   unload() {
@@ -137,12 +144,12 @@ export default class ChatView {
     if (!ChatView.pageTemplate) {
       await Promise.all([
         (async () => {
-          const filename = path.join(assetsDir, 'page.html');
+          const filename = path.join(assetsDir, 'view', 'page.html');
           const html = await fs.readFile(filename);
           ChatView.pageTemplate = await ejs.compile(html.toString(), {filename, async: true});
         })(),
         (async () => {
-          const filename = path.join(assetsDir, 'message.html');
+          const filename = path.join(assetsDir, 'view', 'message.html');
           const html = await fs.readFile(filename);
           ChatView.messageTemplate = await ejs.compile(html.toString(), {filename, async: true});
         })(),
@@ -153,8 +160,8 @@ export default class ChatView {
     this.browser.loadHTML(await ChatView.pageTemplate(data), 'https://chie.app');
     // Add bindings to the browser.
     this.browser.setBindingName('chie');
-    this.browser.addBinding('notifyReady', this.#notifyReady.bind(this));
-    this.browser.addBinding('fetchImage', this.#fetchImage.bind(this));
+    this.browser.addBinding('focusEntry', this.entry.focus.bind(this.entry));
+    this.browser.addBinding('hightCodeBlock', this.#hightCodeBlock.bind(this));
     this.browser.addBinding('openLink', this.#openLink.bind(this));
     this.browser.addBinding('openLinkContextMenu', this.#openLinkContextMenu.bind(this));
   }
@@ -206,7 +213,7 @@ export default class ChatView {
     } else if (this.#buttonMode == 'stop') {
       this.#aborter.abort();
     } else if (this.#buttonMode == 'refresh') {
-      this.#pendingMessageHtml = null;
+      this.#parsedMessage = null;
       this.executeJavaScript('window.regenerateLastMessage()');
       this.#aborter = new AbortController();
       const promise = this.service.regenerateResponse({signal: this.#aborter.signal});
@@ -215,26 +222,37 @@ export default class ChatView {
   }
 
   // Message being received.
-  #onPartialMessage(message: Partial<ChatMessage>, response) {
-    if (message.content) {
-      if (this.#pendingMessageHtml) {
+  #onMessageDelta(delta: Partial<ChatMessage>, response) {
+    if (delta.content) {
+      if (this.#parsedMessage) {
         // Get html of full message.
-        const html = renderMarkdown(this.service.pendingMessage.content + message.content);
+        const isMarkdown = this.#parsedMessage.isMarkdown || veryLikelyMarkdown(delta.content);
+        let html = this.service.pendingMessage.content + delta.content;
+        if (isMarkdown)
+          html = renderMarkdown(html);
+        else
+          html = escapeText(html);
         // Pass the delta to browser.
-        const pos = findStartOfDifference(this.#pendingMessageHtml, html);
-        const back = this.#pendingMessageHtml.length - pos;
-        const delta = html.substr(pos);
-        this.#pendingMessageHtml = html;
-        this.executeJavaScript(`window.updatePending(${JSON.stringify(delta)}, ${back})`);
+        const pos = findStartOfDifference(this.#parsedMessage.html, html);
+        const back = this.#parsedMessage.html.length - pos;
+        const substr = html.substr(pos);
+        this.#parsedMessage = {isMarkdown, html};
+        this.executeJavaScript(`window.updatePending(${JSON.stringify(substr)}, ${back})`);
       } else {
         // This is the first part of message, just update.
-        this.#pendingMessageHtml = renderMarkdown(message.content);
-        this.executeJavaScript(`window.updatePending(${JSON.stringify(this.#pendingMessageHtml)})`);
+        const isMarkdown = veryLikelyMarkdown(delta.content);
+        this.#parsedMessage = {
+          isMarkdown,
+          html: isMarkdown ? renderMarkdown(delta.content) : escapeText(delta.content),
+        };
+        this.executeJavaScript(`window.updatePending(${JSON.stringify(this.#parsedMessage.html)})`);
       }
     }
     if (response.pending)  // more messages coming
       return;
-    this.#pendingMessageHtml = null;
+    console.log(this.service.pendingMessage);
+    console.log(this.#parsedMessage);
+    this.#parsedMessage = null;
     if (response.aborted)
       this.executeJavaScript('window.markAborted()');
     this.executeJavaScript('window.endPending()');
@@ -254,7 +272,6 @@ export default class ChatView {
       this.entry.setEnabled(true);
       this.entry.focus();
     } catch (error) {
-      console.error(error);
       await this.executeJavaScript(`window.markError(${JSON.stringify(error.message)})`);
     } finally {
       this.#setButtonMode(this.service.canRegenerate ? 'refresh' : 'send');
@@ -287,12 +304,11 @@ export default class ChatView {
   }
 
   // Browser bindings used inside the browser view.
-  #notifyReady() {
-    this.entry.focus();
-  }
-
-  #fetchImage() {
-    // TODO
+  #hightCodeBlock(text: string, language: string, callbackId: number) {
+    const code = language ?
+      hljs.highlight(text, {language, ignoreIllegals: true}).value :
+      hljs.highlightAuto(text).value;
+    this.executeJavaScript(`window.executeCallback(${callbackId}, ${JSON.stringify(code)})`);
   }
 
   #openLink() {
@@ -307,12 +323,22 @@ export default class ChatView {
 function messageToDom(message: Partial<ChatMessage>) {
   if (!message.role)  // should not happen
     throw new Error('Role of message expected for serialization.');
-  return {
-    role: message.role,
-    content: message.content ? renderMarkdown(message.content) : undefined,
-  };
+  let content = message.content;
+  if (content && message.role == ChatRole.Assistant && veryLikelyMarkdown(content))
+    content = renderMarkdown(content);
+  else
+    content = escapeText(content);
+  return {role: message.role, content};
 }
 
+// Escape the special HTML characters in plain text message.
+function escapeText(str: string) {
+  if (!str)
+    return '';
+  return escape(str).replaceAll('\n', '<br/>');
+}
+
+// Find the common prefix of two strings.
 function findStartOfDifference(a: string, b: string) {
   const max = Math.min(a.length, b.length);
   for (let i = 0; i < max; ++i) {

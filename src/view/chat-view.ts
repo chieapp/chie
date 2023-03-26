@@ -31,12 +31,21 @@ export default class ChatView {
   static imageSend?: gui.Image;
   static imageStop?: gui.Image;
 
+  // Fixed reply button size.
+  static buttonSize = 28;
+
+  // Color of disabled TextEdit.
+  static entryWrapperDisabledBgColor?: number;
+
   service: ChatService;
-  isSending: boolean = false;
+  isSending = false;
 
   view: gui.Container;
   browser: gui.Browser;
   entry: gui.TextEdit;
+
+  // Draws a rounded rect and put entry in its center.
+  entryWrapper: gui.Container;
 
   button: gui.Button;
   #buttonMode: ButtonMode = 'send';
@@ -67,8 +76,24 @@ export default class ChatView {
     const inputArea = gui.Container.create();
     if (process.platform == 'win32')
       inputArea.setBackgroundColor('#E5E5E5');
-    inputArea.setStyle({flexDirection: 'row', padding: 5});
+    inputArea.setStyle({
+      flexDirection: 'row',  // horizontal layout
+      alignItems: 'flex-end',  // buttons anchored to bottom
+      padding: 5,
+    });
     this.view.addChildView(inputArea);
+
+    this.entryWrapper = gui.Container.create();
+    this.entryWrapper.setStyle({
+      height: '100%',  // take full vertical space
+      flex: 1,  // take full horizontal space
+      flexDirection: 'row',  // horizontal layout
+      alignItems: 'center',  // entry placed in vertical center
+      paddingLeft: 5,
+      paddingRight: 5,
+    });
+    this.entryWrapper.onDraw = this.#drawEntryWrapp.bind(this);
+    inputArea.addChildView(this.entryWrapper);
 
     this.entry = gui.TextEdit.create();
     if (process.platform != 'win32') {
@@ -88,18 +113,27 @@ export default class ChatView {
       this.entry.setText('');
       ChatView.entryHeights = {min, max};
     }
-    this.entry.setStyle({flex: 1, height: ChatView.entryHeights.min});
+    this.entry.setStyle({
+      flex: 1,  // take full horizontal space
+      height: ChatView.entryHeights.min,  // default to 1 line height
+    });
     // Handle input events.
     this.entry.onTextChange = this.#onTextChange.bind(this);
     this.entry.shouldInsertNewLine = this.#onEnter.bind(this);
-    inputArea.addChildView(this.entry);
+    this.entryWrapper.addChildView(this.entry);
 
     this.button = gui.Button.create({type: 'normal'});
-    this.button.setStyle({marginLeft: 5});
+    this.button.setStyle({
+      marginLeft: 5,
+      width: ChatView.buttonSize,  // fixed size
+      height: ChatView.buttonSize,
+    });
     this.button.onClick = this.#onButtonClick.bind(this);
-    // This is the only button type can have a small height.
+    // This is the only button style that looks like a button but can have
+    // variable height. See also:
+    // https://mackuba.eu/2014/10/06/a-guide-to-nsbutton-styles/
     if (process.platform == 'darwin')
-      this.button.setButtonStyle('round-rect');
+      this.button.setButtonStyle('regular-square');
     if (!ChatView.imageRefresh) {
       const create = (name) => gui.Image.createFromPath(realpathSync(path.join(assetsDir, 'icons', `${name}@2x.png`)));
       ChatView.imageRefresh = create('refresh');
@@ -272,12 +306,14 @@ export default class ChatView {
     this.#setButtonMode('stop');
     this.entry.setEnabled(false);
     this.entry.setText('');
+    this.entryWrapper.schedulePaint();
     this.#adjustEntryHeight();
     // Wait for sending.
     try {
       await promise;
       this.entry.setEnabled(true);
       this.entry.focus();
+      this.entryWrapper.schedulePaint();
     } catch (error) {
       await this.executeJavaScript(`window.markError(${JSON.stringify(error.message)})`);
     } finally {
@@ -308,6 +344,20 @@ export default class ChatView {
     else if (height > ChatView.entryHeights.max)
       height = ChatView.entryHeights.max;
     this.entry.setStyle({height});
+  }
+
+  // Draw the entry wrapper.
+  #drawEntryWrapp(wrapper: gui.Container, painter: gui.Painter) {
+    const bounds = Object.assign(wrapper.getBounds(), {x: 0, y: 0});
+    setRoundedCornerPath(painter, bounds, 5);
+    if (this.entry.isEnabled()) {
+      painter.setFillColor('#FFF');
+    } else {
+      if (!ChatView.entryWrapperDisabledBgColor)
+        ChatView.entryWrapperDisabledBgColor = gui.Color.get('disabled-text-edit-background');
+      painter.setFillColor(ChatView.entryWrapperDisabledBgColor);
+    }
+    painter.fill();
   }
 
   // Browser bindings used inside the browser view.
@@ -344,6 +394,7 @@ gui.Browser.registerProtocol('chie', (url) => {
   return gui.ProtocolFileJob.create(p);
 });
 
+// Translate the message into data to be parsed by EJS template.
 function messageToDom(service: ChatService, message: Partial<ChatMessage>) {
   if (!message.role)  // should not happen
     throw new Error('Role of message expected for serialization.');
@@ -365,6 +416,25 @@ function messageToDom(service: ChatService, message: Partial<ChatMessage>) {
       avatar = 'bingchat';
   }
   return {role: message.role, sender, avatar, content};
+}
+
+// Create rounded rect.
+function setRoundedCornerPath(painter, r, radius) {
+  const degrees = Math.PI / 180;
+  painter.beginPath();
+  painter.arc(
+    {x: r.x + r.width - radius, y: r.y + radius},
+    radius, -90 * degrees, 0);
+  painter.arc(
+    {x: r.x + r.width - radius, y: r.y + r.height - radius},
+    radius, 0, 90 * degrees);
+  painter.arc(
+    {x: r.x + radius, y: r.y + r.height - radius},
+    radius, 90 * degrees, 180 * degrees);
+  painter.arc(
+    {x: r.x + radius, y: r.y + radius},
+    radius, 180 * degrees, 270 * degrees);
+  painter.closePath();
 }
 
 // Escape the special HTML characters in plain text message.

@@ -1,0 +1,19 @@
+* app menu
+  * hide menu on win
+* window
+  * conversation summary in title
+  * show suggestions in blank chat view
+* action menu
+  * view original text
+  * copy
+* entry
+  * flash when sening empty message
+  * change background when disabled on mac
+  * add padding for multiple lines entry
+  * resize window to increase the entry height.
+* button
+  * custom draw reply button
+  * additional menu button
+    * clear history
+    * regenerate
+    * hide/show avatars

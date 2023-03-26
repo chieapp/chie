@@ -27,7 +27,13 @@ export class ChatResponse {
   }
 }
 
+export type ChatServiceOptions = {
+  endpoint: APIEndpoint,
+  name?: string,
+};
+
 export default abstract class ChatService {
+  name: string;
   endpoint: APIEndpoint;
   history: ChatMessage[] = [];
 
@@ -42,7 +48,8 @@ export default abstract class ChatService {
   onMessage: Signal<(message: ChatMessage, response: ChatResponse) => void>;
   onMessageDelta: Signal<(delta: Partial<ChatMessage>, response: ChatResponse) => void>;
 
-  constructor(endpoint: APIEndpoint) {
+  constructor(name: string, endpoint: APIEndpoint) {
+    this.name = name;
     this.endpoint = endpoint;
     this.onMessageDelta = new Signal();
     this.onMessage = new Signal();

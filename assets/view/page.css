@@ -71,6 +71,10 @@ a:hover {
   margin-top: -10px;
 }
 
+#loader {
+  height: 15px;
+}
+
 .emoji {
   display: inline-block;
   height: 1em;
@@ -121,10 +125,12 @@ a:hover {
 }
 
 .msg {
-  border-top: 6px solid transparent;
+  border: 6px 0 2px solid transparent;
   display: table;
   width: 100%;
   border-collapse: collapse;
+  /* Prevent content to overgrow the div width. */
+  table-layout: fixed;
 }
 .msg .action-menu {
   margin-top: -.75em;
@@ -135,8 +141,8 @@ a:hover {
 .msg.folded .action-menu {
   margin-top: -1.3em;
 }
-.msg:hover {
-  background-color: #F9F9F9;
+.msg.role-assistant {
+  background-color: #FAFAFA;
 }
 .msg:hover .action-menu {
   display: block;
@@ -150,29 +156,25 @@ a:hover {
   padding-right: 10px;
   word-wrap: break-word;
 }
-.msg > .avatar {
-  padding-left: 10px;
-}
 .msg .avatar {
-  width: 36px;
+  width: 40px;
 }
 .msg .avatar > * {
-  margin-right: 10px;
+  width: 32px;
+  height: 32px;
+  padding: 5px 0 0 4px;
   border-radius: 3px;
-}
-.msg .avatar .dummy {
-  width: 36px;
 }
 .msg .sender {
   height: 15px;
   line-height: 1;
-  margin-bottom: 2px;
+  padding: 4px 0 2px 0;
 }
 .msg .sender > div {
   display: inline-block;
 }
 .msg .sender .name {
-  font-weight: 900;
+  font-weight: 600;
 }
 .msg .sender .time {
   font-size: 12px;

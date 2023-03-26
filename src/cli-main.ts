@@ -75,7 +75,7 @@ function createChatGPTService() {
     apiManager.add(endpoint);
   }
 
-  return new ChatGPTService(endpoint);
+  return new ChatGPTService({endpoint});
 }
 
 function createBingChatService() {
@@ -100,5 +100,5 @@ function createBingChatService() {
     apiManager.add(endpoint);
   }
 
-  return new BingChatService(endpoint);
+  return new BingChatService({endpoint});
 }

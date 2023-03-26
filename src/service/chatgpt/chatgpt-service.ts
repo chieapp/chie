@@ -1,13 +1,18 @@
 import {createParser} from 'eventsource-parser';
-import APIEndpoint, {APIEndpointType} from '../../model/api-endpoint';
-import ChatService, {ChatRole, ChatMessage, ChatResponse} from '../../model/chat-service';
+import {APIEndpointType} from '../../model/api-endpoint';
+import ChatService, {
+  ChatRole,
+  ChatMessage,
+  ChatResponse,
+  ChatServiceOptions,
+} from '../../model/chat-service';
 import {APIError, NetworkError} from '../../model/errors';
 
 export default class ChatGPTService extends ChatService {
-  constructor(endpoint: APIEndpoint) {
+  constructor({name, endpoint}: ChatServiceOptions) {
     if (endpoint.type != APIEndpointType.ChatGPT)
       throw new Error('Expect ChatGPT API endpoint in ChatGPTService.');
-    super(endpoint);
+    super(name ?? 'ChatGPT', endpoint);
   }
 
   async sendMessageImpl(options) {

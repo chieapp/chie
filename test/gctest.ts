@@ -45,6 +45,6 @@ function createChatView() {
     url: '',
     key: '',
   });
-  const service = new ChatGPTService(endpoint);
+  const service = new ChatGPTService({endpoint});
   return new ChatView(service);
 }

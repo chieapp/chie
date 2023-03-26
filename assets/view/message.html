@@ -1,13 +1,18 @@
-<div <% if (response?.pending) { %> id="pending" <% } %> class="msg">
+<div <% if (response?.pending) { %> id="pending" <% } %> class="msg role-<%= message.role.toLowerCase() %>">
   <div class="avatar">
-    <div class="dummy"></div>
+    <% if (message.avatar) { %>
+      <img src="chie://file/assets/icons/<%= message.avatar %>.png"/>
+    <% } else { %>
+      <div class="dummy"></div>
+    <% } %>
   </div>
   <div class="content">
-  <% if (response?.pending) { %>
-    <div id="loader">
-      LOADING...
+    <div class="sender">
+      <div class="name"><%= message.sender %></div>
     </div>
-  <% } %>
+    <% if (response?.pending) { %>
+      <img id="loader" src="chie://file/assets/icons/typing.gif"/>
+    <% } %>
     <div class="text">
     <% if (message.content) { %>
       <%- message.content %>

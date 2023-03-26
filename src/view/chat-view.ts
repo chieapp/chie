@@ -8,6 +8,7 @@ import {escape} from 'html-escaper';
 import {SignalBinding} from 'type-signals';
 
 import {renderMarkdown, veryLikelyMarkdown} from './markdown';
+import {APIEndpointType} from '../model/api-endpoint';
 import ChatService, {ChatRole, ChatMessage} from '../model/chat-service';
 
 const assetsDir = path.join(__dirname, '../../assets');
@@ -118,7 +119,7 @@ export default class ChatView {
 
   async addMessage(message: Partial<ChatMessage>, response?: {pending: boolean}) {
     const html = await ChatView.messageTemplate({
-      message: messageToDom(message),
+      message: messageToDom(this.service, message),
       response,
     });
     await this.executeJavaScript(`window.addMessage(${JSON.stringify(html)})`);
@@ -156,7 +157,7 @@ export default class ChatView {
       ]);
     }
     // Render.
-    const data = {history: this.service.history.map(messageToDom)};
+    const data = {history: this.service.history.map(messageToDom.bind(null, this.service))};
     this.browser.loadHTML(await ChatView.pageTemplate(data), 'https://chie.app');
     // Add bindings to the browser.
     this.browser.setBindingName('chie');
@@ -320,7 +321,16 @@ export default class ChatView {
   }
 }
 
-function messageToDom(message: Partial<ChatMessage>) {
+// Register chie:// protocol to work around CROS problem with file:// protocol.
+gui.Browser.registerProtocol('chie', (url) => {
+  const u = new URL(url);
+  if (u.host !== 'file')
+    return gui.ProtocolStringJob.create('text/plain', 'Unsupported type');
+  const p = realpathSync(`${__dirname}/../..${u.pathname}`);
+  return gui.ProtocolFileJob.create(p);
+});
+
+function messageToDom(service: ChatService, message: Partial<ChatMessage>) {
   if (!message.role)  // should not happen
     throw new Error('Role of message expected for serialization.');
   let content = message.content;
@@ -328,7 +338,19 @@ function messageToDom(message: Partial<ChatMessage>) {
     content = renderMarkdown(content);
   else
     content = escapeText(content);
-  return {role: message.role, content};
+  const sender = {
+    [ChatRole.User]: 'You',
+    [ChatRole.Assistant]: service.name,
+    [ChatRole.System]: 'System',
+  }[message.role];
+  let avatar = null;
+  if (message.role == ChatRole.Assistant) {
+    if (service.endpoint.type == APIEndpointType.ChatGPT)
+      avatar = 'chatgpt';
+    else if (service.endpoint.type == APIEndpointType.BingChat)
+      avatar = 'bingchat';
+  }
+  return {role: message.role, sender, avatar, content};
 }
 
 // Escape the special HTML characters in plain text message.

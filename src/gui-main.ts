@@ -36,10 +36,10 @@ function guiMain() {
   let service: ChatService;
   if (process.argv.includes('--bingchat')) {
     const endpoint = apiManager.getEndpointsByType(APIEndpointType.BingChat)[0];
-    service = new BingChatService(endpoint);
+    service = new BingChatService({endpoint});
   } else {
     const endpoint = apiManager.getEndpointsByType(APIEndpointType.ChatGPT)[0];
-    service = new ChatGPTService(endpoint);
+    service = new ChatGPTService({endpoint});
   }
   const chatView = new ChatView(service);
   win.setContentView(chatView.view);

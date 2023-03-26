@@ -3,7 +3,7 @@ import {escape} from 'html-escaper';
 
 const renderer = new marked.Renderer();
 renderer.code = (code, lang) => {
-  return `<pre class="unhilighted" lang="${lang}">${escape(code)}</pre>`
+  return `<pre class="unhilighted" lang="${lang}">${escape(code)}</pre>`;
 };
 
 export function renderMarkdown(str: string) {

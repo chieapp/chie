@@ -1,7 +1,12 @@
 import crypto from 'node:crypto';
 import WebSocket from 'ws';
-import APIEndpoint, {APIEndpointType} from '../../model/api-endpoint';
-import ChatService, {ChatRole, ChatMessage, ChatResponse} from '../../model/chat-service';
+import {APIEndpointType} from '../../model/api-endpoint';
+import ChatService, {
+  ChatRole,
+  ChatMessage,
+  ChatResponse,
+  ChatServiceOptions,
+} from '../../model/chat-service';
 import {AbortError, APIError, NetworkError} from '../../model/errors';
 import {sydneyWebSocketUrl, chatArgument, edgeBrowserHeaders} from './bing-env';
 
@@ -14,10 +19,10 @@ export default class BingChatService extends ChatService {
     conversationSignature: string,
   };
 
-  constructor(endpoint: APIEndpoint) {
+  constructor({name, endpoint}: ChatServiceOptions) {
     if (endpoint.type != APIEndpointType.BingChat)
       throw new Error('Expect BingChat API endpoint in BingChatService.');
-    super(endpoint);
+    super(name ?? 'Bing', endpoint);
     this.canRegenerate = false;
   }
 

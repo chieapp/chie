@@ -61,7 +61,7 @@ function createChatGPTService() {
   } else {
     // Create a temporary one from env if not exist.
     if (!process.env['OPENAI_API_KEY']) {
-      console.error('Please set the OPENAI_KEY with a valid key in it');
+      console.error('Please set the OPENAI_API_KEY with a valid key in it');
       process.exit(1);
     }
     endpoint = new APIEndpoint({

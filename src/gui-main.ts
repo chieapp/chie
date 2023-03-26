@@ -27,12 +27,6 @@ if (process.platform == 'darwin') {
 function guiMain() {
   main();
 
-  const win = gui.Window.create({});
-  global.win = win;
-  win.setContentSize({width: 400, height: 400});
-  win.center();
-  win.activate();
-
   let service: ChatService;
   if (process.argv.includes('--bingchat')) {
     const endpoint = apiManager.getEndpointsByType(APIEndpointType.BingChat)[0];
@@ -41,11 +35,20 @@ function guiMain() {
     const endpoint = apiManager.getEndpointsByType(APIEndpointType.ChatGPT)[0];
     service = new ChatGPTService({endpoint});
   }
+
+  const win = gui.Window.create({});
+  global.win = win;
+  win.setContentSize({width: 400, height: 400});
+  win.center();
+  win.activate();
+
   const chatView = new ChatView(service);
   win.setContentView(chatView.view);
 
   win.onClose = () => {
     chatView.unload();
+    if (gui.MessageLoop.quit)
+      gui.MessageLoop.quit();
     process.exit(0);
   };
 

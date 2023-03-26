@@ -1,14 +1,16 @@
 {
   "name": "chieapp",
   "version": "0.1.0",
-  "main": "dist/gui-main.js",
+  "main": "dist/main.js",
   "description": "Extensive desktop client for ChatGPT",
   "build": {
     "appId": "org.chie.chie",
     "productName": "Chie",
     "copyright": "Copyright © 2023 Cheng Zhao",
     "unpackDir": "assets/icons",
-    "ignore":  [ "assets/build" ],
+    "ignore": [
+      "assets/build"
+    ],
     "icons": {
       "mac": "assets/build/icon.icns",
       "win": "assets/build/icon.ico"
@@ -16,8 +18,8 @@
   },
   "scripts": {
     "prepack": "tsc",
-    "prestart": "tsc",
-    "start": "yode .",
+    "start": "yode node_modules/ts-node/dist/bin.js src/gui-main.ts",
+    "start-cli": "yode node_modules/ts-node/dist/bin.js src/cli-main.ts",
     "lint": "eslint --ignore-path .gitignore .",
     "test": "ts-mocha --require test/setup.ts test/**/*-test.ts",
     "gctest": "yode node_modules/ts-node/dist/bin.js test/gctest.ts",
@@ -32,6 +34,9 @@
   },
   "bugs": {
     "url": "https://github.com/chie/chie/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "ejs": "3.1.9",

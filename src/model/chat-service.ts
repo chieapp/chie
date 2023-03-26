@@ -49,6 +49,8 @@ export default abstract class ChatService {
   onMessageDelta: Signal<(delta: Partial<ChatMessage>, response: ChatResponse) => void>;
 
   constructor(name: string, endpoint: APIEndpoint) {
+    if (!name || !endpoint)
+      throw new Error('Must pass name and endpoint to ChatService');
     this.name = name;
     this.endpoint = endpoint;
     this.onMessageDelta = new Signal();

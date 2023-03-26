@@ -25,12 +25,20 @@
 
   // Initialization ========================================================
 
-  // For IE we need to scroll after ready, as the window body's size may be
-  // incorrect before showing the browser.
-  // For morden browsers scrolling before showing has the best visual effect.
   var isIE = /Trident|MSIE/.test(navigator.userAgent)
-  if (!isIE)
+  if (isIE) {
+    // Add endsWith polyfill.
+    if (!String.prototype.endsWith) {
+      String.prototype.endsWith = function(suffix) {
+        return this.indexOf(suffix, this.length - suffix.length) !== -1
+      }
+    }
+  } else {
+    // For IE we need to scroll after ready, as the window body's size may be
+    // incorrect before showing the browser.
+    // For morden browsers scrolling before showing has the best visual effect.
     scrollToUnreadMarker()
+  }
 
   // External APIs =========================================================
 
@@ -62,7 +70,7 @@
     if (back) {
       // If the tail is something like </p>, then we can insert directly into
       // last child instead of updating whole html.
-      const tail = text.innerHTML.slice(text.innerHTML.length - back)
+      var tail = text.innerHTML.slice(text.innerHTML.length - back)
       if (tail.trim().match(/^<\/[a-z]+>$/) && html.endsWith(tail)) {
         text.lastElementChild.insertAdjacentHTML('beforeend', html.slice(0, -back))
       } else {
@@ -137,8 +145,8 @@
     }
   }
   // Move focus to entry on Tab.
-  window.onkeyup = function(event) {
-    if (event.code == 'Tab')
+  window.onkeypress = function(event) {
+    if (event.keyCode == 9)
       chie.focusEntry()
   }
   // Update current top element.
@@ -149,8 +157,9 @@
     }
     topElement = null
     scrollOffset = 0
-    // Is at page bottom?
-    if (window.scrollY + window.innerHeight >= document.body.scrollHeight)
+    // Check scrolled at page bottom.
+    // IE has one pixel offset problem so we use "scrollHeight - 1";
+    if (window.pageYOffset + window.innerHeight >= document.body.scrollHeight - 1)
       return
     var messages = document.getElementsByClassName('msg')
     if (messages.length === 0)
@@ -171,6 +180,10 @@
       window.scrollTo(0, topElement.getBoundingClientRect().top + window.pageYOffset - scrollOffset)
     else
       scrollToBottom()
+  }
+  // Catch errors.
+  window.onerror = function(message, url, line, column, error) {
+    chie.catchDomError(message, url, line, column, error)
   }
 
   // Ready =================================================================
@@ -215,7 +228,7 @@
   function removeLoader() {
     var loader = document.getElementById('loader')
     if (loader)
-      loader.remove()
+      loader.parentNode.removeChild(loader)
   }
   // Helper to convert HTML to DOM.
   function HTMLToDOM(html) {

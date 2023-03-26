@@ -65,6 +65,8 @@ export default class ChatView {
     this.view.addChildView(this.browser);
 
     const inputArea = gui.Container.create();
+    if (process.platform == 'win32')
+      inputArea.setBackgroundColor('#E5E5E5');
     inputArea.setStyle({flexDirection: 'row', padding: 5});
     this.view.addChildView(inputArea);
 
@@ -162,6 +164,8 @@ export default class ChatView {
     // Add bindings to the browser.
     this.browser.setBindingName('chie');
     this.browser.addBinding('focusEntry', this.entry.focus.bind(this.entry));
+    this.browser.addBinding('catchDomError', this.#catchDomError.bind(this));
+    this.browser.addBinding('log', this.#log.bind(this));
     this.browser.addBinding('hightCodeBlock', this.#hightCodeBlock.bind(this));
     this.browser.addBinding('openLink', this.#openLink.bind(this));
     this.browser.addBinding('openLinkContextMenu', this.#openLinkContextMenu.bind(this));
@@ -188,11 +192,13 @@ export default class ChatView {
     const content = this.getDraft();
     if (!content)
       return false;
-    // Append user's reply directly.
     const message = {role: ChatRole.User, content};
-    this.addMessage(message);
-    // Show a pending message.
-    this.addMessage({role: ChatRole.Assistant}, {pending: true});
+    (async () => {
+      // Append user's reply directly.
+      await this.addMessage(message);
+      // Show a pending message.
+      await this.addMessage({role: ChatRole.Assistant}, {pending: true});
+    })();
     // Send message.
     this.#aborter = new AbortController();
     const promise = this.service.sendMessage(message, {signal: this.#aborter.signal});
@@ -305,6 +311,14 @@ export default class ChatView {
   }
 
   // Browser bindings used inside the browser view.
+  #catchDomError(message: string) {
+    console.error('Error in browser:', message);
+  }
+
+  #log(...args) {
+    console.log(...args);
+  }
+
   #hightCodeBlock(text: string, language: string, callbackId: number) {
     const code = language ?
       hljs.highlight(text, {language, ignoreIllegals: true}).value :

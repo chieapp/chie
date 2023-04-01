@@ -55,7 +55,6 @@ async function cliMain() {
 
 function createChatGPT() {
   // Search for an available endpoint.
-  let endpoint: APIEndpoint;
   const available = apiManager.getEndpointsByType('ChatGPT');
   if (available.length > 0) {
     return available[0];

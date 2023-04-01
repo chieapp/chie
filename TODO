@@ -7,13 +7,17 @@
 * action menu
   * view original text
   * copy
+* chat view
+  * padding
+  * show error
 * entry
   * flash when sening empty message
   * change background when disabled on mac
-  * add padding for multiple lines entry
   * resize window to increase the entry height.
+  * dark mode
 * button
-  * custom draw reply button
+  * disabled button color
+  * dark mode
   * additional menu button
     * clear history
     * regenerate

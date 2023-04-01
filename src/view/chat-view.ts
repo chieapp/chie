@@ -8,8 +8,8 @@ import {escape} from 'html-escaper';
 import {SignalBinding} from 'type-signals';
 
 import {renderMarkdown, veryLikelyMarkdown} from './markdown';
-import {APIEndpointType} from '../model/api-endpoint';
-import ChatService, {ChatRole, ChatMessage} from '../model/chat-service';
+import {ChatRole, ChatMessage} from '../model/chat-api';
+import ChatService from '../model/chat-service';
 
 const assetsDir = path.join(__dirname, '../../assets');
 
@@ -410,9 +410,9 @@ function messageToDom(service: ChatService, message: Partial<ChatMessage>) {
   }[message.role];
   let avatar = null;
   if (message.role == ChatRole.Assistant) {
-    if (service.endpoint.type == APIEndpointType.ChatGPT)
+    if (service.api.endpoint.type == 'ChatGPT')
       avatar = 'chatgpt';
-    else if (service.endpoint.type == APIEndpointType.BingChat)
+    else if (service.api.endpoint.type == 'BingChat')
       avatar = 'bingchat';
   }
   return {role: message.role, sender, avatar, content};

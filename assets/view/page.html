@@ -145,9 +145,11 @@
     }
   }
   // Move focus to entry on Tab.
-  window.onkeypress = function(event) {
-    if (event.keyCode == 9)
+  window.onkeyup = function(event) {
+    if (event.keyCode == 9) {
+      event.preventDefault()
       chie.focusEntry()
+    }
   }
   // Update current top element.
   window.onscroll = function() {

@@ -1,12 +1,22 @@
 import gui from 'gui';
 
 import APIEndpoint from '../src/model/api-endpoint';
-import ChatGPTService from '../src/service/chatgpt/chatgpt-service';
+import ChatService from '../src/model/chat-service';
 import ChatView from '../src/view/chat-view';
+import {ChatCompletionAPI} from '../src/model/chat-api';
 import {addFinalizer, gcUntil} from './util';
 
 // Tests in this file take very long time to run, so we do not run them as
 // normal tests with mocha.
+
+class FakeAPI extends ChatCompletionAPI {
+  constructor(endpoint) {
+    super(endpoint);
+  }
+  async sendConversation(history, options) {
+    // Do nothing.
+  }
+}
 
 main();
 
@@ -45,6 +55,7 @@ function createChatView() {
     url: '',
     key: '',
   });
-  const service = new ChatGPTService({endpoint});
+  const api = new FakeAPI(endpoint);
+  const service = new ChatService('Xijinping', api);
   return new ChatView(service);
 }

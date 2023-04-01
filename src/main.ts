@@ -1,6 +1,7 @@
 export default function main() {
   // Create global controllers.
   require('./controller/api-manager');
+  require('./controller/extension-manager');
 
   // Read configurations.
   const {config} = require('./controller/config-store');

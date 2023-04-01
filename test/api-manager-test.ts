@@ -18,24 +18,24 @@ describe('APIManager', () => {
   });
 
   it('generates id increasingly', () => {
-    const id1 = apiManager.add(new APIEndpoint(apiConfig));
+    const id1 = apiManager.addEndpoint(new APIEndpoint(apiConfig));
     assert.equal(id1, 'tiananmen-1');
-    const id2 = apiManager.add(new APIEndpoint(apiConfig));
+    const id2 = apiManager.addEndpoint(new APIEndpoint(apiConfig));
     assert.equal(id2, 'tiananmen-2');
-    const id3 = apiManager.add(new APIEndpoint(apiConfig));
+    const id3 = apiManager.addEndpoint(new APIEndpoint(apiConfig));
     assert.equal(id3, 'tiananmen-3');
-    apiManager.remove(id1);
-    apiManager.remove(id2);
-    const id4 = apiManager.add(new APIEndpoint(apiConfig));
+    apiManager.removeEndpoint(id1);
+    apiManager.removeEndpoint(id2);
+    const id4 = apiManager.addEndpoint(new APIEndpoint(apiConfig));
     assert.equal(id4, 'tiananmen-4');
   });
 
   it('handles invalid id', () => {
     const {config} = require('../src/controller/config-store');
     config.deserialize({apis: {'tiananmen-invalid': apiConfig}});
-    const id1 = apiManager.add(new APIEndpoint(apiConfig));
+    const id1 = apiManager.addEndpoint(new APIEndpoint(apiConfig));
     assert.equal(id1, 'tiananmen-1');
-    const id2 = apiManager.add(new APIEndpoint(apiConfig));
+    const id2 = apiManager.addEndpoint(new APIEndpoint(apiConfig));
     assert.equal(id2, 'tiananmen-2');
   });
 });

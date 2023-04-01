@@ -1,21 +1,23 @@
 import {createParser} from 'eventsource-parser';
-import {APIEndpointType} from '../../model/api-endpoint';
-import ChatService, {
-  ChatRole,
+import {
+  APIEndpoint,
+  APIError,
+  ChatAPIOptions,
+  ChatCompletionAPI,
   ChatMessage,
   ChatResponse,
-  ChatServiceOptions,
-} from '../../model/chat-service';
-import {APIError, NetworkError} from '../../model/errors';
+  ChatRole,
+  NetworkError,
+} from 'chie';
 
-export default class ChatGPTService extends ChatService {
-  constructor({name, endpoint}: ChatServiceOptions) {
-    if (endpoint.type != APIEndpointType.ChatGPT)
-      throw new Error('Expect ChatGPT API endpoint in ChatGPTService.');
-    super(name ?? 'ChatGPT', endpoint);
+export default class ChatGPTAPI extends ChatCompletionAPI {
+  constructor(endpoint: APIEndpoint) {
+    if (endpoint.type != 'ChatGPT')
+      throw new Error('Expect ChatGPT API endpoint in ChatGPTAPI.');
+    super(endpoint);
   }
 
-  async sendMessageImpl(options) {
+  async sendConversation(history: ChatMessage[], options?: ChatAPIOptions) {
     // Start request.
     const response = await fetch(this.endpoint.url, {
       body: JSON.stringify({
@@ -23,7 +25,7 @@ export default class ChatGPTService extends ChatService {
         // https://platform.openai.com/docs/api-reference/chat/create
         model: this.endpoint.params.model,
         stream: true,
-        messages: this.history.map(m => { return {
+        messages: history.map(m => { return {
           role: m.role.toString().toLowerCase(),
           content: m.content,
         }; }),
@@ -33,7 +35,7 @@ export default class ChatGPTService extends ChatService {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.endpoint.key}`,
       },
-      signal: options.signal,
+      signal: options?.signal,
     });
 
     // API error happened.
@@ -45,14 +47,15 @@ export default class ChatGPTService extends ChatService {
     }
 
     // Parse server sent event (SSE).
-    const parser = createParser(this.#parseMessage.bind(this));
+    const state = {firstDelta: true};
+    const parser = createParser(this.#parseMessage.bind(this, state, options));
     const decoder = new TextDecoder();
     for await (const chunk of bodyToIterator(response.body)) {
       parser.feed(decoder.decode(chunk));
     }
   }
 
-  #parseMessage(message) {
+  #parseMessage(state, options, message) {
     if (!message.data)
       throw new APIError(`Unexpected message from ChatGPT API: ${message}`);
     // ChatGPT sends [DONE] when streaming message is finished.
@@ -85,14 +88,16 @@ export default class ChatGPTService extends ChatService {
     if (choice.delta.content)
       delta.content = choice.delta.content;
     // Beginning of content may include some white spaces.
-    if (delta.content && (!this.pendingMessage || !this.pendingMessage.content))
+    if (delta.content && state.firstDelta) {
       delta.content = delta.content.trimLeft();
+      state.firstDelta = false;
+    }
     if (choice.delta.role) {
       const key = capitalize(choice.delta.role) as keyof typeof ChatRole;
       delta.role = ChatRole[key];
     }
     // ChatService will handle the rest.
-    this.handleMessageDelta(delta, response);
+    options.onMessageDelta(delta, response);
   }
 }
 

@@ -1,9 +1,6 @@
 import Serializable from './serializable';
 
-export enum APIEndpointType {
-  ChatGPT = 'ChatGPT',
-  BingChat = 'BingChat',
-}
+export type APIEndpointType = string;
 
 export default class APIEndpoint implements Serializable {
   id?: string;
@@ -21,13 +18,13 @@ export default class APIEndpoint implements Serializable {
   deserialize(config: object) {
     if (!config ||
         typeof config != 'object' ||
-        !(config['type'] in APIEndpointType) ||
+        typeof config['type'] != 'string' ||
         typeof config['name'] != 'string' ||
         typeof config['url'] != 'string' ||
         typeof config['key'] != 'string') {
       throw new Error(`Unknown APIEndpoint : ${JSON.stringify(config)}`);
     }
-    this.type = APIEndpointType[config['type'] as keyof typeof APIEndpointType];
+    this.type = config['type'];
     this.name = config['name'];
     this.url = config['url'];
     this.key = config['key'];

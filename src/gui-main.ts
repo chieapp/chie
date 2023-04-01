@@ -2,11 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import gui from 'gui';
 
-import {APIEndpointType} from './model/api-endpoint';
+import AppMenu from './view/app-menu';
 import ChatService from './model/chat-service';
 import ChatView from './view/chat-view';
-import ChatGPTService from './service/chatgpt/chatgpt-service';
-import BingChatService from './service/bingchat/bingchat-service';
 import main from './main';
 import apiManager from './controller/api-manager';
 import * as singleInstance from './util/single-instance';
@@ -27,14 +25,11 @@ if (process.platform == 'darwin') {
 function guiMain() {
   main();
 
-  let service: ChatService;
-  if (process.argv.includes('--bingchat')) {
-    const endpoint = apiManager.getEndpointsByType(APIEndpointType.BingChat)[0];
-    service = new BingChatService({endpoint});
-  } else {
-    const endpoint = apiManager.getEndpointsByType(APIEndpointType.ChatGPT)[0];
-    service = new ChatGPTService({endpoint});
-  }
+  let type = 'ChatGPT';
+  if (process.argv.includes('--bingchat'))
+    type = 'BingChat';
+  const endpoint = apiManager.getEndpointsByType(type)[0];
+  const api = apiManager.createAPIForEndpoint(endpoint);
 
   const win = gui.Window.create({});
   global.win = win;
@@ -42,6 +37,17 @@ function guiMain() {
   win.center();
   win.activate();
 
+  if (process.platform == 'darwin') {
+    const appMenu = new AppMenu();
+    global.appMenu = appMenu;
+    gui.app.setApplicationMenu(appMenu.menu);
+  } else {
+    const appMenu = new AppMenu(win);
+    global.appMenu = appMenu;
+    win.setMenuBar(appMenu.menu);
+  }
+
+  const service = new ChatService(api.endpoint.name, api);
   const chatView = new ChatView(service);
   win.setContentView(chatView.view);
 

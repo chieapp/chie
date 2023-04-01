@@ -1,60 +1,39 @@
 import {Signal} from 'type-signals';
-import APIEndpoint from './api-endpoint';
+import {
+  ChatRole,
+  ChatMessage,
+  ChatResponse,
+  ChatAPI,
+  ChatCompletionAPI,
+  ChatConversationAPI,
+} from './chat-api';
 
-export enum ChatRole {
-  User = 'User',
-  Assistant = 'Assistant',
-  System = 'System',
-}
-
-export type ChatMessage = {
-  role: ChatRole;
-  content: string;
-};
-
-export class ChatResponse {
-  // Unique ID for each message.
-  id?: string;
-  // The content is omitted because of content filter.
-  filtered: boolean = false;
-  // This message is in progress, and waiting for more.
-  pending: boolean = false;
-  // The response was aborted by user.
-  aborted: boolean = false;
-
-  constructor(init?: Partial<ChatResponse>) {
-    Object.assign(this, init);
-  }
-}
-
-export type ChatServiceOptions = {
-  endpoint: APIEndpoint,
-  name?: string,
-};
-
-export default abstract class ChatService {
+export default class ChatService {
   name: string;
-  endpoint: APIEndpoint;
+  api: ChatAPI;
   history: ChatMessage[] = [];
+
+  onMessage: Signal<(message: ChatMessage, response: ChatResponse) => void> = new Signal;
+  onMessageDelta: Signal<(delta: Partial<ChatMessage>, response: ChatResponse) => void> = new Signal;
+
+  // Abilities.
+  canRegenerate: boolean;
 
   // Saves concatenated content of all the received partial messages.
   pendingMessage?: Partial<ChatMessage>;
+
   // The response of last partial message.
-  lastResponse?: ChatResponse;
+  #lastResponse?: ChatResponse;
 
-  // Abilities.
-  canRegenerate: boolean = true;
-
-  onMessage: Signal<(message: ChatMessage, response: ChatResponse) => void>;
-  onMessageDelta: Signal<(delta: Partial<ChatMessage>, response: ChatResponse) => void>;
-
-  constructor(name: string, endpoint: APIEndpoint) {
-    if (!name || !endpoint)
-      throw new Error('Must pass name and endpoint to ChatService');
+  constructor(name: string, api: ChatAPI) {
+    if (!name || !api)
+      throw new Error('Must pass name and api to ChatService');
+    if (!(api instanceof ChatCompletionAPI) &&
+        !(api instanceof ChatConversationAPI))
+      throw new Error('Unsupported API type');
     this.name = name;
-    this.endpoint = endpoint;
-    this.onMessageDelta = new Signal();
-    this.onMessage = new Signal();
+    this.api = api;
+    this.canRegenerate = api instanceof ChatCompletionAPI;
   }
 
   // Send a message and wait for response.
@@ -76,11 +55,37 @@ export default abstract class ChatService {
     await this.#generateResponse(options);
   }
 
-  // Implemented by sub-classes to actually send network requests.
-  abstract sendMessageImpl(options: {signal?: AbortSignal}): Promise<void>;
+  // Call the API.
+  async #generateResponse(options) {
+    try {
+      const apiOptions = {
+        signal: options.signal,
+        onMessageDelta: this.#handleMessageDelta.bind(this),
+      };
+      if (this.api instanceof ChatCompletionAPI) {
+        await this.api.sendConversation(this.history, apiOptions);
+      } else if (this.api instanceof ChatConversationAPI) {
+        await this.api.sendMessage(this.history[this.history.length - 1].content, apiOptions);
+      }
+    } catch (error) {
+      // AbortError is not treated as error.
+      if (error.name == 'AbortError') {
+        if (!this.#lastResponse)
+          this.#lastResponse = new ChatResponse();
+        this.#lastResponse.aborted = true;
+        this.#responseEnded();
+        return;
+      }
+      throw error;
+    }
+
+    // API call may end without sending a finish signal.
+    if (this.pendingMessage)
+      this.#responseEnded();
+  }
 
   // Called by sub-classes when there is message delta available.
-  protected handleMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
+  #handleMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
     this.onMessageDelta.dispatch(delta, response);
 
     // Concatenate to the pendingMessage.
@@ -96,7 +101,7 @@ export default abstract class ChatService {
         this.pendingMessage.content = delta.content;
     }
 
-    this.lastResponse = response;
+    this.#lastResponse = response;
 
     // Send onMessage when all pending messags have been received.
     if (!response.pending) {
@@ -107,41 +112,19 @@ export default abstract class ChatService {
         content: this.pendingMessage.content.trim(),
       }, response);
       this.pendingMessage = null;
-      this.lastResponse = null;
+      this.#lastResponse = null;
     }
   }
 
   // Called when the response is abrupted from server's side.
-  protected responseEnded() {
+  #responseEnded() {
     // If there was any partial message sent, give listener an end signal.
     if (this.pendingMessage) {
-      const response = new ChatResponse(this.lastResponse ?? {});
+      const response = new ChatResponse(this.#lastResponse ?? {});
       response.pending = false;
       this.onMessageDelta.dispatch({}, response);
     }
     this.pendingMessage = null;
-    this.lastResponse = null;
-  }
-
-  async #generateResponse(options) {
-    try {
-      await this.sendMessageImpl(options);
-    } catch (error) {
-      // AbortError is not treated as error.
-      if (error.name == 'AbortError') {
-        if (!this.lastResponse)
-          this.lastResponse = new ChatResponse();
-        this.lastResponse.aborted = true;
-        this.responseEnded();
-        return;
-      }
-      throw error;
-    }
-
-    // The pendingMessage should be cleared after parsing.
-    if (this.pendingMessage) {
-      this.pendingMessage = null;
-      throw new Error('The pending message is not cleared.');
-    }
+    this.#lastResponse = null;
   }
 }

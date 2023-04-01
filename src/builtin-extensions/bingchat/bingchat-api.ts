@@ -1,36 +1,36 @@
 import crypto from 'node:crypto';
-import WebSocket from 'ws';
-import {APIEndpointType} from '../../model/api-endpoint';
-import ChatService, {
-  ChatRole,
+import {
+  APIEndpoint,
+  APIError,
+  AbortError,
+  ChatAPIOptions,
+  ChatConversationAPI,
   ChatMessage,
   ChatResponse,
-  ChatServiceOptions,
-} from '../../model/chat-service';
-import {AbortError, APIError, NetworkError} from '../../model/errors';
+  ChatRole,
+  NetworkError,
+} from 'chie';
+import WebSocket from 'ws';
 import {sydneyWebSocketUrl, chatArgument, edgeBrowserHeaders} from './bing-env';
 
 const nullChar = '';
 
-export default class BingChatService extends ChatService {
+export default class BingChatAPI extends ChatConversationAPI {
+  #invocationId = 1;
+  #lastContent: string = '';
   #session?: {
     conversationId: string,
     clientId: string,
     conversationSignature: string,
   };
 
-  constructor({name, endpoint}: ChatServiceOptions) {
-    if (endpoint.type != APIEndpointType.BingChat)
-      throw new Error('Expect BingChat API endpoint in BingChatService.');
-    super(name ?? 'Bing', endpoint);
-    this.canRegenerate = false;
+  constructor(endpoint: APIEndpoint) {
+    if (endpoint.type != 'BingChat')
+      throw new Error('Expect BingChat API endpoint in BingChatAPI.');
+    super(endpoint);
   }
 
-  async sendMessageImpl(options) {
-    const message = this.history[this.history.length - 1];
-    if (message.role != ChatRole.User)
-      throw new Error('BingChat only supports sending message as user.');
-
+  async sendMessage(text: string, options: ChatAPIOptions) {
     if (!this.#session)
       await this.#createConversation(options);
 
@@ -43,7 +43,7 @@ export default class BingChatService extends ChatService {
 
     try {
       await this.#createWebSocketConnection(ws, options);
-      await this.#sendMessageToWebSocket(ws, message, options);
+      await this.#sendMessageToWebSocket(ws, text, options);
       ws.close();
     } catch (error) {
       ws.terminate();
@@ -54,7 +54,7 @@ export default class BingChatService extends ChatService {
     }
   }
 
-  async #createConversation(options: {signal?: AbortSignal}) {
+  async #createConversation(options) {
     const response = await fetch(this.endpoint.url, {
       signal: options.signal,
       headers: {
@@ -70,7 +70,7 @@ export default class BingChatService extends ChatService {
     this.#session = body;
   }
 
-  #createWebSocketConnection(ws: WebSocket, options: {signal?: AbortSignal}): Promise<void> {
+  #createWebSocketConnection(ws: WebSocket, options): Promise<void> {
     return (new Promise<void>((resolve, reject) => {
       rejectOnWebSocketError(ws, reject, options.signal);
       ws.once('open', () => {
@@ -82,7 +82,7 @@ export default class BingChatService extends ChatService {
     });
   }
 
-  #sendMessageToWebSocket(ws: WebSocket, message: ChatMessage, options: {signal?: AbortSignal}): Promise<void> {
+  #sendMessageToWebSocket(ws: WebSocket, text: string, options): Promise<void> {
     return (new Promise<void>((resolve, reject) => {
       rejectOnWebSocketError(ws, reject, options.signal);
       ws.on('message', (data) => {
@@ -96,10 +96,9 @@ export default class BingChatService extends ChatService {
             // Updates.
             if (!event.arguments[0].messages)
               continue;
-            this.#handlePayload(event.arguments[0].messages[0]);
+            this.#handlePayload(event.arguments[0].messages[0], options);
           } else if (event.type == 3) {
             // Finished.
-            this.responseEnded();
             resolve();
           }
         }
@@ -108,16 +107,16 @@ export default class BingChatService extends ChatService {
       const params = {
         type: 4,
         target: 'chat',
-        invocationId: String(this.history.length),
+        invocationId: String(this.#invocationId),
         arguments: [
           {
             ...chatArgument,
             traceId: crypto.randomBytes(16).toString('hex'),
-            isStartOfSession: this.history.length == 1,
+            isStartOfSession: this.#invocationId == 1,
             message: {
               messageType: 'Chat',
               author: 'user',
-              text: message.content,
+              text,
             },
             conversationSignature: this.#session.conversationSignature,
             participant: {id: this.#session.clientId},
@@ -125,13 +124,14 @@ export default class BingChatService extends ChatService {
           },
         ],
       };
+      this.#invocationId += 2;
       ws.send(`${JSON.stringify(params)}${nullChar}`);
     })).finally(() => {
       ws.removeAllListeners();
     });
   }
 
-  #handlePayload(payload: object): Partial<ChatMessage> {
+  #handlePayload(payload: object, options) {
     // We don't support special messages.
     if (payload['messageType'])
       return;
@@ -143,14 +143,12 @@ export default class BingChatService extends ChatService {
     const delta: Partial<ChatMessage> = {role: ChatRole.Assistant};
     if (payload['text']) {
       // BingChat always return full text, while we want only deltas.
-      if (!this.pendingMessage || !this.pendingMessage.content)
-        delta.content = payload['text'];
-      else
-        delta.content = payload['text'].substr(this.pendingMessage.content.length);
+      delta.content = payload['text'].substr(this.#lastContent.length);
+      this.#lastContent = payload['text'];
     }
     if (!delta.content)  // empty delta
       return;
-    this.handleMessageDelta(delta, new ChatResponse({
+    options.onMessageDelta(delta, new ChatResponse({
       id: payload['messageId'],
       filtered: payload['offense'] == 'OffenseTrigger',
       pending: true,

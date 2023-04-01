@@ -2,16 +2,17 @@ import readline from 'node:readline/promises';
 
 import main from './main';
 import apiManager from './controller/api-manager';
-import APIEndpoint, {APIEndpointType} from './model/api-endpoint';
-import BingChatService from './service/bingchat/bingchat-service';
-import ChatGPTService from './service/chatgpt/chatgpt-service';
+import APIEndpoint from './model/api-endpoint';
+import ChatService from './model/chat-service';
 
 main();
 cliMain();
 
 async function cliMain() {
-  const chat = process.argv.includes('--bingchat') ?
-    createBingChatService() : createChatGPTService();
+  const endpoint = process.argv.includes('--bingchat') ?
+    createBingChat() : createChatGPT();
+  const chat = new ChatService(
+    endpoint.name, apiManager.createAPIForEndpoint(endpoint));
 
   // Create terminal chat interface.
   const rl = readline.createInterface({
@@ -39,9 +40,9 @@ async function cliMain() {
     if (state != 'waitUser')
       throw new Error('Did not receive an answer.');
     try {
-      const content = await rl.question('User> ', {signal: ac.signal});
+      const content = await rl.question('You> ', {signal: ac.signal});
       state = 'waitAnswer';
-      process.stdout.write(`${chat.endpoint.name}> `);
+      process.stdout.write(`${chat.name}> `);
       await chat.sendMessage({content}, {signal: ac.signal});
     } catch (error) {
       // Ignore abort error.
@@ -52,53 +53,44 @@ async function cliMain() {
   process.exit(0);
 }
 
-function createChatGPTService() {
+function createChatGPT() {
   // Search for an available endpoint.
   let endpoint: APIEndpoint;
-  const available = apiManager.getEndpointsByType(APIEndpointType.ChatGPT);
+  const available = apiManager.getEndpointsByType('ChatGPT');
   if (available.length > 0) {
-    endpoint = available[0];
+    return available[0];
   } else {
     // Create a temporary one from env if not exist.
     if (!process.env['OPENAI_API_KEY']) {
       console.error('Please set the OPENAI_API_KEY with a valid key in it');
       process.exit(1);
     }
-    endpoint = new APIEndpoint({
+    return new APIEndpoint({
       type: 'ChatGPT',
-      name: 'ChatGPT CLI',
+      name: 'ChatGPT',
       url: 'https://api.openai.com/v1/chat/completions',
       key: process.env['OPENAI_API_KEY'],
       params: {model: 'gpt-3.5-turbo'},
     });
-    // Save it.
-    apiManager.add(endpoint);
   }
-
-  return new ChatGPTService({endpoint});
 }
 
-function createBingChatService() {
+function createBingChat() {
   // Search for an available endpoint.
-  let endpoint: APIEndpoint;
-  const available = apiManager.getEndpointsByType(APIEndpointType.BingChat);
+  const available = apiManager.getEndpointsByType('BingChat');
   if (available.length > 0) {
-    endpoint = available[0];
+    return available[0];
   } else {
     // Create a temporary one from env if not exist.
     if (!process.env['BING_COOKIE']) {
       console.error('Please set the BING_COOKIE with a valid cookie in it');
       process.exit(1);
     }
-    endpoint = new APIEndpoint({
+    return new APIEndpoint({
       type: 'BingChat',
-      name: 'BingChat CLI',
+      name: 'BingChat',
       url: 'https://www.bing.com/turing/conversation/create',
       key: process.env['BING_COOKIE'],
     });
-    // Save it.
-    apiManager.add(endpoint);
   }
-
-  return new BingChatService({endpoint});
 }

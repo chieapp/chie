@@ -39,6 +39,8 @@ export type ChatAPIOptions = {
 };
 
 export abstract class ChatAPI extends WebAPI {
+  avatar = 'chie://app-file/assets/icons/bot.png';
+
   constructor(endpoint: APIEndpoint) {
     super(endpoint);
   }

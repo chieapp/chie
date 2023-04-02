@@ -1,21 +1,39 @@
 import gui from 'gui';
+import SignalsOwner from '../model/signals-owner';
 
-export const buttonHoverColor = '#F0F0F0';
-export const buttonPressedColor = '#B0B0B0';
 export const buttonRadius = 8;
 
-export default class IconButton {
+const style = {
+  light: {
+    buttonHoverColor: '#F0F0F0',
+    buttonPressedColor: '#B0B0B0',
+  },
+  dark: {
+    buttonHoverColor: '#5F5F5F',
+    buttonPressedColor: '#AFAFAF',
+  },
+};
+
+export default class IconButton extends SignalsOwner {
   view: gui.Container;
   image: gui.Image;
   imageSize: gui.SizeF;
   onClick?: () => void;
 
   // States.
+  darkMode = false;
   hover = false;
   pressed = false;
   enabled = true;
 
+  // Alternative images.
+  imageDisabled?: gui.Image;
+  imageDarkMode?: gui.Image;
+  imageDarkModeDisabled?: gui.Image;
+
   constructor(image: gui.Image) {
+    super();
+
     this.view = gui.Container.create();
     this.setImage(image);
     this.view.setMouseDownCanMoveWindow(false);
@@ -38,11 +56,17 @@ export default class IconButton {
       this.pressed = false;
       this.view.schedulePaint();
     };
+
+    this.darkMode = gui.appearance.isDarkScheme();
+    this.connectYueSignal(
+      gui.appearance.onColorSchemeChange,
+      this.#onColorSchemeChange.bind(this));
   }
 
   setImage(image: gui.Image) {
     this.image = image;
     this.imageSize = image.getSize();
+    this.imageDisabled = this.imageDarkMode = this.imageDarkModeDisabled = null;
     this.view.schedulePaint();
   }
 
@@ -63,10 +87,11 @@ export default class IconButton {
         (this.imageSize.width + buttonRadius) / 2,
         0,
         2 * Math.PI);
+      const colorMode = this.darkMode ? 'dark' : 'light';
       if (this.pressed)
-        painter.setFillColor(buttonPressedColor);
+        painter.setFillColor(style[colorMode].buttonPressedColor);
       else if (this.hover)
-        painter.setFillColor(buttonHoverColor);
+        painter.setFillColor(style[colorMode].buttonHoverColor);
       painter.fill();
     }
     // Button image.
@@ -74,6 +99,33 @@ export default class IconButton {
     bounds.y = (bounds.height - this.imageSize.height) / 2;
     bounds.width = this.imageSize.width;
     bounds.height = this.imageSize.height;
-    painter.drawImage(this.image, bounds);
+    painter.drawImage(this.#getImageToDraw(), bounds);
+  }
+
+  #onColorSchemeChange() {
+    this.darkMode = gui.appearance.isDarkScheme();
+    this.view.schedulePaint();
+  }
+
+  #getImageToDraw() {
+    if (this.darkMode) {
+      if (!this.imageDarkMode)
+        this.imageDarkMode = this.image.tint('#FFF');
+      if (this.enabled) {
+        return this.imageDarkMode;
+      } else {
+        if (!this.imageDarkModeDisabled)
+          this.imageDarkModeDisabled = this.imageDarkMode.tint('#666');
+        return this.imageDarkModeDisabled;
+      }
+    } else {
+      if (this.enabled) {
+        return this.image;
+      } else {
+        if (!this.imageDisabled)
+          this.imageDisabled = this.image.tint('#AAA');
+        return this.imageDisabled;
+      }
+    }
   }
 }

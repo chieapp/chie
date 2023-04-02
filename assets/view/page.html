@@ -9,7 +9,7 @@
 
 <div id="messages">
   <% for (const message of history) {%>
-    <%- await include('message.html', {message}) %>
+    <%- await include('message.html', {message, style}) %>
   <% } %>
 </div>
 

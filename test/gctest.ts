@@ -13,7 +13,7 @@ class FakeAPI extends ChatCompletionAPI {
   constructor(endpoint) {
     super(endpoint);
   }
-  async sendConversation(history, options) {
+  async sendConversation() {
     // Do nothing.
   }
 }

@@ -5,20 +5,23 @@ import ejs from 'ejs';
 import gui from 'gui';
 import hljs from 'highlight.js';
 import {escape} from 'html-escaper';
-import {SignalBinding} from 'type-signals';
 
 import IconButton from './icon-button';
 import InputView from './input-view';
 import {renderMarkdown, veryLikelyMarkdown} from './markdown';
 import {ChatRole, ChatMessage} from '../model/chat-api';
 import ChatService from '../model/chat-service';
+import SignalsOwner from '../model/signals-owner';
 
 const assetsDir = path.join(__dirname, '../../assets');
-const chatViewPadding = 10;
+
+const style = {
+  chatViewPadding: 8,
+};
 
 type ButtonMode = 'refresh' | 'send' | 'stop';
 
-export default class ChatView {
+export default class ChatView extends SignalsOwner {
   // EJS templates.
   static pageTemplate?: ejs.AsyncTemplateFunction;
   static messageTemplate?: ejs.AsyncTemplateFunction;
@@ -40,7 +43,6 @@ export default class ChatView {
   menuButton: IconButton;
   #buttonMode: ButtonMode = 'send';
 
-  #subscriptions: SignalBinding[] = [];
   #parsedMessage?: {
     isMarkdown: boolean,
     html: string,
@@ -48,10 +50,14 @@ export default class ChatView {
   #aborter?: AbortController;
 
   constructor(service: ChatService) {
+    super();
+
     this.service = service;
 
     this.view = gui.Container.create();
     this.view.setStyle({flex: 1});
+    if (process.platform == 'win32')
+      this.view.setBackgroundColor('#E5E5E5');
 
     this.browser = gui.Browser.create({
       devtools: true,
@@ -64,7 +70,7 @@ export default class ChatView {
     this.view.addChildView(this.browser);
 
     this.input = new InputView();
-    this.input.view.setStyle({margin: chatViewPadding});
+    this.input.view.setStyle({margin: style.chatViewPadding});
     this.input.entry.onTextChange = this.#onTextChange.bind(this);
     this.input.entry.shouldInsertNewLine = this.#onEnter.bind(this);
     this.view.addChildView(this.input.view);
@@ -82,14 +88,16 @@ export default class ChatView {
     this.input.addButton(this.replyButton);
 
     this.menuButton = new IconButton(ChatView.imageMenu);
+    this.menuButton.setEnabled(false);
     this.input.addButton(this.menuButton);
 
-    this.#subscriptions.push(this.service.onMessageDelta.add(this.#onMessageDelta.bind(this)));
+    this.connections.add(
+      this.service.onMessageDelta.connect(this.#onMessageDelta.bind(this)));
   }
 
   unload() {
-    for (const binding of this.#subscriptions)
-      binding.detach();
+    super.unload();
+    this.input.unload();
     if (this.#aborter)
       this.#aborter.abort();
   }
@@ -134,7 +142,10 @@ export default class ChatView {
       ]);
     }
     // Render.
-    const data = {history: this.service.history.map(messageToDom.bind(null, this.service))};
+    const data = {
+      style,
+      history: this.service.history.map(messageToDom.bind(null, this.service)),
+    };
     this.browser.loadHTML(await ChatView.pageTemplate(data), 'https://chie.app');
     // Add bindings to the browser.
     this.browser.setBindingName('chie');
@@ -244,12 +255,12 @@ export default class ChatView {
     // Prevent editing until sent.
     this.isSending = true;
     this.#setButtonMode('stop');
-    this.input.entry.setEnabled(false);
+    this.input.setEntryEnabled(false);
     this.input.setText('');
     // Wait for sending.
     try {
       await promise;
-      this.input.entry.setEnabled(true);
+      this.input.setEntryEnabled(true);
       this.input.entry.focus();
       this.input.view.schedulePaint();
     } catch (error) {
@@ -302,7 +313,7 @@ export default class ChatView {
 // Register chie:// protocol to work around CROS problem with file:// protocol.
 gui.Browser.registerProtocol('chie', (url) => {
   const u = new URL(url);
-  if (u.host !== 'file')
+  if (u.host !== 'app-file')
     return gui.ProtocolStringJob.create('text/plain', 'Unsupported type');
   const p = realpathSync(`${__dirname}/../..${u.pathname}`);
   return gui.ProtocolFileJob.create(p);
@@ -323,12 +334,8 @@ function messageToDom(service: ChatService, message: Partial<ChatMessage>) {
     [ChatRole.System]: 'System',
   }[message.role];
   let avatar = null;
-  if (message.role == ChatRole.Assistant) {
-    if (service.api.endpoint.type == 'ChatGPT')
-      avatar = 'chatgpt';
-    else if (service.api.endpoint.type == 'BingChat')
-      avatar = 'bingchat';
-  }
+  if (message.role == ChatRole.Assistant)
+    avatar = service.api.avatar;
   return {role: message.role, sender, avatar, content};
 }
 

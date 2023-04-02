@@ -16,9 +16,6 @@ export class ConfigStore {
   constructor(name: string) {
     this.#dir = getConfigDir(require('../../package.json').build.productName);
     this.#file = path.join(this.#dir, `${name}.json`);
-
-    // Serialize config on exit.
-    process.once('exit', () => this.serialize());
   }
 
   initFromFile() {

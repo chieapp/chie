@@ -1,11 +1,16 @@
 import gui from 'gui';
 import IconButton, {buttonRadius} from './icon-button';
 import {createRoundedCornerPath} from './util';
+import SignalsOwner from '../model/signals-owner';
 
-export default class InputView {
+const inputBorderRadius = 5;
+
+export default class InputView extends SignalsOwner {
   view: gui.Container;
   entry: gui.TextEdit;
   buttonArea?: gui.Container;
+
+  buttons: IconButton[] = [];
 
   // Height limitations of entry view.
   static entryHeights?: {
@@ -19,10 +24,13 @@ export default class InputView {
     height: 16 + buttonRadius,
   };
 
-  // Color of disabled TextEdit.
-  static entryWrapperDisabledBgColor?: number;
+  // Color of TextEdit.
+  static bgColor?: number;
+  static disabledBgColor?: number;
 
   constructor() {
+    super();
+
     this.view = gui.Container.create();
     if (process.platform == 'win32')
       this.view.setBackgroundColor('#E5E5E5');
@@ -65,6 +73,7 @@ export default class InputView {
     this.entry.setStyle({
       flex: 1,  // take full horizontal space
       height: InputView.entryHeights.min,  // default to 1 line height
+      marginLeft: inputBorderRadius,
     });
     entryWrapper.addChildView(this.entry);
 
@@ -76,6 +85,16 @@ export default class InputView {
       padding: 2,
     });
     this.view.addChildView(this.buttonArea);
+
+    this.connectYueSignal(
+      gui.appearance.onColorSchemeChange,
+      this.#onColorSchemeChange.bind(this));
+  }
+
+  unload() {
+    super.unload();
+    for (const button of this.buttons)
+      button.unload();
   }
 
   setText(text: string) {
@@ -83,8 +102,14 @@ export default class InputView {
     this.#adjustEntryHeight();
   }
 
+  setEntryEnabled(enabled: boolean) {
+    this.entry.setEnabled(enabled);
+    this.view.schedulePaint();
+  }
+
   addButton(button: IconButton) {
     button.view.setStyle(InputView.buttonSize);
+    this.buttons.push(button);
     this.buttonArea.addChildView(button.view);
   }
 
@@ -92,13 +117,21 @@ export default class InputView {
     const bounds = Object.assign(view.getBounds(), {x: 0, y: 0});
     createRoundedCornerPath(painter, bounds, 5);
     if (this.entry.isEnabled()) {
-      painter.setFillColor('#FFF');
+      if (!InputView.bgColor)
+        InputView.bgColor = gui.Color.get('text-edit-background');
+      painter.setFillColor(InputView.bgColor);
     } else {
-      if (!InputView.entryWrapperDisabledBgColor)
-        InputView.entryWrapperDisabledBgColor = gui.Color.get('disabled-text-edit-background');
-      painter.setFillColor(InputView.entryWrapperDisabledBgColor);
+      if (!InputView.disabledBgColor)
+        InputView.disabledBgColor = gui.Color.get('disabled-text-edit-background');
+      painter.setFillColor(InputView.disabledBgColor);
     }
     painter.fill();
+  }
+
+  #onColorSchemeChange() {
+    InputView.bgColor = null;
+    InputView.disabledBgColor = null;
+    this.view.schedulePaint();
   }
 
   // Automatically changes the height of entry to show all of user's inputs.
@@ -109,14 +142,9 @@ export default class InputView {
         flexDirection: 'row',
         alignItems: 'center',
       });
-    } else if (height <= InputView.buttonSize.height * this.buttonArea.childCount()) {
-      this.buttonArea.setStyle({
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-      });
     } else {
       this.buttonArea.setStyle({
-        flexDirection: 'column-reverse',
+        flexDirection: 'row',
         alignItems: 'flex-end',
       });
     }

@@ -4,6 +4,7 @@ import main from './main';
 import apiManager from './controller/api-manager';
 import APIEndpoint from './model/api-endpoint';
 import ChatService from './model/chat-service';
+import {ChatAPI} from './model/chat-api';
 
 main();
 cliMain();
@@ -12,7 +13,7 @@ async function cliMain() {
   const endpoint = process.argv.includes('--bingchat') ?
     createBingChat() : createChatGPT();
   const chat = new ChatService(
-    endpoint.name, apiManager.createAPIForEndpoint(endpoint));
+    endpoint.name, apiManager.createAPIForEndpoint(endpoint) as ChatAPI);
 
   // Create terminal chat interface.
   const rl = readline.createInterface({
@@ -21,7 +22,7 @@ async function cliMain() {
   });
   // Print ChatGPT answers with streaming interface.
   let state = 'waitUser';
-  chat.onMessageDelta.add((message, response) => {
+  chat.onMessageDelta.connect((message, response) => {
     if (state == 'waitAnswer') {
       // Print content.
       if (message.content)

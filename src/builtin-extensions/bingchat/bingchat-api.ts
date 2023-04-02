@@ -28,6 +28,7 @@ export default class BingChatAPI extends ChatConversationAPI {
     if (endpoint.type != 'BingChat')
       throw new Error('Expect BingChat API endpoint in BingChatAPI.');
     super(endpoint);
+    this.avatar = 'chie://app-file/assets/icons/bingchat.png';
   }
 
   async sendMessage(text: string, options: ChatAPIOptions) {

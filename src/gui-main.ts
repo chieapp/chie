@@ -5,6 +5,7 @@ import gui from 'gui';
 import AppMenu from './view/app-menu';
 import ChatService from './model/chat-service';
 import ChatView from './view/chat-view';
+import {ChatAPI} from './model/chat-api';
 import main from './main';
 import apiManager from './controller/api-manager';
 import * as singleInstance from './util/single-instance';
@@ -47,7 +48,7 @@ function guiMain() {
     win.setMenuBar(appMenu.menu);
   }
 
-  const service = new ChatService(api.endpoint.name, api);
+  const service = new ChatService(api.endpoint.name, api as ChatAPI);
   const chatView = new ChatView(service);
   win.setContentView(chatView.view);
 
@@ -58,8 +59,10 @@ function guiMain() {
     process.exit(0);
   };
 
-  const p = fs.realpathSync(path.join(__dirname, '../assets/icons/BlackWhiteTrayTemplate@2x.png'));
-  const tray = gui.Tray.createWithImage(gui.Image.createFromPath(p));
+  const trayImage = gui.Image.createFromPath(fs.realpathSync(path.join(__dirname, '../assets/icons/tray@2x.png')));
+  if (process.platform == 'darwin')
+    trayImage.setTemplate(true);
+  const tray = gui.Tray.createWithImage(trayImage);
   global.tray = tray;
 }
 

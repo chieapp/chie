@@ -125,7 +125,6 @@ a:hover {
 }
 
 .msg {
-  border: 6px 0 2px solid transparent;
   display: table;
   width: 100%;
   border-collapse: collapse;
@@ -152,23 +151,26 @@ a:hover {
   display: table-cell;
   vertical-align: top;
 }
-.msg > .content {
-  padding-right: 10px;
-  word-wrap: break-word;
-}
 .msg .avatar {
-  width: 40px;
+  padding: 8px 4px 8px 0;
+  padding-left: <%= style.chatViewPadding %>px;
+  /* Table cell width */
+  width: 32px;
 }
 .msg .avatar > * {
+  /* Image size */
   width: 32px;
   height: 32px;
-  padding: 5px 0 0 4px;
-  border-radius: 3px;
+}
+.msg .content {
+  word-wrap: break-word;
+  padding: 8px 0 8px 4px;
+  padding-right: <%= style.chatViewPadding %>px;
 }
 .msg .sender {
   height: 15px;
   line-height: 1;
-  padding: 4px 0 2px 0;
+  padding-bottom: 2px;
 }
 .msg .sender > div {
   display: inline-block;
@@ -179,9 +181,6 @@ a:hover {
 .msg .sender .time {
   font-size: 12px;
   color: #717274;
-}
-.msg .sender .emoji {
-  margin-top: -4px;
 }
 
 .text .label {

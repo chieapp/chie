@@ -1,4 +1,4 @@
-import {Signal} from 'type-signals';
+import {Signal} from 'typed-signals';
 import {
   ChatRole,
   ChatMessage,
@@ -86,7 +86,7 @@ export default class ChatService {
 
   // Called by sub-classes when there is message delta available.
   #handleMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
-    this.onMessageDelta.dispatch(delta, response);
+    this.onMessageDelta.emit(delta, response);
 
     // Concatenate to the pendingMessage.
     if (!this.pendingMessage) {
@@ -107,7 +107,7 @@ export default class ChatService {
     if (!response.pending) {
       if (!this.pendingMessage.role || !this.pendingMessage.content)
         throw new Error('Incomplete delta received from ChatGPT');
-      this.onMessage.dispatch({
+      this.onMessage.emit({
         role: this.pendingMessage.role,
         content: this.pendingMessage.content.trim(),
       }, response);
@@ -122,7 +122,7 @@ export default class ChatService {
     if (this.pendingMessage) {
       const response = new ChatResponse(this.#lastResponse ?? {});
       response.pending = false;
-      this.onMessageDelta.dispatch({}, response);
+      this.onMessageDelta.emit({}, response);
     }
     this.pendingMessage = null;
     this.#lastResponse = null;

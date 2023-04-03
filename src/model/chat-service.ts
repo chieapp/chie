@@ -13,6 +13,7 @@ export default class ChatService {
   api: ChatAPI;
   history: ChatMessage[] = [];
 
+  onTitle: Signal<(title: string) => void> = new Signal;
   onMessage: Signal<(message: ChatMessage, response: ChatResponse) => void> = new Signal;
   onMessageDelta: Signal<(delta: Partial<ChatMessage>, response: ChatResponse) => void> = new Signal;
 
@@ -24,6 +25,9 @@ export default class ChatService {
 
   // The response of last partial message.
   #lastResponse?: ChatResponse;
+
+  // Track generation of title.
+  #titlePromise?: Promise<void>;
 
   constructor(name: string, api: ChatAPI) {
     if (!name || !api)
@@ -40,10 +44,10 @@ export default class ChatService {
   async sendMessage(message: Partial<ChatMessage>, options: {signal?: AbortSignal} = {}) {
     if (this.pendingMessage)
       throw new Error('There is pending message being received.');
-    this.history.push({
+    this.history.push(new ChatMessage({
       role: message.role ?? ChatRole.User,
       content: message.content ?? '',
-    });
+    }));
     await this.#generateResponse(options);
   }
 
@@ -73,15 +77,24 @@ export default class ChatService {
         if (!this.#lastResponse)
           this.#lastResponse = new ChatResponse();
         this.#lastResponse.aborted = true;
-        this.#responseEnded();
-        return;
+      } else {
+        throw error;
       }
-      throw error;
     }
 
-    // API call may end without sending a finish signal.
-    if (this.pendingMessage)
+    // The pendingMessage should be cleared when end of message has been
+    // received, if there is no such signal and the partial message has been
+    // left after API call ends, send an end signal here.
+    if (this.pendingMessage) {
+      const response = new ChatResponse(this.#lastResponse ?? {});
+      response.pending = false;
+      this.onMessageDelta.emit({}, response);
       this.#responseEnded();
+    }
+
+    // Generate a title for the conversation.
+    if (!this.#titlePromise && this.history.length > 3 && this.history.length < 10)
+      this.#titlePromise = this.#generateTitle();
   }
 
   // Called by sub-classes when there is message delta available.
@@ -111,20 +124,45 @@ export default class ChatService {
         role: this.pendingMessage.role,
         content: this.pendingMessage.content.trim(),
       }, response);
-      this.pendingMessage = null;
-      this.#lastResponse = null;
+      this.#responseEnded();
     }
   }
 
-  // Called when the response is abrupted from server's side.
+  // End of response.
   #responseEnded() {
-    // If there was any partial message sent, give listener an end signal.
-    if (this.pendingMessage) {
-      const response = new ChatResponse(this.#lastResponse ?? {});
-      response.pending = false;
-      this.onMessageDelta.emit({}, response);
-    }
+    if (this.pendingMessage)
+      this.history.push(new ChatMessage(this.pendingMessage));
     this.pendingMessage = null;
     this.#lastResponse = null;
+  }
+
+  // Generate a title for the conversation.
+  async #generateTitle() {
+    if (!(this.api instanceof ChatCompletionAPI))
+      return;
+    const message = new ChatMessage({
+      role: ChatRole.System,
+      content:
+      `
+        Name the conversation.
+        The name must be within 10 characters.
+        The name must use the language of the conversation.
+        The name should not include punctuation unless necessary.
+        Following is the conversation:
+        '''
+        ${this.history.map(m => m.content).join('\n\n------\n\n')}
+        '''
+        The conversation is named:
+      `
+    });
+    let title = '';
+    await this.api.sendConversation([message], {
+      onMessageDelta(delta) {
+        if (delta.content)
+          title += delta.content;
+      }
+    });
+    this.onTitle.emit(title);
+    this.#titlePromise = null;
   }
 }

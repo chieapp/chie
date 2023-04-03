@@ -50,6 +50,7 @@ function guiMain() {
 
   const service = new ChatService(api.endpoint.name, api as ChatAPI);
   const chatView = new ChatView(service);
+  service.onTitle.connect((title) => win.setTitle(title));
   win.setContentView(chatView.view);
 
   win.onClose = () => {

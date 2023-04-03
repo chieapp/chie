@@ -4,7 +4,7 @@ html, body {
 }
 body {
   margin: 0;
-  color: #2c2d30;
+  color: #2C2D30;
   font-size: 15px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   line-height: 1.46668;
@@ -13,7 +13,7 @@ body {
 }
 
 a, a:link, a:visited {
-  color: #0576b9;
+  color: #0576B9;
   text-decoration: none;
 }
 a:hover {
@@ -25,80 +25,11 @@ a:hover {
 }
 
 #pending {
-  background-color: rgba(255, 204, 0, .1);
-}
-
-.daymarker {
-  width: 100%;
-  height: 56px;
-  margin-bottom: -5px;
-}
-.daymarker .label-wrapper {
-  text-align: center;
-}
-.daymarker .label {
-  display: inline-block;
-  font-size: 14px;
-  font-weight: bold;
-  line-height: 16px;
-  padding: 20px 12px 0 12px;
-  background: white;
-}
-.daymarker hr {
-  border: 0;
-  border-top: 1px solid #e8e8e8;
-  margin-top: -10px;
-}
-
-#unread-marker {
-  width: 100%;
-  height: 22px;
-}
-#unread-marker .label-wrapper {
-  text-align: center;
-}
-#unread-marker .label {
-  display: inline-block;
-  font-size: 12px;
-  font-weight: bold;
-  padding: 0 12px 0 12px;
-  color: #D72B3F;
-  background: white;
-}
-#unread-marker hr {
-  border: 0;
-  border-top: 1px solid #D72B3F;
-  margin-top: -10px;
+  background: rgba(255, 204, 0, .1);
 }
 
 #loader {
   height: 15px;
-}
-
-.emoji {
-  display: inline-block;
-  height: 1em;
-  width: 1em;
-  overflow: hidden;
-  line-height: 18px;
-  vertical-align: middle;
-}
-.apple.emoji {
-  background-image: url(https://a.slack-edge.com/c00d19/img/emoji_2017_12_06/sheet_apple_64_indexed_256.png);
-  background-size: 5200% 5200%;
-}
-.custom.emoji {
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: 50% 50%;
-}
-.size-22.emoji {
-  font-size: 22px;
-  margin-top: -4px;
-}
-.size-16.emoji {
-  font-size: 16px;
-  margin-top: -3px;
 }
 
 .action-menu {
@@ -141,7 +72,7 @@ a:hover {
   margin-top: -1.3em;
 }
 .msg.role-assistant {
-  background-color: #FAFAFA;
+  background: #FAFAFA;
 }
 .msg:hover .action-menu {
   display: block;
@@ -189,9 +120,6 @@ a:hover {
 }
 .text .edited.label {
   color: #A0A0A2;
-}
-.text .error.label {
-  color: #E32636;
 }
 .text > p:first-child {
   margin-top: 0;
@@ -278,7 +206,7 @@ a:hover {
   padding: 11px 0 10px 10px;
   border: 1px solid #E8E8E8;
   border-radius: 6px;
-  background-color: white;
+  background: white;
   cursor: pointer;
 }
 .file:hover {
@@ -298,62 +226,4 @@ a:hover {
   height: 100%;
   margin: -7px 8px 0 0;
   color: #2D9EE0;
-}
-
-.reactions {
-  margin-bottom: 4px;
-}
-.reactions button {
-  font-size: 11px;
-  line-height: 16px;
-  padding: 2px 3px;
-  margin: 0;
-  background: #FFF;
-  border: 1px solid #E8E8E8;
-  border-radius: 5px;
-}
-.reactions button.reacted {
-  background-color: rgba(5, 118, 185, .05);
-  border-color: rgba(5, 118, 185, .3);
-}
-.reactions button:hover {
-  border-color: #2D9EE0;
-  cursor: pointer;
-}
-.reactions .count {
-  color: #717274;
-  padding: 0 1px 0 3px;
-}
-
-.replies-wrapper {
-  height: 32px;
-  max-width: 600px;
-  margin: 0 0 4px -4px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.replies-wrapper:hover {
-  border-color: rgba(0, 0, 0, .15);
-}
-.replies-wrapper .description {
-  display: none;
-  color: #717274;
-}
-.replies-wrapper:hover .description {
-  display: inline;
-}
-.replies {
-  margin: 4px 0 0 4px;
-}
-.replies img {
-  border-radius: 3px;
-}
-.replies a, .replies .description {
-  font-size: 12px;
-  margin-left: 3px;
-  vertical-align: 8px;
-}
-.replies a {
-  font-weight: 700;
 }

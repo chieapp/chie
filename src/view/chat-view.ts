@@ -6,22 +6,23 @@ import gui from 'gui';
 import hljs from 'highlight.js';
 import {escape} from 'html-escaper';
 
+import AppearanceAware from '../model/appearance-aware';
+import ChatService from '../model/chat-service';
 import IconButton from './icon-button';
 import InputView from './input-view';
 import {renderMarkdown, veryLikelyMarkdown} from './markdown';
 import {ChatRole, ChatMessage} from '../model/chat-api';
-import ChatService from '../model/chat-service';
-import SignalsOwner from '../model/signals-owner';
 
 const assetsDir = path.join(__dirname, '../../assets');
 
 const style = {
   chatViewPadding: 8,
+  bgColorDarkMode: '#1B1D21',
 };
 
 type ButtonMode = 'refresh' | 'send' | 'stop';
 
-export default class ChatView extends SignalsOwner {
+export default class ChatView extends AppearanceAware {
   // EJS templates.
   static pageTemplate?: ejs.AsyncTemplateFunction;
   static messageTemplate?: ejs.AsyncTemplateFunction;
@@ -35,7 +36,7 @@ export default class ChatView extends SignalsOwner {
   service: ChatService;
   isSending = false;
 
-  view: gui.Container;
+  placeholder: gui.Container;
   browser: gui.Browser;
 
   input: InputView;
@@ -54,10 +55,17 @@ export default class ChatView extends SignalsOwner {
 
     this.service = service;
 
-    this.view = gui.Container.create();
     this.view.setStyle({flex: 1});
     if (process.platform == 'win32')
       this.view.setBackgroundColor('#E5E5E5');
+
+    this.placeholder = gui.Container.create();
+    this.placeholder.setStyle({flex: 1});
+    if (this.darkMode)
+      this.placeholder.setBackgroundColor(style.bgColorDarkMode);
+    else
+      this.placeholder.setBackgroundColor('#FFF');
+    this.view.addChildView(this.placeholder);
 
     this.browser = gui.Browser.create({
       devtools: true,
@@ -66,8 +74,8 @@ export default class ChatView extends SignalsOwner {
       hardwareAcceleration: false,
     });
     this.browser.setStyle({flex: 1});
+    this.browser.setBackgroundColor(style.bgColorDarkMode);
     this.#setupBrowser();
-    this.view.addChildView(this.browser);
 
     this.input = new InputView();
     this.input.view.setStyle({margin: style.chatViewPadding});
@@ -150,9 +158,10 @@ export default class ChatView extends SignalsOwner {
     // Add bindings to the browser.
     this.browser.setBindingName('chie');
     this.browser.addBinding('focusEntry', this.input.entry.focus.bind(this.input.entry));
+    this.browser.addBinding('domReady', this.#domReady.bind(this));
     this.browser.addBinding('catchDomError', this.#catchDomError.bind(this));
     this.browser.addBinding('log', this.#log.bind(this));
-    this.browser.addBinding('hightCodeBlock', this.#hightCodeBlock.bind(this));
+    this.browser.addBinding('highlightCode', this.#highlightCode.bind(this));
     this.browser.addBinding('openLink', this.#openLink.bind(this));
     this.browser.addBinding('openLinkContextMenu', this.#openLinkContextMenu.bind(this));
   }
@@ -242,8 +251,6 @@ export default class ChatView extends SignalsOwner {
     }
     if (response.pending)  // more messages coming
       return;
-    console.log(this.service.pendingMessage);
-    console.log(this.#parsedMessage);
     this.#parsedMessage = null;
     if (response.aborted)
       this.executeJavaScript('window.markAborted()');
@@ -286,6 +293,13 @@ export default class ChatView extends SignalsOwner {
   }
 
   // Browser bindings used inside the browser view.
+  #domReady() {
+    this.input.entry.focus();
+    // Only show browser when it is loaded, this can remove the white flash.
+    this.view.removeChildView(this.placeholder);
+    this.view.addChildViewAt(this.browser, 0);
+  }
+
   #catchDomError(message: string) {
     console.error('Error in browser:', message);
   }
@@ -294,7 +308,7 @@ export default class ChatView extends SignalsOwner {
     console.log(...args);
   }
 
-  #hightCodeBlock(text: string, language: string, callbackId: number) {
+  #highlightCode(text: string, language: string, callbackId: number) {
     const code = language ?
       hljs.highlight(text, {language, ignoreIllegals: true}).value :
       hljs.highlightAuto(text).value;

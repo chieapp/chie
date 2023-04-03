@@ -2,13 +2,25 @@
 <html>
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <style type="text/css"><%- await include('page.css') %></style>
-  <style type="text/css"><%- await include('../../node_modules/highlight.js/styles/github.css') %></style>
+  <style type="text/css"><%- await include('page.css', {style}) %></style>
+  <style type="text/css">
+  <% if (process.platform == 'win32') { %>
+    <%- await include('../../node_modules/highlight.js/styles/github.css') %>
+  <% } else { %>
+    @media (prefers-color-scheme: light) {
+      <%- await include('../../node_modules/highlight.js/styles/github.css') %>
+    }
+    @media (prefers-color-scheme: dark) {
+      <%- await include('dark-mode.css', {style}) %>
+      <%- await include('../../node_modules/highlight.js/styles/github-dark.css') %>
+    }
+  <% } %>
+  </style>
 </head>
 <body>
 
 <div id="messages">
-  <% for (const message of history) {%>
+  <% for (const message of history) { %>
     <%- await include('message.html', {message, style}) %>
   <% } %>
 </div>
@@ -37,7 +49,7 @@
     // For IE we need to scroll after ready, as the window body's size may be
     // incorrect before showing the browser.
     // For morden browsers scrolling before showing has the best visual effect.
-    scrollToUnreadMarker()
+    scrollToBottom()
   }
 
   // External APIs =========================================================
@@ -88,7 +100,7 @@
     if (pending)
       pending.removeAttribute('id')
     removeLoader()
-    hightCodeBlocks()
+    highlightCodes()
   }
   window.regenerateLastMessage = function() {
     var pending = document.getElementById('pending')
@@ -191,40 +203,30 @@
   // Ready =================================================================
 
   // We are ready.
-  chie.focusEntry()
+  chie.domReady()
   // See comment above on IE.
   if (isIE)
-    scrollToUnreadMarker()
+    scrollToBottom()
 
   // Helpers ===============================================================
 
-  // Scroll to the unread marker, or bottom if not found.
-  function scrollToUnreadMarker() {
-    var marker = document.getElementById('unread-marker')
-    if (marker) {
-      var rect = marker.getBoundingClientRect()
-      window.scrollTo(0, rect.top + window.pageYOffset - (window.innerHeight / 2))
-    } else {
-      scrollToBottom()
-    }
-  }
   // Find all unhilighted code blocks and highlight them.
-  function hightCodeBlocks() {
+  function highlightCodes() {
     var pres = [].slice.call(document.getElementsByClassName('unhilighted'))
     for (var i = 0; i < pres.length; ++i) {
       var pre = pres[i]
       pre.classList.remove('unhilighted')
-      hightCodeBlock(pre, pre.getAttribute('lang'))
+      highlightCode(pre, pre.getAttribute('lang'))
     }
   }
   // Highlight a single code block.
   var nextCallbackId = 0
-  function hightCodeBlock(element, lang) {
+  function highlightCode(element, lang) {
     callbacks[++nextCallbackId] = function(result) {
       if (result)
         element.innerHTML = result
     }
-    chie.hightCodeBlock(element.textContent, lang, nextCallbackId)
+    chie.highlightCode(element.textContent, lang, nextCallbackId)
   }
   // Remove the load indicator.
   function removeLoader() {

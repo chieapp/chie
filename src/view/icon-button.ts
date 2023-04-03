@@ -1,11 +1,11 @@
 import gui from 'gui';
-import SignalsOwner from '../model/signals-owner';
+import AppearanceAware from '../model/appearance-aware';
 
 export const buttonRadius = 8;
 
 const style = {
   light: {
-    buttonHoverColor: '#F0F0F0',
+    buttonHoverColor: '#E0E0E0',
     buttonPressedColor: '#B0B0B0',
   },
   dark: {
@@ -14,14 +14,12 @@ const style = {
   },
 };
 
-export default class IconButton extends SignalsOwner {
-  view: gui.Container;
+export default class IconButton extends AppearanceAware {
   image: gui.Image;
   imageSize: gui.SizeF;
   onClick?: () => void;
 
   // States.
-  darkMode = false;
   hover = false;
   pressed = false;
   enabled = true;
@@ -34,7 +32,6 @@ export default class IconButton extends SignalsOwner {
   constructor(image: gui.Image) {
     super();
 
-    this.view = gui.Container.create();
     this.setImage(image);
     this.view.setMouseDownCanMoveWindow(false);
     this.view.onDraw = this.#onDraw.bind(this);
@@ -50,17 +47,16 @@ export default class IconButton extends SignalsOwner {
       this.pressed = true;
       this.view.schedulePaint();
     };
-    this.view.onMouseUp = () => {
-      if (this.enabled && this.onClick)
-        this.onClick();
+    this.view.onMouseUp = (view, event) => {
+      if (this.enabled && this.onClick) {
+        const bounds = view.getBounds();
+        const pos = event.positionInView;
+        if (pos.x >= 0 && pos.y >= 0 && pos.x <= bounds.width && pos.y <= bounds.height)
+          this.onClick();
+      }
       this.pressed = false;
       this.view.schedulePaint();
     };
-
-    this.darkMode = gui.appearance.isDarkScheme();
-    this.connectYueSignal(
-      gui.appearance.onColorSchemeChange,
-      this.#onColorSchemeChange.bind(this));
   }
 
   setImage(image: gui.Image) {
@@ -100,11 +96,6 @@ export default class IconButton extends SignalsOwner {
     bounds.width = this.imageSize.width;
     bounds.height = this.imageSize.height;
     painter.drawImage(this.#getImageToDraw(), bounds);
-  }
-
-  #onColorSchemeChange() {
-    this.darkMode = gui.appearance.isDarkScheme();
-    this.view.schedulePaint();
   }
 
   #getImageToDraw() {

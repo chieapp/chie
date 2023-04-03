@@ -1,0 +1,29 @@
+body {
+  background: <%= style.bgColorDarkMode %>;;
+  color: #FFF;
+}
+a, a:link, a:visited {
+  color: #1D9BD1;
+}
+#pending {
+  background: #302E27;
+}
+.msg.role-assistant {
+  background: #222529;
+}
+.msg .sender .time {
+  color: #ABABAD;
+}
+.text .edited.label {
+  color: #818385;
+}
+.text pre, .text code {
+  background: rgba(232, 232, 232, 0.04);
+  border-color: rgba(232, 232, 232, 0.13);
+}
+.text pre {
+  color: #D1D2D3;
+}
+.text code {
+  color: #E8912D;
+}

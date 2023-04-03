@@ -1,12 +1,11 @@
 import gui from 'gui';
+import AppearanceAware from '../model/appearance-aware';
 import IconButton, {buttonRadius} from './icon-button';
 import {createRoundedCornerPath} from './util';
-import SignalsOwner from '../model/signals-owner';
 
 const inputBorderRadius = 5;
 
-export default class InputView extends SignalsOwner {
-  view: gui.Container;
+export default class InputView extends AppearanceAware {
   entry: gui.TextEdit;
   buttonArea?: gui.Container;
 
@@ -31,7 +30,6 @@ export default class InputView extends SignalsOwner {
   constructor() {
     super();
 
-    this.view = gui.Container.create();
     if (process.platform == 'win32')
       this.view.setBackgroundColor('#E5E5E5');
     this.view.onDraw = this.#onDraw.bind(this);
@@ -85,16 +83,18 @@ export default class InputView extends SignalsOwner {
       padding: 2,
     });
     this.view.addChildView(this.buttonArea);
-
-    this.connectYueSignal(
-      gui.appearance.onColorSchemeChange,
-      this.#onColorSchemeChange.bind(this));
   }
 
   unload() {
     super.unload();
     for (const button of this.buttons)
       button.unload();
+  }
+
+  onColorSchemeChange() {
+    super.onColorSchemeChange();
+    InputView.bgColor = null;
+    InputView.disabledBgColor = null;
   }
 
   setText(text: string) {
@@ -126,12 +126,6 @@ export default class InputView extends SignalsOwner {
       painter.setFillColor(InputView.disabledBgColor);
     }
     painter.fill();
-  }
-
-  #onColorSchemeChange() {
-    InputView.bgColor = null;
-    InputView.disabledBgColor = null;
-    this.view.schedulePaint();
   }
 
   // Automatically changes the height of entry to show all of user's inputs.

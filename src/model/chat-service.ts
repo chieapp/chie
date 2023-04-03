@@ -55,7 +55,9 @@ export default class ChatService {
   async regenerateResponse(options) {
     if (this.history.length == 0)
       throw new Error('Unable to regenerate response when there is no message.');
-    this.pendingMessage = null;
+    if (this.pendingMessage)
+      throw new Error('Can not regenerate when there is pending message being received.');
+    this.history.pop();
     await this.#generateResponse(options);
   }
 
@@ -144,24 +146,23 @@ export default class ChatService {
       role: ChatRole.System,
       content:
       `
-        Name the conversation.
-        The name must be within 10 characters.
-        The name must use the language of the conversation.
-        The name should not include punctuation unless necessary.
-        Following is the conversation:
+        Name the conversation based on following chat records:
         '''
         ${this.history.map(m => m.content).join('\n\n------\n\n')}
         '''
+        Provide a concise name, within 5 words and without quotation marks,
+        using the speak language used in the conversation.
         The conversation is named:
       `
     });
     let title = '';
     await this.api.sendConversation([message], {
-      onMessageDelta(delta) {
-        if (delta.content)
-          title += delta.content;
-      }
+      onMessageDelta(delta) { title += delta.content ?? '' }
     });
+    if (title.endsWith('.'))
+      title = title.slice(0, -1);
+    else if (title.startsWith('"') && title.endsWith('"'))
+      title = title.slice(1, -1);
     this.onTitle.emit(title);
     this.#titlePromise = null;
   }

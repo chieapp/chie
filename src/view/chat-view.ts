@@ -3,6 +3,7 @@ import {realpathSync} from 'node:fs';
 import path from 'node:path';
 import ejs from 'ejs';
 import gui from 'gui';
+import opn from 'opn';
 import hljs from 'highlight.js';
 import {escape} from 'html-escaper';
 
@@ -10,13 +11,14 @@ import AppearanceAware from '../model/appearance-aware';
 import ChatService from '../model/chat-service';
 import IconButton from './icon-button';
 import InputView from './input-view';
+import TextWindow from './text-window';
 import {renderMarkdown, veryLikelyMarkdown} from './markdown';
 import {ChatRole, ChatMessage} from '../model/chat-api';
 
 const assetsDir = path.join(__dirname, '../../assets');
 
 const style = {
-  chatViewPadding: 8,
+  chatViewPadding: 12,
   bgColorDarkMode: '#1B1D21',
 };
 
@@ -32,6 +34,15 @@ export default class ChatView extends AppearanceAware {
   static imageSend?: gui.Image;
   static imageStop?: gui.Image;
   static imageMenu?: gui.Image;
+
+  // Font in entry.
+  static font?: gui.Font;
+
+  // Height limitations of entry view.
+  static entryHeights?: {
+    max: number;
+    min: number;
+  };
 
   service: ChatService;
   isSending = false;
@@ -49,6 +60,8 @@ export default class ChatView extends AppearanceAware {
     html: string,
   };
   #aborter?: AbortController;
+
+  #textWindows: Record<number, TextWindow> = {};
 
   constructor(service: ChatService) {
     super();
@@ -77,8 +90,25 @@ export default class ChatView extends AppearanceAware {
     this.browser.setBackgroundColor(style.bgColorDarkMode);
     this.#setupBrowser();
 
+    // Font style should be the same with messages.
+    if (!ChatView.font)
+      ChatView.font = gui.Font.create(gui.Font.default().getName(), 15, 'normal', 'normal');
+
     this.input = new InputView();
+    if (process.platform == 'win32')
+      this.input.view.setBackgroundColor('#E5E5E5');
     this.input.view.setStyle({margin: style.chatViewPadding});
+    this.input.entry.setFont(ChatView.font);
+    // Calculate height for 1 and 5 lines.
+    if (!ChatView.entryHeights) {
+      this.input.entry.setText('1');
+      const min = this.input.entry.getTextBounds().height;
+      this.input.entry.setText('1\n2\n3\n4\n5');
+      const max = this.input.entry.getTextBounds().height;
+      this.input.entry.setText('');
+      ChatView.entryHeights = {min, max};
+    }
+    this.input.setAutoResize(ChatView.entryHeights);
     this.input.entry.onTextChange = this.#onTextChange.bind(this);
     this.input.entry.shouldInsertNewLine = this.#onEnter.bind(this);
     this.view.addChildView(this.input.view);
@@ -108,11 +138,13 @@ export default class ChatView extends AppearanceAware {
     this.input.unload();
     if (this.#aborter)
       this.#aborter.abort();
+    for (const win of Object.values(this.#textWindows))
+      win.window.close();
   }
 
   async addMessage(message: Partial<ChatMessage>, response?: {pending: boolean}) {
     const html = await ChatView.messageTemplate({
-      message: messageToDom(this.service, message),
+      message: messageToDom(this.service, message, this.service.history.length),
       response,
     });
     await this.executeJavaScript(`window.addMessage(${JSON.stringify(html)})`);
@@ -162,6 +194,8 @@ export default class ChatView extends AppearanceAware {
     this.browser.addBinding('catchDomError', this.#catchDomError.bind(this));
     this.browser.addBinding('log', this.#log.bind(this));
     this.browser.addBinding('highlightCode', this.#highlightCode.bind(this));
+    this.browser.addBinding('showText', this.#showText.bind(this));
+    this.browser.addBinding('copyText', this.#copyText.bind(this));
     this.browser.addBinding('openLink', this.#openLink.bind(this));
     this.browser.addBinding('openLinkContextMenu', this.#openLinkContextMenu.bind(this));
   }
@@ -315,8 +349,28 @@ export default class ChatView extends AppearanceAware {
     this.executeJavaScript(`window.executeCallback(${callbackId}, ${JSON.stringify(code)})`);
   }
 
-  #openLink() {
-    // TODO
+  #showText(index: number, bounds: {width: number}) {
+    if (index in this.#textWindows) {
+      this.#textWindows[index].activate();
+      return;
+    }
+    const text = this.service.history[index].content;
+    const win = new TextWindow(text);
+    this.#textWindows[index] = win;
+    win.window.onClose = () => delete this.#textWindows[index];
+    win.window.setContentSize({
+      width: bounds.width + 20,
+      height: Math.min(win.input.entry.getTextBounds().height + 50, 400),
+    });
+    win.activate();
+  }
+
+  #copyText(index: number) {
+    gui.Clipboard.get().setText(this.service.history[index].content);
+  }
+
+  #openLink(url: string) {
+    opn(url);
   }
 
   #openLinkContextMenu() {
@@ -334,7 +388,7 @@ gui.Browser.registerProtocol('chie', (url) => {
 });
 
 // Translate the message into data to be parsed by EJS template.
-function messageToDom(service: ChatService, message: Partial<ChatMessage>) {
+function messageToDom(service: ChatService, message: Partial<ChatMessage>, index: number) {
   if (!message.role)  // should not happen
     throw new Error('Role of message expected for serialization.');
   let content = message.content;
@@ -350,7 +404,7 @@ function messageToDom(service: ChatService, message: Partial<ChatMessage>) {
   let avatar = null;
   if (message.role == ChatRole.Assistant)
     avatar = service.api.avatar;
-  return {role: message.role, sender, avatar, content};
+  return {role: message.role, sender, avatar, content, index};
 }
 
 // Escape the special HTML characters in plain text message.

@@ -5,6 +5,7 @@
 *.swp
 *.zip
 
+.fontello-session
 yarn.lock
 package-lock.json
 npm-debug.log

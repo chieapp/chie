@@ -23,6 +23,7 @@
     "lint": "eslint --ignore-path .gitignore .",
     "test": "ts-mocha --require test/setup.ts test/**/*-test.ts",
     "gctest": "yode node_modules/ts-node/dist/bin.js test/gctest.ts",
+    "fontello": "fontello-cli open --config assets/view/fontello.json",
     "build": "yackage build out",
     "dist": "yackage dist out"
   },
@@ -47,6 +48,7 @@
     "highlight.js": "11.7.0",
     "html-escaper": "3.0.3",
     "marked": "4.3.0",
+    "opn": "^6.0.0",
     "sanitize-html": "2.10.0",
     "typed-signals": "2.5.0",
     "ws": "8.13.0"
@@ -60,6 +62,7 @@
     "@typescript-eslint/parser": "5.55.0",
     "chai": "4.3.7",
     "eslint": "8.36.0",
+    "fontello-cli": "0.6.2",
     "mocha": "10.2.0",
     "ts-mocha": "10.0.0",
     "typescript": "5.0.2",

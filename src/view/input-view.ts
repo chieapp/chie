@@ -3,20 +3,7 @@ import AppearanceAware from '../model/appearance-aware';
 import IconButton, {buttonRadius} from './icon-button';
 import {createRoundedCornerPath} from './util';
 
-const inputBorderRadius = 5;
-
 export default class InputView extends AppearanceAware {
-  entry: gui.TextEdit;
-  buttonArea?: gui.Container;
-
-  buttons: IconButton[] = [];
-
-  // Height limitations of entry view.
-  static entryHeights?: {
-    max: number;
-    min: number;
-  };
-
   // Fixed button size.
   static buttonSize = {
     width: 16 + buttonRadius,
@@ -27,11 +14,15 @@ export default class InputView extends AppearanceAware {
   static bgColor?: number;
   static disabledBgColor?: number;
 
+  autoResize?: {min: number, max: number};
+
+  entry: gui.TextEdit;
+  buttons: IconButton[] = [];
+  buttonsArea?: gui.Container;
+
   constructor() {
     super();
 
-    if (process.platform == 'win32')
-      this.view.setBackgroundColor('#E5E5E5');
     this.view.onDraw = this.#onDraw.bind(this);
     this.view.setStyle({
       flexDirection: 'row',  // horizontal layout
@@ -44,45 +35,21 @@ export default class InputView extends AppearanceAware {
       flex: 1,  // take full horizontal space
       flexDirection: 'row',  // horizontal layout
       alignItems: 'center',  // entry placed in vertical center
-      paddingTop: 5,
-      paddingBottom: 5,
+      padding: 5,
     });
     this.view.addChildView(entryWrapper);
 
     this.entry = gui.TextEdit.create();
-    this.entry.onTextChange = this.#adjustEntryHeight.bind(this);
     if (process.platform != 'win32') {
       // Force using overlay scrollbar.
       this.entry.setOverlayScrollbar(true);
       this.entry.setScrollbarPolicy('never', 'automatic');
     }
-    // Font size should be the same with messages.
-    const font = gui.Font.create(gui.Font.default().getName(), 15, 'normal', 'normal');
-    this.entry.setFont(font);
-    // Calculate height for 1 and 5 lines.
-    if (!InputView.entryHeights) {
-      this.entry.setText('1');
-      const min = this.entry.getTextBounds().height;
-      this.entry.setText('1\n2\n3\n4\n5');
-      const max = this.entry.getTextBounds().height;
-      this.entry.setText('');
-      InputView.entryHeights = {min, max};
-    }
     this.entry.setStyle({
       flex: 1,  // take full horizontal space
-      height: InputView.entryHeights.min,  // default to 1 line height
-      marginLeft: inputBorderRadius,
+      height: '100%',  // take full vertical space
     });
     entryWrapper.addChildView(this.entry);
-
-    this.buttonArea = gui.Container.create();
-    this.buttonArea.setStyle({
-      height: '100%',  // take full vertical space
-      alignItems: 'center',  // entry placed in vertical center
-      flexDirection: 'row',  // horizontal layout
-      padding: 2,
-    });
-    this.view.addChildView(this.buttonArea);
   }
 
   unload() {
@@ -97,6 +64,13 @@ export default class InputView extends AppearanceAware {
     InputView.disabledBgColor = null;
   }
 
+  setAutoResize(autoResize: {min: number, max: number}) {
+    if (!this.autoResize)
+      this.entry.onTextChange = this.#adjustEntryHeight.bind(this);
+    this.autoResize = autoResize;
+    this.entry.setStyle({height: autoResize.min});
+  }
+
   setText(text: string) {
     this.entry.setText(text);
     this.#adjustEntryHeight();
@@ -108,9 +82,20 @@ export default class InputView extends AppearanceAware {
   }
 
   addButton(button: IconButton) {
+    if (!this.buttonsArea) {
+      this.buttonsArea = gui.Container.create();
+      this.buttonsArea.setStyle({
+        height: '100%',  // take full vertical space
+        alignItems: 'flex-end',  // buttons aligned to bottom
+        flexDirection: 'row',  // horizontal layout
+        margin: 2,
+        marginLeft: 0,
+      });
+      this.view.addChildView(this.buttonsArea);
+    }
     button.view.setStyle(InputView.buttonSize);
     this.buttons.push(button);
-    this.buttonArea.addChildView(button.view);
+    this.buttonsArea.addChildView(button.view);
   }
 
   #onDraw(view, painter: gui.Painter) {
@@ -131,21 +116,8 @@ export default class InputView extends AppearanceAware {
   // Automatically changes the height of entry to show all of user's inputs.
   #adjustEntryHeight() {
     let height = this.entry.getTextBounds().height;
-    if (height <= InputView.entryHeights.min) {
-      this.buttonArea.setStyle({
-        flexDirection: 'row',
-        alignItems: 'center',
-      });
-    } else {
-      this.buttonArea.setStyle({
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-      });
-    }
-    if (height < InputView.entryHeights.min)
-      height = InputView.entryHeights.min;
-    else if (height > InputView.entryHeights.max)
-      height = InputView.entryHeights.max;
+    height = Math.max(height, this.autoResize.min);
+    height = Math.min(height, this.autoResize.max);
     this.entry.setStyle({height});
   }
 }

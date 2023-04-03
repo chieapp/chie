@@ -3,6 +3,7 @@
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
   <style type="text/css"><%- await include('page.css', {style}) %></style>
+  <style type="text/css"><%- await include('fontello-embedded.css', {style}) %></style>
   <style type="text/css">
   <% if (process.platform == 'win32') { %>
     <%- await include('../../node_modules/highlight.js/styles/github.css') %>
@@ -115,7 +116,9 @@
       pending.removeAttribute('id')
     }
     message.setAttribute('id', 'pending')
-    message.getElementsByClassName('text')[0].innerHTML = '';
+    var text = message.getElementsByClassName('text')[0]
+    text.innerHTML = '';
+    text.insertAdjacentHTML('beforebegin', '<img id="loader" src="chie://app-file/assets/icons/typing.gif"/>')
   }
   window.markAborted = function(error) {
     var text = findPending('text')
@@ -140,12 +143,34 @@
 
   // DOM event handlers ====================================================
 
-  // Open links in actual browsers.
+  // Capture clicks on <a>.
   window.onclick = function(event) {
     var target = findParent('a', event.target)
-    if (target && target.href !== '#' && !target.onclick) {
-      chie.openLink(target.href)
+    if (!target)
       return false
+    // Open links in actual browsers.
+    if (target.href.indexOf('#') == -1 && !target.onclick) {
+      chie.openLink(target.href)
+      return true
+    }
+    var msg = target.parentNode.parentNode.parentNode
+    var index = msg.getAttribute('message-index')
+    var content = msg.getElementsByClassName('content')[0]
+    // Show popup window to display message.
+    if (target.href.endsWith('#show-text')) {
+      chie.showText(index, content.getBoundingClientRect())
+      chie.showText(index)
+      return true
+    }
+    // Copy text.
+    if (target.href.endsWith('#copy-text')) {
+      chie.copyText(index)
+      // Show ok when clicked,
+      var i = target.getElementsByTagName('i')[0];
+      var oldClassName = i.className
+      i.className = 'icon-ok'
+      setTimeout(function () { i.className = oldClassName }, 1000)
+      return true
     }
   }
   // Custom menu for links.
@@ -169,6 +194,7 @@
       ignoreNextScroll = false
       return
     }
+    var oldTopElement = topElement
     topElement = null
     scrollOffset = 0
     // Check scrolled at page bottom.
@@ -186,6 +212,14 @@
       if (rect.top < 0)
         break
     }
+    // Flip action menu's style between absolute and fixed when scrolling, so
+    // it is always visible even when the message is very long.
+    if (topElement == oldTopElement)
+      return
+    if (oldTopElement)
+      oldTopElement.getElementsByClassName('action-menu')[0].style.position = 'absolute'
+    if (scrollOffset < 0)
+      topElement.getElementsByClassName('action-menu')[0].style.position = 'fixed'
   }
   // Make sure the view is always scrolled at current message.
   window.onresize = function() {

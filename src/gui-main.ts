@@ -53,11 +53,14 @@ function guiMain() {
   service.onTitle.connect((title) => win.setTitle(title));
   win.setContentView(chatView.view);
 
+  win.onFocus = () => chatView.input.entry.focus();
   win.onClose = () => {
     chatView.unload();
-    if (gui.MessageLoop.quit)
-      gui.MessageLoop.quit();
-    process.exit(0);
+    if (process.platform != 'darwin') {
+      if (gui.MessageLoop.quit)
+        gui.MessageLoop.quit();
+      process.exit(0);
+    }
   };
 
   const trayImage = gui.Image.createFromPath(fs.realpathSync(path.join(__dirname, '../assets/icons/tray@2x.png')));

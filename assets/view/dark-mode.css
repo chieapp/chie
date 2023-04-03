@@ -1,12 +1,22 @@
 body {
-  background: <%= style.bgColorDarkMode %>;;
-  color: #FFF;
+  background: <%= style.bgColorDarkMode %>;
+  color: white;
 }
 a, a:link, a:visited {
   color: #1D9BD1;
 }
 #pending {
   background: #302E27;
+}
+.action-menu {
+  background: <%= style.bgColorDarkMode %>;
+  border-color: rgba(232, 232, 232, 0.13);
+}
+.action-menu a {
+  color: #BBB;
+}
+.action-menu a:hover {
+  color: white;
 }
 .msg.role-assistant {
   background: #222529;

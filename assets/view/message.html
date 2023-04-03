@@ -1,12 +1,18 @@
-<div <% if (response?.pending) { %> id="pending" <% } %> class="msg role-<%= message.role.toLowerCase() %>">
+<div <% if (response?.pending) { %> id="pending" <% } %> class="msg role-<%= message.role.toLowerCase() %>" message-index=<%= message.index %>>
   <div class="avatar">
-    <% if (message.avatar) { %>
-      <img src="<%= message.avatar %>"/>
-    <% } else { %>
-      <div class="dummy"></div>
-    <% } %>
+  <% if (message.avatar) { %>
+    <img src="<%= message.avatar %>"/>
+  <% } else { %>
+    <div class="dummy"></div>
+  <% } %>
   </div>
   <div class="content">
+    <div class="action-menu">
+    <% if (message.role == 'Assistant') { %>
+      <a class="action-text" href="#show-text" title="Show raw text"><i class="icon-text"></i></a>
+    <% } %>
+      <a class="action-copy" href="#copy-text" title="Copy text"><i class="icon-copy"></i></a>
+    </div>
     <div class="sender">
       <div class="name"><%= message.sender %></div>
     </div>

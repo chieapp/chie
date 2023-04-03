@@ -157,7 +157,7 @@ export default class ChatService {
     });
     let title = '';
     await this.api.sendConversation([message], {
-      onMessageDelta(delta) { title += delta.content ?? '' }
+      onMessageDelta(delta) { title += delta.content ?? ''; }
     });
     if (title.endsWith('.'))
       title = title.slice(0, -1);

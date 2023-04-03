@@ -13,8 +13,6 @@
     * clear history
     * regenerate
     * hide/show avatars
-* bug
-  * write css rules that animates clicks on <a> tags
 * yue
   * NSTextView is not resized when resizing TextEdit to smaller size
   * API to get bounds of View in screen

@@ -3,6 +3,7 @@ import gui from 'gui';
 import APIEndpoint from '../src/model/api-endpoint';
 import ChatService from '../src/model/chat-service';
 import ChatView from '../src/view/chat-view';
+import MultiChatsView from '../src/view/multi-chats-view';
 import {ChatCompletionAPI} from '../src/model/chat-api';
 import {addFinalizer, gcUntil} from './util';
 
@@ -23,6 +24,7 @@ main();
 async function main() {
   await testChatView();
   await testChatViewInWindow();
+  await testMultiChatsView();
   process.exit(0);
 }
 
@@ -48,6 +50,16 @@ async function testChatViewInWindow() {
   await gcUntil(() => collected);
 }
 
+async function testMultiChatsView() {
+  let collected = false;
+  (() => {
+    const chatView = createMultiChatsView();
+    addFinalizer(chatView, () => collected = true);
+    chatView.unload();
+  })();
+  await gcUntil(() => collected);
+}
+
 function createChatView() {
   const endpoint = new APIEndpoint({
     name: 'Wuhanfeiyan',
@@ -58,4 +70,15 @@ function createChatView() {
   const api = new FakeAPI(endpoint);
   const service = new ChatService('Xijinping', api);
   return new ChatView(service);
+}
+
+function createMultiChatsView() {
+  const endpoint = new APIEndpoint({
+    name: 'Wuhanfeiyan',
+    type: 'ChatGPT',
+    url: '',
+    key: '',
+  });
+  const api = new FakeAPI(endpoint);
+  return new MultiChatsView('Xijinping', api);
 }

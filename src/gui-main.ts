@@ -3,9 +3,8 @@ import path from 'node:path';
 import gui from 'gui';
 
 import AppMenu from './view/app-menu';
-import ChatService from './model/chat-service';
-import ChatView from './view/chat-view';
-import {ChatAPI} from './model/chat-api';
+import MultiChatsView from './view/multi-chats-view';
+import {ChatCompletionAPI} from './model/chat-api';
 import main from './main';
 import apiManager from './controller/api-manager';
 import * as singleInstance from './util/single-instance';
@@ -34,7 +33,7 @@ function guiMain() {
 
   const win = gui.Window.create({});
   global.win = win;
-  win.setContentSize({width: 400, height: 400});
+  win.setContentSize({width: 600, height: 400});
   win.center();
   win.activate();
 
@@ -48,18 +47,10 @@ function guiMain() {
     win.setMenuBar(appMenu.menu);
   }
 
-  const service = new ChatService(api.endpoint.name, api as ChatAPI);
-  const chatView = new ChatView(service);
-  service.onTitle.connect((title) => {
-    if (title)
-      win.setTitle(title);
-    else
-      win.setTitle(service.name);
-  });
-  win.setTitle(service.name);
+  const chatView = new MultiChatsView(api.endpoint.name, api as ChatCompletionAPI);
   win.setContentView(chatView.view);
 
-  win.onFocus = () => chatView.input.entry.focus();
+  win.onFocus = () => chatView.chatView.input.entry.focus();
   win.onClose = () => {
     chatView.unload();
     if (process.platform != 'darwin') {

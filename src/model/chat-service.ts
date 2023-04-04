@@ -13,9 +13,15 @@ export default class ChatService {
   api: ChatAPI;
   history: ChatMessage[] = [];
 
-  onTitle: Signal<(title: string | null) => void> = new Signal;
+  onNewTitle: Signal<(title: string | null) => void> = new Signal;
   onMessage: Signal<(message: ChatMessage, response: ChatResponse) => void> = new Signal;
   onMessageDelta: Signal<(delta: Partial<ChatMessage>, response: ChatResponse) => void> = new Signal;
+
+  // Title of the chat.
+  title?: string;
+
+  // Whether the title is automatically generated.
+  autoTitle = true;
 
   // Saves concatenated content of all the received partial messages.
   pendingMessage?: Partial<ChatMessage>;
@@ -23,7 +29,7 @@ export default class ChatService {
   // The response of last partial message.
   #lastResponse?: ChatResponse;
 
-  // Track generation of title.
+  // Track generation of name.
   #titlePromise?: Promise<void>;
 
   constructor(name: string, api: ChatAPI) {
@@ -65,7 +71,7 @@ export default class ChatService {
       throw new Error('Can not clear when there is pending message being received.');
     this.history = [];
     if (this.api instanceof ChatCompletionAPI)
-      this.onTitle.emit(null);
+      this.onNewTitle.emit(null);
     else if (this.api instanceof ChatConversationAPI)
       this.api.clear();
   }
@@ -103,12 +109,13 @@ export default class ChatService {
       this.#responseEnded();
     }
 
-    // Generate a title for the conversation.
-    if (this.api instanceof ChatCompletionAPI &&
+    // Generate a name for the conversation.
+    if (this.autoTitle &&
+        this.api instanceof ChatCompletionAPI &&
         !this.#titlePromise &&
         this.history.length > 3 &&
         this.history.length < 10)
-      this.#titlePromise = this.#generateTitle();
+      this.#titlePromise = this.#generateName();
   }
 
   // Called by sub-classes when there is message delta available.
@@ -150,8 +157,8 @@ export default class ChatService {
     this.#lastResponse = null;
   }
 
-  // Generate a title for the conversation.
-  async #generateTitle() {
+  // Generate a name for the conversation.
+  async #generateName() {
     if (!(this.api instanceof ChatCompletionAPI))
       return;
     const message = new ChatMessage({
@@ -175,7 +182,8 @@ export default class ChatService {
       title = title.slice(0, -1);
     else if (title.startsWith('"') && title.endsWith('"'))
       title = title.slice(1, -1);
-    this.onTitle.emit(title);
+    this.title = title;
+    this.onNewTitle.emit(title);
     this.#titlePromise = null;
   }
 }

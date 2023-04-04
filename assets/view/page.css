@@ -121,6 +121,7 @@ a.icon i.icon-ok {
 .text > p:last-child {
   margin-bottom: 0;
 }
+
 .text .code-block pre, .text code {
   font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
   tab-size: 2;
@@ -170,4 +171,18 @@ a.icon i.icon-ok {
   white-space: normal;
   padding: 2px 3px 1px;
   border-radius: 3px;
+}
+
+.text table {
+  margin: 1rem 0 1rem;
+  border: 1px solid;
+  border-collapse: collapse;
+}
+.text th {
+  font-weight: bold;
+}
+.text th, .text td {
+  text-align: left;
+  padding: 0.5em;
+  border: 1px solid;
 }

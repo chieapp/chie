@@ -43,3 +43,6 @@ a.icon:hover {
 .text .code-block .toolbar span {
   color: #999;
 }
+.text table, .text th, .text td {
+  border-color: #666;
+}

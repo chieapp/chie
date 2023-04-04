@@ -10,8 +10,6 @@
   * resize window to increase the entry height
 * button
   * additional menu button
-    * clear history
-    * regenerate
     * hide/show avatars
 * yue
   * NSTextView is not resized when resizing TextEdit to smaller size

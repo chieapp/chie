@@ -3,7 +3,7 @@ import {realpathSync} from 'node:fs';
 import path from 'node:path';
 import ejs from 'ejs';
 import gui from 'gui';
-import opn from 'opn';
+import open from 'open';
 import hljs from 'highlight.js';
 import {escape} from 'html-escaper';
 
@@ -13,7 +13,7 @@ import IconButton from './icon-button';
 import InputView from './input-view';
 import TextWindow from './text-window';
 import {renderMarkdown, veryLikelyMarkdown} from './markdown';
-import {ChatRole, ChatMessage} from '../model/chat-api';
+import {ChatRole, ChatMessage, ChatConversationAPI} from '../model/chat-api';
 
 const assetsDir = path.join(__dirname, '../../assets');
 
@@ -151,8 +151,6 @@ export default class ChatView extends AppearanceAware {
   }
 
   async regenerateLastMessage() {
-    if (this.service.history.length == 0)
-      return;
     this.#parsedMessage = null;
     this.executeJavaScript('window.regenerateLastMessage()');
     this.#aborter = new AbortController();
@@ -161,10 +159,9 @@ export default class ChatView extends AppearanceAware {
   }
 
   async clear() {
-    if (this.service.history.length == 0)
-      return;
     this.#parsedMessage = null;
     this.executeJavaScript('window.clear()');
+    this.input.entry.focus();
     await this.service.clear();
   }
 
@@ -212,10 +209,10 @@ export default class ChatView extends AppearanceAware {
     this.browser.addBinding('catchDomError', this.#catchDomError.bind(this));
     this.browser.addBinding('log', this.#log.bind(this));
     this.browser.addBinding('highlightCode', this.#highlightCode.bind(this));
-    this.browser.addBinding('showText', this.#showText.bind(this));
     this.browser.addBinding('copyText', this.#copyText.bind(this));
+    this.browser.addBinding('showTextAt', this.#showTextAt.bind(this));
+    this.browser.addBinding('copyTextAt', this.#copyTextAt.bind(this));
     this.browser.addBinding('openLink', this.#openLink.bind(this));
-    this.browser.addBinding('openLinkContextMenu', this.#openLinkContextMenu.bind(this));
   }
 
   // User editing in the entry.
@@ -223,7 +220,7 @@ export default class ChatView extends AppearanceAware {
     const text = this.input.entry.getText();
     if (text.length > 0 ||
         this.service.history.length == 0 ||
-        !this.service.canRegenerate)
+        this.service.api instanceof ChatConversationAPI)
       this.#setButtonMode('send');
     else
       this.#setButtonMode('refresh');
@@ -334,11 +331,17 @@ export default class ChatView extends AppearanceAware {
       await promise;
       this.input.setEntryEnabled(true);
       this.input.entry.focus();
-      this.input.view.schedulePaint();
     } catch (error) {
       await this.executeJavaScript(`window.markError(${JSON.stringify(error.message)})`);
     } finally {
-      this.#setButtonMode(this.service.canRegenerate ? 'refresh' : 'send');
+      if (this.service.api instanceof ChatConversationAPI ||
+          this.service.history.length == 0) {
+        this.#setButtonMode('send');
+        this.input.setEntryEnabled(true);
+        this.input.entry.focus();
+      } else {
+        this.#setButtonMode('refresh');
+      }
       this.isSending = false;
     }
   }
@@ -375,13 +378,18 @@ export default class ChatView extends AppearanceAware {
   }
 
   #highlightCode(text: string, language: string, callbackId: number) {
-    const code = language ?
-      hljs.highlight(text, {language, ignoreIllegals: true}).value :
-      hljs.highlightAuto(text).value;
+    const result = language ?
+      hljs.highlight(text, {language, ignoreIllegals: true}) :
+      hljs.highlightAuto(text);
+    const code = {value: result.value, language: result.language};
     this.executeJavaScript(`window.executeCallback(${callbackId}, ${JSON.stringify(code)})`);
   }
 
-  #showText(index: number, bounds: {width: number}) {
+  #copyText(text: string) {
+    gui.Clipboard.get().setText(text);
+  }
+
+  #showTextAt(index: number, bounds: {width: number}) {
     if (index in this.#textWindows) {
       this.#textWindows[index].activate();
       return;
@@ -397,16 +405,12 @@ export default class ChatView extends AppearanceAware {
     win.activate();
   }
 
-  #copyText(index: number) {
-    gui.Clipboard.get().setText(this.service.history[index].content);
+  #copyTextAt(index: number) {
+    this.#copyText(this.service.history[index].content);
   }
 
   #openLink(url: string) {
-    opn(url);
-  }
-
-  #openLinkContextMenu() {
-    // TODO
+    open(url);
   }
 }
 

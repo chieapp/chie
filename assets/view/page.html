@@ -6,9 +6,11 @@
   <style type="text/css"><%- await include('fontello-embedded.css', {style}) %></style>
   <style type="text/css">
   <% if (process.platform == 'win32') { %>
+    <%- await include('light-mode.css', {style}) %>
     <%- await include('../../node_modules/highlight.js/styles/github.css') %>
   <% } else { %>
     @media (prefers-color-scheme: light) {
+      <%- await include('light-mode.css', {style}) %>
       <%- await include('../../node_modules/highlight.js/styles/github.css') %>
     }
     @media (prefers-color-scheme: dark) {
@@ -97,11 +99,14 @@
       scrollToBottom()
   }
   window.endPending = function() {
+    var wasAtBottom = topElement == null
     var pending = findPending()
     if (pending)
       pending.removeAttribute('id')
     removeLoader()
     highlightCodes()
+    if (wasAtBottom)
+      scrollToBottom()
   }
   window.regenerateLastMessage = function() {
     var pending = document.getElementById('pending')
@@ -154,26 +159,27 @@
     // Open links in actual browsers.
     if (target.href.indexOf('#') == -1 && !target.onclick) {
       chie.openLink(target.href)
-      return true
+      return false
+    }
+    // Copy code.
+    if (target.href.endsWith('#copy-code')) {
+      chie.copyText(target.parentNode.parentNode.children[1].textContent)
+      showOk(target)
+      return false
     }
     var msg = target.parentNode.parentNode.parentNode
     var index = msg.getAttribute('message-index')
     var content = msg.getElementsByClassName('content')[0]
     // Show popup window to display message.
-    if (target.href.endsWith('#show-text')) {
-      chie.showText(index, content.getBoundingClientRect())
-      chie.showText(index)
-      return true
+    if (target.href.endsWith('#show-text-at')) {
+      chie.showTextAt(index, content.getBoundingClientRect())
+      return false
     }
     // Copy text.
-    if (target.href.endsWith('#copy-text')) {
-      chie.copyText(index)
-      // Show ok when clicked,
-      var i = target.getElementsByTagName('i')[0];
-      var oldClassName = i.className
-      i.className = 'icon-ok'
-      setTimeout(function () { i.className = oldClassName }, 1000)
-      return true
+    if (target.href.endsWith('#copy-text-at')) {
+      chie.copyTextAt(index)
+      showOk(target)
+      return false
     }
   }
   // Move focus to entry on Tab.
@@ -183,38 +189,32 @@
       chie.focusEntry()
     }
   }
-  // Update current top element.
+  // Update states when scrolling.
   window.onscroll = function() {
     if (ignoreNextScroll) {
       ignoreNextScroll = false
       return
     }
-    var oldTopElement = topElement
     topElement = null
     scrollOffset = 0
-    // Check scrolled at page bottom.
-    // IE has one pixel offset problem so we use "scrollHeight - 1";
-    if (window.pageYOffset + window.innerHeight >= document.body.scrollHeight - 1)
-      return
     var messages = document.getElementsByClassName('msg')
     if (messages.length === 0)
       return
+    var setTopElement = !isPageBottom()
     // Search backwards.
     for (var i = messages.length - 1; i >= 0;  --i) {
       var rect = messages[i].getBoundingClientRect()
-      topElement = messages[i]
-      scrollOffset = rect.top
+      // Make sure the action menu is always visible.
+      var actionMenu = messages[i].getElementsByClassName('action-menu')[0]
+      actionMenu.style.position = rect.top > 0 ? 'absolute' : 'fixed'
+      // Find out which message is the oldest visible one.
+      if (setTopElement) {
+        topElement = messages[i]
+        scrollOffset = rect.top
+      }
       if (rect.top < 0)
         break
     }
-    // Flip action menu's style between absolute and fixed when scrolling, so
-    // it is always visible even when the message is very long.
-    if (topElement == oldTopElement)
-      return
-    if (oldTopElement)
-      oldTopElement.getElementsByClassName('action-menu')[0].style.position = 'absolute'
-    if (scrollOffset < 0)
-      topElement.getElementsByClassName('action-menu')[0].style.position = 'fixed'
   }
   // Make sure the view is always scrolled at current message.
   window.onresize = function() {
@@ -251,11 +251,19 @@
   // Highlight a single code block.
   var nextCallbackId = 0
   function highlightCode(element, lang) {
-    callbacks[++nextCallbackId] = function(result) {
-      if (result)
-        element.innerHTML = result
+    callbacks[++nextCallbackId] = function(code) {
+      element.innerHTML = code.value
+      if (code.language)
+        element.parentNode.firstElementChild.firstElementChild.textContent = code.language
     }
     chie.highlightCode(element.textContent, lang, nextCallbackId)
+  }
+  // Show ok when clicked on icon.
+  function showOk(target) {
+    var i = target.firstElementChild
+    var oldClassName = i.className
+    i.className = 'icon-ok'
+    setTimeout(function () { i.className = oldClassName }, 1000)
   }
   // Remove the load indicator.
   function removeLoader() {
@@ -289,6 +297,13 @@
   // Scroll to the bottom of page.
   function scrollToBottom() {
     window.scrollTo(0, document.body.scrollHeight)
+  }
+  // Check scrolled at page bottom.
+  function isPageBottom() {
+    // IE has one pixel offset problem so we can not do precise comparison, and
+    // we want to treat as at bottom if only slightly scrolled above to provide
+    // more natural experience.
+    return document.body.scrollHeight - (window.pageYOffset + window.innerHeight) < 5
   }
   // Helper function to find parent element.
   function findParent(tagName, target) {

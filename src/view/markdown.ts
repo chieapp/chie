@@ -3,7 +3,13 @@ import {escape} from 'html-escaper';
 
 const renderer = new marked.Renderer();
 renderer.code = (code, lang) => {
-  return `<pre class="unhilighted" lang="${lang}">${escape(code)}</pre>`;
+  const codeToolbar = `
+    <div class="toolbar">
+      <span>${lang}</span>
+      <a class="icon" href="#copy-code" title="Copy code"><i class="icon-copy"></i></a>
+    </div>
+  `;
+  return `<div class="code-block">${codeToolbar}<pre class="unhilighted" lang="${lang}">${escape(code)}</pre></div>`;
 };
 renderer.html = (html) => {
   // Escape all html tags.

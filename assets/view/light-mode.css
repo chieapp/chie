@@ -1,0 +1,45 @@
+body {
+  background: white;
+  color: #2C2D30;
+}
+a, a:link, a:visited {
+  color: #0576B9;
+}
+#pending {
+  background: rgba(255, 204, 0, .1);
+}
+.action-menu {
+  background: white;
+  border-color: #E8E8E8;
+}
+a.icon {
+  color: #717274;
+}
+a.icon:hover {
+  color: #222;
+}
+.msg.role-assistant {
+  background: #FAFAFA;
+}
+.msg .sender .time {
+  color: #717274;
+}
+.text .edited.label {
+  color: #A0A0A2;
+}
+.text .code-block, .text code {
+  background: #F9F9F9;
+  border-color: rgba(0, 0, 0, .15);
+}
+.text .code-block {
+  color: #333;
+}
+.text code {
+  color: #D72B3F;
+}
+.text .code-block .toolbar {
+  background: #E6E6E6;
+}
+.text .code-block .toolbar span {
+  color: #777;
+}

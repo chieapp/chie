@@ -12,10 +12,10 @@ a, a:link, a:visited {
   background: <%= style.bgColorDarkMode %>;
   border-color: rgba(232, 232, 232, 0.13);
 }
-.action-menu a {
+a.icon {
   color: #BBB;
 }
-.action-menu a:hover {
+a.icon:hover {
   color: white;
 }
 .msg.role-assistant {
@@ -27,13 +27,19 @@ a, a:link, a:visited {
 .text .edited.label {
   color: #818385;
 }
-.text pre, .text code {
+.text .code-block, .text code {
   background: rgba(232, 232, 232, 0.04);
   border-color: rgba(232, 232, 232, 0.13);
 }
-.text pre {
+.text .code-block {
   color: #D1D2D3;
 }
 .text code {
   color: #E8912D;
+}
+.text .code-block .toolbar {
+  background: rgba(232, 232, 232, 0.08);
+}
+.text .code-block .toolbar span {
+  color: #999;
 }

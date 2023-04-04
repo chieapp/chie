@@ -17,9 +17,6 @@ export default class ChatService {
   onMessage: Signal<(message: ChatMessage, response: ChatResponse) => void> = new Signal;
   onMessageDelta: Signal<(delta: Partial<ChatMessage>, response: ChatResponse) => void> = new Signal;
 
-  // Abilities.
-  canRegenerate: boolean;
-
   // Saves concatenated content of all the received partial messages.
   pendingMessage?: Partial<ChatMessage>;
 
@@ -37,7 +34,6 @@ export default class ChatService {
       throw new Error('Unsupported API type');
     this.name = name;
     this.api = api;
-    this.canRegenerate = api instanceof ChatCompletionAPI;
   }
 
   // Send a message and wait for response.
@@ -57,6 +53,8 @@ export default class ChatService {
       throw new Error('Unable to regenerate response when there is no message.');
     if (this.pendingMessage)
       throw new Error('Can not regenerate when there is pending message being received.');
+    if (!(this.api instanceof ChatCompletionAPI))
+      throw new Error('Can only regenerate for ChatCompletionAPI.');
     this.history.pop();
     await this.#generateResponse(options);
   }
@@ -65,12 +63,11 @@ export default class ChatService {
   async clear() {
     if (this.pendingMessage)
       throw new Error('Can not clear when there is pending message being received.');
-    if (this.api instanceof ChatCompletionAPI) {
-      this.history = [];
+    this.history = [];
+    if (this.api instanceof ChatCompletionAPI)
       this.onTitle.emit(null);
-    } else if (this.api instanceof ChatConversationAPI) {
+    else if (this.api instanceof ChatConversationAPI)
       this.api.clear();
-    }
   }
 
   // Call the API.

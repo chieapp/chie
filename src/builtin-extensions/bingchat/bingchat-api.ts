@@ -55,6 +55,12 @@ export default class BingChatAPI extends ChatConversationAPI {
     }
   }
 
+  async clear() {
+    this.#invocationId = 1;
+    this.#lastContent = '';
+    this.#session = null;
+  }
+
   async #createConversation(options) {
     const response = await fetch(this.endpoint.url, {
       signal: options.signal,

@@ -13,7 +13,7 @@ export default class ChatService {
   api: ChatAPI;
   history: ChatMessage[] = [];
 
-  onTitle: Signal<(title: string) => void> = new Signal;
+  onTitle: Signal<(title: string | null) => void> = new Signal;
   onMessage: Signal<(message: ChatMessage, response: ChatResponse) => void> = new Signal;
   onMessageDelta: Signal<(delta: Partial<ChatMessage>, response: ChatResponse) => void> = new Signal;
 
@@ -61,6 +61,18 @@ export default class ChatService {
     await this.#generateResponse(options);
   }
 
+  // Clear chat history.
+  async clear() {
+    if (this.pendingMessage)
+      throw new Error('Can not clear when there is pending message being received.');
+    if (this.api instanceof ChatCompletionAPI) {
+      this.history = [];
+      this.onTitle.emit(null);
+    } else if (this.api instanceof ChatConversationAPI) {
+      this.api.clear();
+    }
+  }
+
   // Call the API.
   async #generateResponse(options) {
     try {
@@ -95,7 +107,10 @@ export default class ChatService {
     }
 
     // Generate a title for the conversation.
-    if (!this.#titlePromise && this.history.length > 3 && this.history.length < 10)
+    if (this.api instanceof ChatCompletionAPI &&
+        !this.#titlePromise &&
+        this.history.length > 3 &&
+        this.history.length < 10)
       this.#titlePromise = this.#generateTitle();
   }
 

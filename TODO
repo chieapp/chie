@@ -15,6 +15,7 @@
     * hide/show avatars
 * yue
   * NSTextView is not resized when resizing TextEdit to smaller size
+  * Disabled menu item is not disabled in context menu
   * API to get bounds of View in screen
   * API to convert content bounds to window bounds
   * API to get mouse position

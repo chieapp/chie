@@ -120,6 +120,9 @@
     text.innerHTML = '';
     text.insertAdjacentHTML('beforebegin', '<img id="loader" src="chie://app-file/assets/icons/typing.gif"/>')
   }
+  window.clear = function() {
+    document.getElementById('messages').innerHTML = ''
+  }
   window.markAborted = function(error) {
     var text = findPending('text')
     if (text) {
@@ -171,14 +174,6 @@
       i.className = 'icon-ok'
       setTimeout(function () { i.className = oldClassName }, 1000)
       return true
-    }
-  }
-  // Custom menu for links.
-  window.oncontextmenu = function(event) {
-    var target = findParent('a', event.target)
-    if (target && target.href !== '#' && !target.oncontextmenu) {
-      chie.openLinkContextMenu(target.href)
-      return false
     }
   }
   // Move focus to entry on Tab.

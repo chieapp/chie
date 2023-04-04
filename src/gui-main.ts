@@ -50,7 +50,13 @@ function guiMain() {
 
   const service = new ChatService(api.endpoint.name, api as ChatAPI);
   const chatView = new ChatView(service);
-  service.onTitle.connect((title) => win.setTitle(title));
+  service.onTitle.connect((title) => {
+    if (title)
+      win.setTitle(title);
+    else
+      win.setTitle(service.name);
+  });
+  win.setTitle(service.name);
   win.setContentView(chatView.view);
 
   win.onFocus = () => chatView.input.entry.focus();

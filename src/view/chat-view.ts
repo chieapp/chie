@@ -126,7 +126,7 @@ export default class ChatView extends AppearanceAware {
     this.input.addButton(this.replyButton);
 
     this.menuButton = new IconButton(ChatView.imageMenu);
-    this.menuButton.setEnabled(false);
+    this.menuButton.onClick = this.#onMenuButton.bind(this);
     this.input.addButton(this.menuButton);
 
     this.connections.add(
@@ -148,6 +148,24 @@ export default class ChatView extends AppearanceAware {
       response,
     });
     await this.executeJavaScript(`window.addMessage(${JSON.stringify(html)})`);
+  }
+
+  async regenerateLastMessage() {
+    if (this.service.history.length == 0)
+      return;
+    this.#parsedMessage = null;
+    this.executeJavaScript('window.regenerateLastMessage()');
+    this.#aborter = new AbortController();
+    const promise = this.service.regenerateResponse({signal: this.#aborter.signal});
+    await this.#startSending(promise);
+  }
+
+  async clear() {
+    if (this.service.history.length == 0)
+      return;
+    this.#parsedMessage = null;
+    this.executeJavaScript('window.clear()');
+    await this.service.clear();
   }
 
   getDraft(): string | null {
@@ -248,12 +266,25 @@ export default class ChatView extends AppearanceAware {
     } else if (this.#buttonMode == 'stop') {
       this.#aborter.abort();
     } else if (this.#buttonMode == 'refresh') {
-      this.#parsedMessage = null;
-      this.executeJavaScript('window.regenerateLastMessage()');
-      this.#aborter = new AbortController();
-      const promise = this.service.regenerateResponse({signal: this.#aborter.signal});
-      this.#startSending(promise);
+      this.regenerateLastMessage();
     }
+  }
+
+  // User clicks on the menu button.
+  #onMenuButton() {
+    const menu = gui.Menu.create([
+      {
+        label: 'Regenerate response',
+        enabled: this.service.history.length > 0,
+        onClick: () => this.regenerateLastMessage(),
+      },
+      {
+        label: 'Clear',
+        enabled: this.service.history.length > 0,
+        onClick: () => this.clear(),
+      },
+    ]);
+    menu.popup();
   }
 
   // Message being received.
@@ -323,6 +354,7 @@ export default class ChatView extends AppearanceAware {
     else
       throw new Error(`Invalid button mode: ${mode}`);
     this.replyButton.setEnabled(true);
+    this.menuButton.setEnabled(mode != 'stop');
     this.#buttonMode = mode;
   }
 

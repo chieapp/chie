@@ -2,6 +2,7 @@
 * send@2x.png
 * stop@2x.png
 * menu@2x.png
+* tray@2x.png
 came from:
 https://www.iconfinder.com/iconsets/faticons
 

@@ -2,8 +2,9 @@ import gui from 'gui';
 import SignalsOwner from '../model/signals-owner';
 
 export default class AppearanceAware extends SignalsOwner {
-  darkMode = false;
   view: gui.Container;
+  darkMode = false;
+  backgroundColor?: {light: string, dark: string};
 
   constructor() {
     super();
@@ -17,6 +18,13 @@ export default class AppearanceAware extends SignalsOwner {
 
   protected onColorSchemeChange() {
     this.darkMode = gui.appearance.isDarkScheme();
+    if (this.backgroundColor)
+      this.view.setBackgroundColor(this.darkMode ? this.backgroundColor.dark : this.backgroundColor.light);
     this.view.schedulePaint();
+  }
+
+  setBackgroundColor(light: string, dark: string) {
+    this.view.setBackgroundColor(this.darkMode ? dark : light);
+    this.backgroundColor = {light, dark};
   }
 }

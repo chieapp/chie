@@ -52,7 +52,7 @@ function guiMain() {
 
   win.onFocus = () => chatView.chatView.input.entry.focus();
   win.onClose = () => {
-    chatView.unload();
+    chatView.destructor();
     if (process.platform != 'darwin') {
       if (gui.MessageLoop.quit)
         gui.MessageLoop.quit();

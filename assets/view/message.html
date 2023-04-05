@@ -1,4 +1,4 @@
-<div <% if (response?.pending) { %> id="pending" <% } %> class="msg role-<%= message.role.toLowerCase() %>" message-index=<%= message.index %>>
+<div <% if (response && response.pending) { %> id="pending" <% } %> class="msg role-<%= message.role.toLowerCase() %>" message-index=<%= message.index %>>
   <div class="avatar">
   <% if (message.avatar) { %>
     <img src="<%= message.avatar %>"/>
@@ -16,7 +16,7 @@
     <div class="sender">
       <div class="name"><%= message.sender %></div>
     </div>
-    <% if (response?.pending) { %>
+    <% if (response && response.pending) { %>
       <img id="loader" src="chie://app-file/assets/icons/typing.gif"/>
     <% } %>
     <div class="text">

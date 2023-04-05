@@ -1,15 +1,9 @@
 import gui from 'gui';
 import AppearanceAware from '../model/appearance-aware';
-import IconButton, {buttonRadius} from './icon-button';
+import IconButton from './icon-button';
 import {createRoundedCornerPath} from './util';
 
 export default class InputView extends AppearanceAware {
-  // Fixed button size.
-  static buttonSize = {
-    width: 16 + buttonRadius,
-    height: 16 + buttonRadius,
-  };
-
   // Color of TextEdit.
   static bgColor?: number;
   static disabledBgColor?: number;
@@ -52,10 +46,10 @@ export default class InputView extends AppearanceAware {
     entryWrapper.addChildView(this.entry);
   }
 
-  unload() {
-    super.unload();
+  destructor() {
+    super.destructor();
     for (const button of this.buttons)
-      button.unload();
+      button.destructor();
   }
 
   onColorSchemeChange() {
@@ -93,7 +87,6 @@ export default class InputView extends AppearanceAware {
       });
       this.view.addChildView(this.buttonsArea);
     }
-    button.view.setStyle(InputView.buttonSize);
     this.buttons.push(button);
     this.buttonsArea.addChildView(button.view);
   }

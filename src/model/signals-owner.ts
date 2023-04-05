@@ -18,9 +18,9 @@ class YueSignal<T> implements SignalConnection {
 }
 
 export default abstract class SignalsOwner {
-  protected connections: SignalConnections = new SignalConnections();
+  connections: SignalConnections = new SignalConnections();
 
-  unload() {
+  destructor() {
     this.connections.disconnectAll();
   }
 

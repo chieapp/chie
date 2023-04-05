@@ -24,7 +24,7 @@
 
 <div id="messages">
   <% for (const message of history) { %>
-    <%- await include('message.html', {message, style}) %>
+    <%- await include('message.html', {message, style, response: null}) %>
   <% } %>
 </div>
 
@@ -125,7 +125,7 @@
     text.innerHTML = '';
     text.insertAdjacentHTML('beforebegin', '<img id="loader" src="chie://app-file/assets/icons/typing.gif"/>')
   }
-  window.clear = function() {
+  window.clearHistory = function() {
     document.getElementById('messages').innerHTML = ''
   }
   window.markAborted = function(error) {
@@ -252,9 +252,9 @@
   var nextCallbackId = 0
   function highlightCode(element, lang) {
     callbacks[++nextCallbackId] = function(code) {
-      element.innerHTML = code.value
-      if (code.language)
-        element.parentNode.firstElementChild.firstElementChild.textContent = code.language
+      element.innerHTML = code.html
+      if (code.lang)
+        element.parentNode.firstElementChild.firstElementChild.textContent = code.lang
     }
     chie.highlightCode(element.textContent, lang, nextCallbackId)
   }

@@ -14,7 +14,7 @@ export default class TextWindow extends SignalsOwner {
     this.window.setTitle('Raw Message Text');
     this.window.setContentSize({width: 200, height: 300});
     // Release resources on close.
-    this.window.onClose = () => this.unload();
+    this.window.onClose = () => this.destructor();
     // Press ESC to close window.
     this.window.onKeyUp = (window, event) => {
       if (event.key == 'Escape')
@@ -49,8 +49,8 @@ export default class TextWindow extends SignalsOwner {
     buttonsArea.addChildView(this.copyButton);
   }
 
-  unload() {
-    this.input.unload();
+  destructor() {
+    this.input.destructor();
   }
 
   activate() {

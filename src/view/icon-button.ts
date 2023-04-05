@@ -1,7 +1,9 @@
 import gui from 'gui';
+import path from 'node:path';
+import {realpathSync} from 'node:fs';
 import AppearanceAware from '../model/appearance-aware';
 
-export const buttonRadius = 8;
+const buttonRadius = 8;
 
 const style = {
   light: {
@@ -14,10 +16,18 @@ const style = {
   },
 };
 
+const assetsDir = path.join(__dirname, '../../assets');
+
 export default class IconButton extends AppearanceAware {
+  // Stock images.
+  static stockImage: Record<string, gui.Image> = {};
+
   image: gui.Image;
   imageSize: gui.SizeF;
   onClick?: () => void;
+
+  // Force using specified color mode.
+  colorMode?: 'dark' | 'light';
 
   // States.
   hover = false;
@@ -29,7 +39,7 @@ export default class IconButton extends AppearanceAware {
   imageDarkMode?: gui.Image;
   imageDarkModeDisabled?: gui.Image;
 
-  constructor(image: gui.Image) {
+  constructor(image: gui.Image | string) {
     super();
 
     this.setImage(image);
@@ -46,6 +56,7 @@ export default class IconButton extends AppearanceAware {
     this.view.onMouseDown = () => {
       this.pressed = true;
       this.view.schedulePaint();
+      return true;
     };
     this.view.onMouseUp = (view, event) => {
       if (this.enabled && this.onClick) {
@@ -56,12 +67,23 @@ export default class IconButton extends AppearanceAware {
       }
       this.pressed = false;
       this.view.schedulePaint();
+      return true;
     };
   }
 
-  setImage(image: gui.Image) {
-    this.image = image;
-    this.imageSize = image.getSize();
+  setImage(image: gui.Image | string) {
+    if (image instanceof gui.Image) {
+      this.image = image;
+    } else {
+      if (!IconButton.stockImage[image])
+        IconButton.stockImage[image] = gui.Image.createFromPath(realpathSync(path.join(assetsDir, 'icons', `${image}@2x.png`)));
+      this.image = IconButton.stockImage[image];
+    }
+    this.imageSize = this.image.getSize();
+    this.view.setStyle({
+      width: this.imageSize.width + buttonRadius,
+      height: this.imageSize.height + buttonRadius,
+    });
     this.imageDisabled = this.imageDarkMode = this.imageDarkModeDisabled = null;
     this.view.schedulePaint();
   }
@@ -74,6 +96,7 @@ export default class IconButton extends AppearanceAware {
   }
 
   #onDraw(view, painter: gui.Painter) {
+    const colorMode = this.colorMode ?? (this.darkMode ? 'dark' : 'light');
     const bounds = view.getBounds();
     // Round background on hover.
     if (this.enabled && (this.hover || this.pressed)) {
@@ -83,7 +106,6 @@ export default class IconButton extends AppearanceAware {
         (this.imageSize.width + buttonRadius) / 2,
         0,
         2 * Math.PI);
-      const colorMode = this.darkMode ? 'dark' : 'light';
       if (this.pressed)
         painter.setFillColor(style[colorMode].buttonPressedColor);
       else if (this.hover)
@@ -95,11 +117,11 @@ export default class IconButton extends AppearanceAware {
     bounds.y = (bounds.height - this.imageSize.height) / 2;
     bounds.width = this.imageSize.width;
     bounds.height = this.imageSize.height;
-    painter.drawImage(this.#getImageToDraw(), bounds);
+    painter.drawImage(this.#getImageToDraw(colorMode), bounds);
   }
 
-  #getImageToDraw() {
-    if (this.darkMode) {
+  #getImageToDraw(colorMode: 'dark' | 'light') {
+    if (colorMode == 'dark') {
       if (!this.imageDarkMode)
         this.imageDarkMode = this.image.tint('#FFF');
       if (this.enabled) {

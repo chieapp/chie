@@ -1,23 +1,21 @@
 import fs from 'node:fs/promises';
-import {realpathSync} from 'node:fs';
 import path from 'node:path';
 import ejs from 'ejs';
 import gui from 'gui';
 import open from 'open';
-import hljs from 'highlight.js';
-import {escape} from 'html-escaper';
+import {realpathSync} from 'node:fs';
 
 import AppearanceAware from '../model/appearance-aware';
 import ChatService from '../model/chat-service';
 import IconButton from './icon-button';
 import InputView from './input-view';
 import TextWindow from './text-window';
-import {renderMarkdown, veryLikelyMarkdown} from './markdown';
+import {renderMarkdown, veryLikelyMarkdown, highlightCode, escapeText} from './markdown';
 import {ChatRole, ChatMessage, ChatConversationAPI} from '../model/chat-api';
 
 const assetsDir = path.join(__dirname, '../../assets');
 
-const style = {
+export const style = {
   chatViewPadding: 12,
   bgColorDarkMode: '#1B1D21',
 };
@@ -29,12 +27,6 @@ export default class ChatView extends AppearanceAware {
   static pageTemplate?: ejs.AsyncTemplateFunction;
   static messageTemplate?: ejs.AsyncTemplateFunction;
 
-  // Button images.
-  static imageRefresh?: gui.Image;
-  static imageSend?: gui.Image;
-  static imageStop?: gui.Image;
-  static imageMenu?: gui.Image;
-
   // Font in entry.
   static font?: gui.Font;
 
@@ -44,16 +36,13 @@ export default class ChatView extends AppearanceAware {
     min: number;
   };
 
-  service: ChatService;
+  service?: ChatService;
   isSending = false;
 
-  placeholder: gui.Container;
   browser: gui.Browser;
-
   input: InputView;
   replyButton: IconButton;
   menuButton: IconButton;
-  #buttonMode: ButtonMode = 'send';
 
   #parsedMessage?: {
     isMarkdown: boolean,
@@ -61,24 +50,24 @@ export default class ChatView extends AppearanceAware {
   };
   #aborter?: AbortController;
 
+  #buttonMode: ButtonMode = 'send';
+  #placeholder?: gui.Container;
   #textWindows: Record<number, TextWindow> = {};
 
-  constructor(service: ChatService) {
+  constructor() {
     super();
-
-    this.service = service;
 
     this.view.setStyle({flex: 1});
     if (process.platform == 'win32')
       this.view.setBackgroundColor('#E5E5E5');
 
-    this.placeholder = gui.Container.create();
-    this.placeholder.setStyle({flex: 1});
+    this.#placeholder = gui.Container.create();
+    this.#placeholder.setStyle({flex: 1});
     if (this.darkMode)
-      this.placeholder.setBackgroundColor(style.bgColorDarkMode);
+      this.#placeholder.setBackgroundColor(style.bgColorDarkMode);
     else
-      this.placeholder.setBackgroundColor('#FFF');
-    this.view.addChildView(this.placeholder);
+      this.#placeholder.setBackgroundColor('#FFF');
+    this.view.addChildView(this.#placeholder);
 
     this.browser = gui.Browser.create({
       devtools: true,
@@ -88,7 +77,6 @@ export default class ChatView extends AppearanceAware {
     });
     this.browser.setStyle({flex: 1});
     this.browser.setBackgroundColor(style.bgColorDarkMode);
-    this.#setupBrowser();
 
     // Font style should be the same with messages.
     if (!ChatView.font)
@@ -113,74 +101,31 @@ export default class ChatView extends AppearanceAware {
     this.input.entry.shouldInsertNewLine = this.#onEnter.bind(this);
     this.view.addChildView(this.input.view);
 
-    if (!ChatView.imageRefresh) {
-      const create = (name) => gui.Image.createFromPath(realpathSync(path.join(assetsDir, 'icons', `${name}@2x.png`)));
-      ChatView.imageRefresh = create('refresh');
-      ChatView.imageSend = create('send');
-      ChatView.imageStop = create('stop');
-      ChatView.imageMenu = create('menu');
-    }
+    this.#setupBrowser();
 
-    this.replyButton = new IconButton(ChatView.imageSend);
+    this.replyButton = new IconButton('send');
     this.replyButton.onClick = this.#onButtonClick.bind(this);
     this.input.addButton(this.replyButton);
 
-    this.menuButton = new IconButton(ChatView.imageMenu);
+    this.menuButton = new IconButton('menu');
     this.menuButton.onClick = this.#onMenuButton.bind(this);
     this.input.addButton(this.menuButton);
+  }
 
+  destructor() {
+    this.unload();
+    this.input.destructor();
+    super.destructor();
+  }
+
+  async loadChatService(service: ChatService) {
+    if (this.service == service)
+      return;
+    this.unload();
+    this.service = service;
     this.connections.add(
       this.service.onMessageDelta.connect(this.#onMessageDelta.bind(this)));
-  }
 
-  unload() {
-    super.unload();
-    this.input.unload();
-    if (this.#aborter)
-      this.#aborter.abort();
-    for (const win of Object.values(this.#textWindows))
-      win.window.close();
-  }
-
-  async addMessage(message: Partial<ChatMessage>, response?: {pending: boolean}) {
-    const html = await ChatView.messageTemplate({
-      message: messageToDom(this.service, message, this.service.history.length),
-      response,
-    });
-    await this.executeJavaScript(`window.addMessage(${JSON.stringify(html)})`);
-  }
-
-  async regenerateLastMessage() {
-    this.#parsedMessage = null;
-    this.executeJavaScript('window.regenerateLastMessage()');
-    this.#aborter = new AbortController();
-    const promise = this.service.regenerateResponse({signal: this.#aborter.signal});
-    await this.#startSending(promise);
-  }
-
-  async clear() {
-    this.#parsedMessage = null;
-    this.executeJavaScript('window.clear()');
-    this.input.entry.focus();
-    await this.service.clear();
-  }
-
-  getDraft(): string | null {
-    if (this.isSending)
-      return null;
-    const content = this.input.entry.getText();
-    if (content.trim().length == 0)
-      return null;
-    return content;
-  }
-
-  executeJavaScript(js: string) {
-    return new Promise<boolean>((resolve) => {
-      this.browser.executeJavaScript(js, resolve);
-    });
-  }
-
-  async #setupBrowser() {
     // Delay loading the templates for rendering conversation.
     if (!ChatView.pageTemplate) {
       await Promise.all([
@@ -202,6 +147,57 @@ export default class ChatView extends AppearanceAware {
       history: this.service.history.map(messageToDom.bind(null, this.service)),
     };
     this.browser.loadHTML(await ChatView.pageTemplate(data), 'https://chie.app');
+  }
+
+  unload() {
+    if (this.#aborter) {
+      this.#aborter.abort();
+      this.#aborter = null;
+    }
+    for (const win of Object.values(this.#textWindows))
+      win.window.close();
+    this.connections.disconnectAll();
+  }
+
+  async addMessage(message: Partial<ChatMessage>, response?: {pending: boolean}) {
+    const html = await ChatView.messageTemplate({
+      message: messageToDom(this.service, message, this.service.history.length),
+      response,
+    });
+    await this.executeJavaScript(`window.addMessage(${JSON.stringify(html)})`);
+  }
+
+  async regenerateLastMessage() {
+    this.#parsedMessage = null;
+    this.executeJavaScript('window.regenerateLastMessage()');
+    this.#aborter = new AbortController();
+    const promise = this.service.regenerateResponse({signal: this.#aborter.signal});
+    await this.#startSending(promise);
+  }
+
+  async clearHistory() {
+    this.#parsedMessage = null;
+    this.executeJavaScript('window.clearHistory()');
+    this.input.entry.focus();
+    await this.service.clear();
+  }
+
+  getDraft(): string | null {
+    if (this.isSending)
+      return null;
+    const content = this.input.entry.getText();
+    if (content.trim().length == 0)
+      return null;
+    return content;
+  }
+
+  executeJavaScript(js: string) {
+    return new Promise<boolean>((resolve) => {
+      this.browser.executeJavaScript(js, resolve);
+    });
+  }
+
+  async #setupBrowser() {
     // Add bindings to the browser.
     this.browser.setBindingName('chie');
     this.browser.addBinding('focusEntry', this.input.entry.focus.bind(this.input.entry));
@@ -278,7 +274,7 @@ export default class ChatView extends AppearanceAware {
       {
         label: 'Clear',
         enabled: this.service.history.length > 0,
-        onClick: () => this.clear(),
+        onClick: () => this.clearHistory(),
       },
     ]);
     menu.popup();
@@ -348,14 +344,7 @@ export default class ChatView extends AppearanceAware {
 
   // Change button mode.
   #setButtonMode(mode: ButtonMode) {
-    if (mode == 'refresh')
-      this.replyButton.setImage(ChatView.imageRefresh);
-    else if (mode == 'send')
-      this.replyButton.setImage(ChatView.imageSend);
-    else if (mode == 'stop')
-      this.replyButton.setImage(ChatView.imageStop);
-    else
-      throw new Error(`Invalid button mode: ${mode}`);
+    this.replyButton.setImage(mode);
     this.replyButton.setEnabled(true);
     this.menuButton.setEnabled(mode != 'stop');
     this.#buttonMode = mode;
@@ -365,8 +354,11 @@ export default class ChatView extends AppearanceAware {
   #domReady() {
     this.input.entry.focus();
     // Only show browser when it is loaded, this can remove the white flash.
-    this.view.removeChildView(this.placeholder);
-    this.view.addChildViewAt(this.browser, 0);
+    if (this.#placeholder) {
+      this.view.removeChildView(this.#placeholder);
+      this.view.addChildViewAt(this.browser, 0);
+      this.#placeholder = null;
+    }
   }
 
   #catchDomError(message: string) {
@@ -378,10 +370,7 @@ export default class ChatView extends AppearanceAware {
   }
 
   #highlightCode(text: string, language: string, callbackId: number) {
-    const result = language ?
-      hljs.highlight(text, {language, ignoreIllegals: true}) :
-      hljs.highlightAuto(text);
-    const code = {value: result.value, language: result.language};
+    const code = highlightCode(text, language);
     this.executeJavaScript(`window.executeCallback(${callbackId}, ${JSON.stringify(code)})`);
   }
 
@@ -429,7 +418,7 @@ function messageToDom(service: ChatService, message: Partial<ChatMessage>, index
     throw new Error('Role of message expected for serialization.');
   let content = message.content;
   if (content && message.role == ChatRole.Assistant && veryLikelyMarkdown(content))
-    content = renderMarkdown(content);
+    content = renderMarkdown(content, {highlight: true});
   else
     content = escapeText(content);
   const sender = {
@@ -441,13 +430,6 @@ function messageToDom(service: ChatService, message: Partial<ChatMessage>, index
   if (message.role == ChatRole.Assistant)
     avatar = service.api.avatar;
   return {role: message.role, sender, avatar, content, index};
-}
-
-// Escape the special HTML characters in plain text message.
-function escapeText(str: string) {
-  if (!str)
-    return '';
-  return escape(str).replaceAll('\n', '<br/>');
 }
 
 // Find the common prefix of two strings.

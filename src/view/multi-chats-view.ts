@@ -7,7 +7,8 @@ import ChatView from './chat-view';
 import {ChatCompletionAPI} from '../model/chat-api';
 
 export const style = {
-  padding: 12,
+  padding: 14,
+  resizeHandleWidth: 6,
   light: {
     columnBgColor: '#F5F5F5',
     activeItem: '#00B386',
@@ -25,6 +26,8 @@ export const style = {
 };
 
 export default class MultiChatsView extends AppearanceAware {
+  static resizeCursor?: gui.Cursor;
+
   name: string;
   api: ChatCompletionAPI;
   view: gui.Container;
@@ -33,10 +36,11 @@ export default class MultiChatsView extends AppearanceAware {
   #selectedItem?: ChatListItem;
   #items: ChatListItem[] = [];
 
-  #sidebar: AppearanceAware;
+  #leftPane: AppearanceAware;
+  #sidebar: gui.Container;
   #chatListScroll: gui.Scroll;
   #chatList: gui.Container;
-  #bar: gui.Container;
+  #resizeHandle: gui.Container;
 
   constructor(name: string, api: ChatCompletionAPI) {
     if (!(api instanceof ChatCompletionAPI))
@@ -48,10 +52,14 @@ export default class MultiChatsView extends AppearanceAware {
     this.view = gui.Container.create();
     this.view.setStyle({flexDirection: 'row'});
 
-    this.#sidebar = new AppearanceAware();
-    this.#sidebar.setBackgroundColor(style.light.columnBgColor, style.dark.columnBgColor);
-    this.#sidebar.view.setStyle({width: 200});
-    this.view.addChildView(this.#sidebar.view);
+    this.#leftPane = new AppearanceAware();
+    this.#leftPane.view.setStyle({flexDirection: 'row', width: 200});
+    this.#leftPane.setBackgroundColor(style.light.columnBgColor, style.dark.columnBgColor);
+    this.view.addChildView(this.#leftPane.view);
+
+    this.#sidebar = gui.Container.create();
+    this.#sidebar.setStyle({flex: 1});
+    this.#leftPane.view.addChildView(this.#sidebar);
 
     this.#chatListScroll = gui.Scroll.create();
     this.#chatListScroll.setStyle({flex: 1});
@@ -65,19 +73,40 @@ export default class MultiChatsView extends AppearanceAware {
     }
 
     this.#chatList = gui.Container.create();
-    this.#chatList.setStyle({padding: style.padding});
+    this.#chatList.setStyle({
+      padding: style.padding,
+      paddingRight: style.padding - style.resizeHandleWidth,
+    });
     this.#chatListScroll.setContentView(this.#chatList);
-    this.#sidebar.view.addChildView(this.#chatListScroll);
+    this.#sidebar.addChildView(this.#chatListScroll);
 
     const button = gui.Button.create('New chat');
-    button.setStyle({margin: style.padding});
+    button.setStyle({
+      margin: style.padding,
+      marginRight: style.padding - style.resizeHandleWidth,
+    });
     button.onClick = this.createChat.bind(this);
-    this.#sidebar.view.addChildView(button);
+    this.#sidebar.addChildView(button);
 
     const clear = gui.Button.create('Clear conversations');
-    clear.setStyle({margin: style.padding, marginTop: 0});
+    clear.setStyle({
+      margin: style.padding,
+      marginRight: style.padding - style.resizeHandleWidth,
+      marginTop: 0,
+    });
     clear.onClick = this.clearChats.bind(this);
-    this.#sidebar.view.addChildView(clear);
+    this.#sidebar.addChildView(clear);
+
+    this.#resizeHandle = gui.Container.create();
+    // The resize handle has the same background with sidebar, so it can not be
+    // "seen", but if user trys to resize the sidebar, they will find it.
+    this.#resizeHandle.setStyle({width: style.resizeHandleWidth});
+    this.#resizeHandle.setMouseDownCanMoveWindow(false);
+    if (!MultiChatsView.resizeCursor)
+      MultiChatsView.resizeCursor = gui.Cursor.createWithType('resize-ew');
+    this.#resizeHandle.setCursor(MultiChatsView.resizeCursor);
+    this.#resizeHandle.onMouseMove = this.#onDragHandle.bind(this);
+    this.#leftPane.view.addChildView(this.#resizeHandle);
 
     this.chatView = new ChatView();
     this.chatView.view.setStyle({flex: 1});
@@ -92,7 +121,7 @@ export default class MultiChatsView extends AppearanceAware {
     this.chatView.destructor();
     for (const item of this.#items)
       item.destructor();
-    this.#sidebar.destructor();
+    this.#leftPane.destructor();
   }
 
   createChat() {
@@ -105,18 +134,12 @@ export default class MultiChatsView extends AppearanceAware {
     const item = new ChatListItem(service);
     this.#items.unshift(item);
     this.#chatList.addChildViewAt(item.view, 0);
+    this.#updateChatListSize();
 
     // Link the item to this view.
     item.connections.add(item.onSelect.connect(this.#onSelectItem.bind(this)));
     item.connections.add(item.onClose.connect(this.#onCloseItem.bind(this)));
     item.setSelected(true);
-
-    // The content view must be manually resize.
-    this.#chatListScroll.setContentSize({
-      width: this.#chatListScroll.getBounds().width,
-      height: this.#chatList.getPreferredSize().height,
-    });
-    return service;
   }
 
   clearChats() {
@@ -140,6 +163,7 @@ export default class MultiChatsView extends AppearanceAware {
     if (index < 0)
       throw new Error('Closing an unexist chat.');
     if (this.#selectedItem == item) {
+      // If closed item is selected, move selection to siblings.
       if (index + 1 < this.#items.length)
         this.#items[index + 1].setSelected(true);
       else if (index > 0)
@@ -148,7 +172,26 @@ export default class MultiChatsView extends AppearanceAware {
     this.#chatList.removeChildView(item.view);
     this.#items.splice(index, 1);
     item.destructor();
+    // Always have a chat available.
     if (this.#items.length == 0)
       this.createChat();
+    else
+      this.#updateChatListSize();
+  }
+
+  #onDragHandle(view, event) {
+    const max = this.view.getBounds().width - 100;
+    const width = Math.floor(Math.min(max, Math.max(180, event.positionInWindow.x)));
+    this.#leftPane.view.setStyle({width});
+    // The scroll view does not shrink content size automatically.
+    this.#updateChatListSize();
+  }
+
+  // Update the size of chatList so it can fit to show all items.
+  #updateChatListSize() {
+    this.#chatListScroll.setContentSize({
+      width: this.#chatListScroll.getBounds().width,
+      height: this.#chatList.getPreferredSize().height,
+    });
   }
 }

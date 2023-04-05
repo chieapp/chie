@@ -1,5 +1,3 @@
-import gui from 'gui';
-
 import MultiChatsView from '../src/view/multi-chats-view';
 import {addFinalizer, gcUntil, createChatCompletionAPI} from './util';
 

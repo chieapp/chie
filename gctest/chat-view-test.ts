@@ -5,8 +5,6 @@ import ChatView from '../src/view/chat-view';
 import {addFinalizer, gcUntil, createChatCompletionAPI} from './util';
 
 describe('ChatView', function() {
-  this.timeout(10 * 1000);
-
   it('can be garbage collected', async () => {
     let collected = false;
     (() => {

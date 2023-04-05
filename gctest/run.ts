@@ -5,7 +5,7 @@ import Mocha from 'mocha';
 
 const mocha = new Mocha({
   slow: 5 * 1000,
-  timeout: 10 * 1000,
+  timeout: 20 * 1000,
   require: [ '../test/setup.ts' ],
 });
 

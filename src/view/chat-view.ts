@@ -16,7 +16,7 @@ import {ChatRole, ChatMessage, ChatConversationAPI} from '../model/chat-api';
 const assetsDir = path.join(__dirname, '../../assets');
 
 export const style = {
-  chatViewPadding: 12,
+  chatViewPadding: 14,
   bgColorDarkMode: '#1B1D21',
 };
 

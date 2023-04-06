@@ -9,16 +9,11 @@ export class APIManager implements ConfigStoreItem {
   #apis: Record<string, WebAPIType> = {};
   #endpoints: Record<string, APIEndpoint> = {};
 
-  constructor() {
-    const {config} = require('../controller/config-store');
-    config.items['apis'] = this;
-  }
-
   deserialize(config: object) {
     if (!config)  // accepts empty config
       config = {};
     if (typeof config != 'object')
-      throw new Error(`Unknown config for "apis": ${config}`);
+      throw new Error(`Unknown config for "apis": ${config}.`);
     this.#endpoints = {};
     for (const id in config)
       this.#endpoints[id] = APIEndpoint.deserialize(config[id]);
@@ -39,7 +34,7 @@ export class APIManager implements ConfigStoreItem {
 
   createAPIForEndpoint(endpoint: APIEndpoint) {
     if (!(endpoint.type in this.#apis))
-      throw new Error(`Unable to find API implementation for endpoint ${endpoint.type}`);
+      throw new Error(`Unable to find API implementation for endpoint ${endpoint.type}.`);
     return new this.#apis[endpoint.type](endpoint);
   }
 
@@ -53,14 +48,14 @@ export class APIManager implements ConfigStoreItem {
 
   removeEndpoint(id: string) {
     if (!(id in this.#endpoints))
-      throw new Error(`Removing unknown API id: ${id}`);
+      throw new Error(`Removing unknown API id: ${id}.`);
     this.#endpoints[id].id = null;
     delete this.#endpoints[id];
   }
 
   getEndpointById(id: string) {
     if (!(id in this.#endpoints))
-      throw new Error(`Getting unknown API id: ${id}`);
+      throw new Error(`Getting unknown API id: ${id}.`);
     return this.#endpoints[id];
   }
 

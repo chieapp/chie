@@ -21,7 +21,7 @@
     "start": "yode node_modules/ts-node/dist/bin.js src/gui-main.ts",
     "start-cli": "yode node_modules/ts-node/dist/bin.js src/cli-main.ts",
     "lint": "eslint --ignore-path .gitignore .",
-    "test": "ts-mocha --require test/setup.ts test/*-test.ts",
+    "test": "ts-node test/run.ts",
     "gctest": "yode node_modules/ts-node/dist/bin.js gctest/run.ts",
     "fontello": "fontello-cli open --config assets/view/fontello.json",
     "build": "yackage build out",
@@ -65,7 +65,7 @@
     "eslint": "8.36.0",
     "fontello-cli": "0.6.2",
     "mocha": "10.2.0",
-    "ts-mocha": "10.0.0",
+    "ts-node": "10.9.1",
     "typescript": "5.0.2",
     "yackage": "0.8.x"
   }

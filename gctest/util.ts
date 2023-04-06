@@ -37,7 +37,7 @@ class FakeAPI extends ChatCompletionAPI {
 }
 
 export function createChatCompletionAPI() {
-  const endpoint = new APIEndpoint({
+  const endpoint = APIEndpoint.deserialize({
     name: 'Wuhanfeiyan',
     type: 'ChatGPT',
     url: '',

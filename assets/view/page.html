@@ -80,7 +80,7 @@
     if (!text)
       return
     removeLoader()
-    var wasAtBottom = topElement == null
+    var wasAtBottom = isPageBottom();
     // Update the message html.
     if (back) {
       // If the tail is something like </p>, then we can insert directly into
@@ -99,7 +99,7 @@
       scrollToBottom()
   }
   window.endPending = function() {
-    var wasAtBottom = topElement == null
+    var wasAtBottom = isPageBottom()
     var pending = findPending()
     if (pending)
       pending.removeAttribute('id')

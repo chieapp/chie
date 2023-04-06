@@ -10,8 +10,8 @@ export interface ConfigStoreItem {
 }
 
 export class ConfigStore implements ConfigStoreItem {
-  items: Record<string, ConfigStoreItem> = {};
   inMemory = false;
+  #items: Record<string, ConfigStoreItem> = {};
 
   #dir: string;
   #file: string;
@@ -19,6 +19,26 @@ export class ConfigStore implements ConfigStoreItem {
   constructor(name: string) {
     this.#dir = getConfigDir(require('../../package.json').build.productName);
     this.#file = path.join(this.#dir, `${name}.json`);
+  }
+
+  deserialize(config) {
+    // Check version.
+    if (config.version && config.version > CONFIG_VERSION)
+      throw new Error('Can not read config created by later versions');
+    // Parse.
+    for (const key in this.#items)
+      this.#items[key].deserialize(config[key]);
+  }
+
+  serialize() {
+    const config = {version: CONFIG_VERSION};
+    for (const key in this.#items)
+      config[key] = this.#items[key].serialize();
+    if (!this.inMemory) {
+      fs.ensureDirSync(this.#dir);
+      fs.writeJsonSync(this.#file, config, {spaces: 2});
+    }
+    return config;
   }
 
   initFromFile() {
@@ -33,24 +53,10 @@ export class ConfigStore implements ConfigStoreItem {
     this.deserialize(config);
   }
 
-  deserialize(config) {
-    // Check version.
-    if (config.version && config.version > CONFIG_VERSION)
-      throw new Error('Can not read config created by later versions');
-    // Parse.
-    for (const key in this.items)
-      this.items[key].deserialize(config[key]);
-  }
-
-  serialize() {
-    const config = {version: CONFIG_VERSION};
-    for (const key in this.items)
-      config[key] = this.items[key].serialize();
-    if (!this.inMemory) {
-      fs.ensureDirSync(this.#dir);
-      fs.writeJsonSync(this.#file, config, {spaces: 2});
-    }
-    return config;
+  addItem(key: string, item: ConfigStoreItem) {
+    if (key in this.#items)
+      throw new Error(`Key "${key}" already exists.`);
+    this.#items[key] = item;
   }
 }
 

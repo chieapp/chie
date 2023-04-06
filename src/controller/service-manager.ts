@@ -25,32 +25,27 @@ export class ServiceManager implements ConfigStoreItem {
   #views: BaseViewType[] = [];
   #instances: Record<string, Instance> = {};
 
-  constructor() {
-    const {config} = require('../controller/config-store');
-    config.items['chats'] = this;
-  }
-
   deserialize(config: object) {
     if (!config)  // accepts empty config
       config = {};
     if (typeof config != 'object')
-      throw new Error(`Unknown config for "chats": ${JSON.stringify(config)}`);
+      throw new Error(`Unknown config for "chats": ${JSON.stringify(config)}.`);
     this.#instances = {};
     for (const id in config) {
       const item = config[id];
       if (typeof item['serviceType'] != 'string' ||
           typeof item['service'] != 'object' ||
           typeof item['view'] != 'string')
-        throw new Error(`Unknown config for Instance: ${JSON.stringify(item)}`);
+        throw new Error(`Unknown config for Instance: ${JSON.stringify(item)}.`);
       // Get the service type first.
       const serviceType = item['serviceType'];
       if (!(serviceType in this.#services))
-        throw new Error(`Unknown service "${serviceType}"`);
+        throw new Error(`Unknown service "${serviceType}".`);
       const record = this.#services[serviceType];
       // Check view type.
       const viewType = this.#views.find(v => v.name == item['view']);
       if (!viewType)
-        throw new Error(`Unknown View "${item['view']}"`);
+        throw new Error(`Unknown View "${item['view']}".`);
       // Deserialize using the service type's method.
       const service = record.serviceType.deserialize(item['service']);
       this.#instances[id] = {serviceType, service, viewType};
@@ -72,7 +67,7 @@ export class ServiceManager implements ConfigStoreItem {
 
   registerView(viewType: BaseViewType) {
     if (!(viewType.prototype instanceof BaseView))
-      throw new Error('Registered View must inherit from BaseView');
+      throw new Error('Registered View must inherit from BaseView.');
     if (this.#views.find(v => v.name == viewType.name))
       throw new Error(`View "${viewType.name}" has already been registered.`);
     this.#views.push(viewType);

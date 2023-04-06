@@ -427,6 +427,11 @@ gui.Browser.registerProtocol('chie', (url) => {
   return gui.ProtocolFileJob.create(p);
 });
 
+// Remove protocol on exit to work around crash.
+process.on('exit', () => {
+  gui.Browser.unregisterProtocol('chie');
+});
+
 // Translate the message into data to be parsed by EJS template.
 function messageToDom(service: ChatService, message: Partial<ChatMessage>, index: number) {
   if (!message.role)  // should not happen

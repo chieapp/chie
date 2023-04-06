@@ -19,4 +19,6 @@
   * API to get bounds of View in screen
   * API to convert content bounds to window bounds
   * API to get mouse position
-  * tooltip API
+  * Tooltip API
+  * Put browser protocols in State
+  * Delete State on exit with napi_add_env_cleanup_hook

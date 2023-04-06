@@ -4,7 +4,7 @@ import MultiChatsService from './model/multi-chats-service';
 import MultiChatsView from './view/multi-chats-view';
 import {ChatConversationAPI, ChatCompletionAPI} from './model/chat-api';
 
-import './controller/api-manager';
+import apiManager from './controller/api-manager';
 import serviceManager from './controller/service-manager';
 import extensionManager from './controller/extension-manager';
 
@@ -28,6 +28,8 @@ export default function main() {
 
   // Read configurations.
   const {config} = require('./controller/config-store');
+  config.addItem('apis', apiManager);
+  config.addItem('chats', serviceManager);
   config.initFromFile();
 
   // Capture all errors if succeeded to start.

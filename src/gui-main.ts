@@ -24,7 +24,7 @@ if (process.platform == 'darwin') {
 function guiMain() {
   main();
 
-  const instance = serviceManager.getInstances()[1];
+  const instance = serviceManager.getInstances()[0];
   const win = new ChatWindow(instance);
   global.win = win;
   if (process.platform == 'darwin') {

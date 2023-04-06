@@ -3,9 +3,8 @@ import gui from 'gui';
 import AppearanceAware from '../view/appearance-aware';
 import BaseView from '../view/base-view';
 import ChatListItem from './chat-list-item';
-import ChatService from '../model/chat-service';
 import ChatView from './chat-view';
-import {ChatCompletionAPI} from '../model/chat-api';
+import MultiChatsService from '../model/multi-chats-service';
 
 export const style = {
   padding: 14,
@@ -26,7 +25,7 @@ export const style = {
   },
 };
 
-export default class MultiChatsView extends BaseView {
+export default class MultiChatsView extends BaseView<MultiChatsService> {
   static resizeCursor?: gui.Cursor;
 
   chatView: ChatView;
@@ -40,14 +39,11 @@ export default class MultiChatsView extends BaseView {
   #chatList: gui.Container;
   #resizeHandle: gui.Container;
 
-  constructor(name, serviceType, api: ChatCompletionAPI) {
-    if (!(api instanceof ChatCompletionAPI))
-      throw new Error('MultiChatsView can only be used with ChatCompletionAPI');
-    if (serviceType != ChatService &&
-        !(serviceType.constructor.prototype instanceof ChatService))
-      throw new Error('MultiChatsView can only be used with ChatService');
+  constructor(service: MultiChatsService) {
+    if (!(service instanceof MultiChatsService))
+      throw new Error('MultiChatsView can only be used with MultiChatsService');
+    super(service);
 
-    super(name, serviceType, api);
     this.view = gui.Container.create();
     this.view.setStyle({flexDirection: 'row'});
 
@@ -106,10 +102,6 @@ export default class MultiChatsView extends BaseView {
     this.#resizeHandle.setCursor(MultiChatsView.resizeCursor);
     this.#resizeHandle.onMouseMove = this.#onDragHandle.bind(this);
     this.#leftPane.view.addChildView(this.#resizeHandle);
-
-    this.chatView = new ChatView(this.name, this.serviceType, this.api as ChatCompletionAPI);
-    this.chatView.view.setStyle({flex: 1});
-    this.view.addChildView(this.chatView.view);
   }
 
   destructor() {
@@ -130,8 +122,15 @@ export default class MultiChatsView extends BaseView {
 
   createChat() {
     // Create chat service.
-    const service = new this.serviceType(this.name, this.api as ChatCompletionAPI) as ChatService;
+    const service = this.service.createChat();
     service.title = 'New chat';
+
+    // Create chat view lazily.
+    if (!this.chatView) {
+      this.chatView = new ChatView(service);
+      this.chatView.view.setStyle({flex: 1});
+      this.view.addChildView(this.chatView.view);
+    }
     this.chatView.loadChatService(service);
 
     // Create the list item.
@@ -152,6 +151,7 @@ export default class MultiChatsView extends BaseView {
       item.destructor();
     }
     this.#items = [];
+    this.service.clearChats();
     this.createChat();
   }
 
@@ -175,6 +175,7 @@ export default class MultiChatsView extends BaseView {
     }
     this.#chatList.removeChildView(item.view);
     this.#items.splice(index, 1);
+    this.service.removeChatAt(index);
     item.destructor();
     // Always have a chat available.
     if (this.#items.length == 0)

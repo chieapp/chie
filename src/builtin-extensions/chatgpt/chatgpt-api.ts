@@ -20,6 +20,9 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
 
   async sendConversation(history: ChatMessage[], options?: ChatAPIOptions) {
     // Start request.
+    const headers = {'Content-Type': 'application/json'};
+    if (this.endpoint.key)
+      headers['Authorization'] = `Bearer ${this.endpoint.key}`;
     const response = await fetch(this.endpoint.url, {
       body: JSON.stringify({
         // API reference:

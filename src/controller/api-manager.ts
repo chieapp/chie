@@ -1,11 +1,11 @@
 import APIEndpoint from '../model/api-endpoint';
-import Serializable from '../model/serializable';
 import WebAPI from '../model/web-api';
+import {ConfigStoreItem} from './config-store';
 import {getNextId} from '../util/id-generator';
 
 type WebAPIType = new (endpoint: APIEndpoint) => WebAPI;
 
-export class APIManager implements Serializable {
+export class APIManager implements ConfigStoreItem {
   #apis: Record<string, WebAPIType> = {};
   #endpoints: Record<string, APIEndpoint> = {};
 
@@ -21,7 +21,7 @@ export class APIManager implements Serializable {
       throw new Error(`Unknown config for "apis": ${config}`);
     this.#endpoints = {};
     for (const id in config)
-      this.#endpoints[id] = new APIEndpoint(config[id]);
+      this.#endpoints[id] = APIEndpoint.deserialize(config[id]);
   }
 
   serialize() {
@@ -37,14 +37,10 @@ export class APIManager implements Serializable {
     this.#apis[name] = type;
   }
 
-  createAPIForEndpoint<T>(target: abstract new (endpoint: APIEndpoint) => T, endpoint: APIEndpoint) {
+  createAPIForEndpoint(endpoint: APIEndpoint) {
     if (!(endpoint.type in this.#apis))
       throw new Error(`Unable to find API implementation for endpoint ${endpoint.type}`);
-    const api = new this.#apis[endpoint.type](endpoint);
-    // Do a runtime check that the api actually is a type of target.
-    if (!(api.constructor.prototype instanceof target))
-      throw new Error('API type is incompatible with the APIEndpoint');
-    return api as T;
+    return new this.#apis[endpoint.type](endpoint);
   }
 
   addEndpoint(endpoint: APIEndpoint) {

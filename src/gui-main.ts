@@ -4,10 +4,7 @@ import gui from 'gui';
 
 import AppMenu from './view/app-menu';
 import ChatWindow from './view/chat-window';
-import ChatView from './view/chat-view';
-import MultiChatsView from './view/multi-chats-view';
 import main from './main';
-import apiManager from './controller/api-manager';
 import serviceManager from './controller/service-manager';
 import * as singleInstance from './util/single-instance';
 
@@ -27,12 +24,7 @@ if (process.platform == 'darwin') {
 function guiMain() {
   main();
 
-  let type = 'ChatGPT';
-  if (process.argv.includes('--bingchat'))
-    type = 'BingChat';
-  const endpoint = apiManager.getEndpointsByType(type)[0];
-  const instance = serviceManager.createInstance('ChatGPT', 'Chat', endpoint, MultiChatsView);
-
+  const instance = serviceManager.getInstances()[1];
   const win = new ChatWindow(instance);
   global.win = win;
   if (process.platform == 'darwin') {

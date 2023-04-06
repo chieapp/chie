@@ -8,7 +8,7 @@ describe('ChatView', function() {
   it('can be garbage collected', async () => {
     let collected = false;
     (() => {
-      const chatView = new ChatView('Xijinping', ChatService, createChatCompletionAPI());
+      const chatView = new ChatView(new ChatService('Xijinping', createChatCompletionAPI()));
       chatView.initAsMainView();
       addFinalizer(chatView, () => collected = true);
       chatView.destructor();
@@ -20,7 +20,7 @@ describe('ChatView', function() {
     let collected = false;
     (() => {
       const win = gui.Window.create({});
-      const chatView = new ChatView('Xijinping', ChatService, createChatCompletionAPI());
+      const chatView = new ChatView(new ChatService('Xijinping', createChatCompletionAPI()));
       win.setContentView(chatView.view);
       chatView.initAsMainView();
       addFinalizer(win, () => collected = true);

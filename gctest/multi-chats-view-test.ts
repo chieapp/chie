@@ -1,4 +1,4 @@
-import ChatService from '../src/model/chat-service';
+import MultiChatsService from '../src/model/multi-chats-service';
 import MultiChatsView from '../src/view/multi-chats-view';
 import {addFinalizer, gcUntil, createChatCompletionAPI} from './util';
 
@@ -8,7 +8,8 @@ describe('MultiChatsView', function() {
   it('can be garbage collected', async () => {
     let collected = false;
     (() => {
-      const chatView = new MultiChatsView('FreeTibet', ChatService, createChatCompletionAPI());
+      const chatView = new MultiChatsView(new MultiChatsService('FreeTibet', createChatCompletionAPI()));
+      chatView.initAsMainView();
       addFinalizer(chatView, () => collected = true);
       chatView.destructor();
     })();
@@ -18,7 +19,8 @@ describe('MultiChatsView', function() {
   it('can be garbage collected after adding and remove chats', async () => {
     let collected = false;
     (() => {
-      const chatView = new MultiChatsView('FreeTibet', ChatService, createChatCompletionAPI());
+      const chatView = new MultiChatsView(new MultiChatsService('FreeTibet', createChatCompletionAPI()));
+      chatView.initAsMainView();
       chatView.createChat();
       chatView.createChat();
       chatView.createChat();

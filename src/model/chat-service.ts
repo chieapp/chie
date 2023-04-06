@@ -9,7 +9,7 @@ import {
   ChatConversationAPI,
 } from './chat-api';
 
-export default class ChatService extends WebService {
+export default class ChatService extends WebService<ChatConversationAPI | ChatCompletionAPI> {
   history: ChatMessage[] = [];
 
   onNewTitle: Signal<(title: string | null) => void> = new Signal;
@@ -30,6 +30,11 @@ export default class ChatService extends WebService {
 
   // Track generation of name.
   #titlePromise?: Promise<void>;
+
+  static deserialize(config: object): ChatService {
+    const service = WebService.deserialize(config);
+    return new ChatService(service.name, service.api as ChatAPI);
+  }
 
   constructor(name: string, api: ChatAPI) {
     if (!(api instanceof ChatCompletionAPI) &&

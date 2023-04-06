@@ -4,7 +4,7 @@ import main from './main';
 import apiManager from './controller/api-manager';
 import APIEndpoint from './model/api-endpoint';
 import ChatService from './model/chat-service';
-import {ChatAPI} from './model/chat-api';
+import {ChatConversationAPI} from './model/chat-api';
 
 main();
 cliMain();
@@ -13,7 +13,8 @@ async function cliMain() {
   const endpoint = process.argv.includes('--bingchat') ?
     createBingChat() : createChatGPT();
   const chat = new ChatService(
-    endpoint.name, apiManager.createAPIForEndpoint(ChatAPI, endpoint));
+    endpoint.name,
+    apiManager.createAPIForEndpoint(endpoint) as ChatConversationAPI);
 
   // Create terminal chat interface.
   const rl = readline.createInterface({
@@ -65,7 +66,7 @@ function createChatGPT() {
       console.error('Please set the OPENAI_API_KEY with a valid key in it');
       process.exit(1);
     }
-    return new APIEndpoint({
+    return APIEndpoint.deserialize({
       type: 'ChatGPT',
       name: 'ChatGPT',
       url: 'https://api.openai.com/v1/chat/completions',
@@ -86,7 +87,7 @@ function createBingChat() {
       console.error('Please set the BING_COOKIE with a valid cookie in it');
       process.exit(1);
     }
-    return new APIEndpoint({
+    return APIEndpoint.deserialize({
       type: 'BingChat',
       name: 'BingChat',
       url: 'https://www.bing.com/turing/conversation/create',

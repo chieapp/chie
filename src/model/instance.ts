@@ -1,14 +1,12 @@
 import BaseView from '../view/base-view';
-import WebAPI from '../model/web-api';
-import WebService from '../model/web-service';
+import WebAPI from './web-api';
+import WebService from './web-service';
 
-export type BaseViewType = new (name, serviceType, api) => BaseView;
-export type WebServiceType = new (name, api) => WebService;
+export type BaseViewType = new (service) => BaseView<WebService<WebAPI>>;
 
 // Describes an instance of service.
 export default interface Instance {
-  name: string,
-  serviceType: WebServiceType;
-  api: WebAPI;
+  serviceType: string;
+  service: WebService<WebAPI>;
   viewType: BaseViewType;
 }

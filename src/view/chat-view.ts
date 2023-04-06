@@ -17,7 +17,6 @@ import {
   escapeText,
 } from './markdown';
 import {
-  ChatAPI,
   ChatRole,
   ChatMessage,
   ChatConversationAPI,
@@ -32,7 +31,7 @@ export const style = {
 
 type ButtonMode = 'refresh' | 'send' | 'stop';
 
-export default class ChatView extends BaseView {
+export default class ChatView extends BaseView<ChatService> {
   // EJS templates.
   static pageTemplate?: ejs.AsyncTemplateFunction;
   static messageTemplate?: ejs.AsyncTemplateFunction;
@@ -46,9 +45,7 @@ export default class ChatView extends BaseView {
     min: number;
   };
 
-  service?: ChatService;
   isSending = false;
-
   browser: gui.Browser;
   input: InputView;
   replyButton: IconButton;
@@ -64,14 +61,10 @@ export default class ChatView extends BaseView {
   #placeholder?: gui.Container;
   #textWindows: Record<number, TextWindow> = {};
 
-  constructor(name, serviceType, api: ChatAPI) {
-    if (!(api instanceof ChatAPI))
-      throw new Error('ChatView can only be used with ChatAPI');
-    if (serviceType != ChatService &&
-        !(serviceType.constructor.prototype instanceof ChatService))
+  constructor(service: ChatService) {
+    if (!(service instanceof ChatService))
       throw new Error('ChatView can only be used with ChatService');
-
-    super(name, serviceType, api);
+    super(service);
 
     this.view.setStyle({flex: 1});
     if (process.platform == 'win32')
@@ -135,7 +128,7 @@ export default class ChatView extends BaseView {
   }
 
   initAsMainView() {
-    this.loadChatService(new this.serviceType(this.name, this.api) as ChatService);
+    this.loadChatService(this.service);
   }
 
   onFocus() {
@@ -143,8 +136,6 @@ export default class ChatView extends BaseView {
   }
 
   async loadChatService(service: ChatService) {
-    if (this.service == service)
-      return;
     this.unload();
     this.service = service;
     this.connections.add(
@@ -452,7 +443,7 @@ function messageToDom(service: ChatService, message: Partial<ChatMessage>, index
   }[message.role];
   let avatar = null;
   if (message.role == ChatRole.Assistant)
-    avatar = (service.api as ChatAPI).avatar;
+    avatar = service.api.avatar;
   return {role: message.role, sender, avatar, content, index};
 }
 

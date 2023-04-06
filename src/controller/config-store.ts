@@ -2,12 +2,15 @@ import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
 
-import Serializable from '../model/serializable';
-
 const CONFIG_VERSION = 1;
 
-export class ConfigStore {
-  items: Record<string, Serializable> = {};
+export interface ConfigStoreItem {
+  deserialize(config: object): void;
+  serialize(): object;
+}
+
+export class ConfigStore implements ConfigStoreItem {
+  items: Record<string, ConfigStoreItem> = {};
   inMemory = false;
 
   #dir: string;

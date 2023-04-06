@@ -1,13 +1,15 @@
 import gui from 'gui';
 
 import AppMenu from './app-menu';
-import BaseView from '../view/base-view';
+import BaseView from './base-view';
 import Instance from '../model/instance';
+import WebAPI from '../model/web-api';
+import WebService from '../model/web-service';
 
 export default class ChatWindow {
   instance: Instance;
   window: gui.Window;
-  chatView: BaseView;
+  chatView: BaseView<WebService<WebAPI>>;
   menuBar: AppMenu;
 
   constructor(instance: Instance) {
@@ -15,11 +17,11 @@ export default class ChatWindow {
 
     this.window = gui.Window.create({});
     this.window.setContentSize({width: 600, height: 400});
-    this.window.setTitle(instance.name);
+    this.window.setTitle(instance.service.name);
     this.window.onFocus = () => this.chatView.onFocus();
     this.window.onClose = () => this.destructor();
 
-    this.chatView = new instance.viewType(instance.name, instance.serviceType, instance.api);
+    this.chatView = new instance.viewType(instance.service);
     this.window.setContentView(this.chatView.view);
 
     if (process.platform != 'darwin') {

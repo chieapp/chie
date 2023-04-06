@@ -2,18 +2,14 @@ import AppearanceAware from '../view/appearance-aware';
 import WebAPI from '../model/web-api';
 import WebService from '../model/web-service';
 
-export default abstract class BaseView extends AppearanceAware {
-  name: string;
-  serviceType: new (name, api) => WebService;
-  api: WebAPI;
+export default abstract class BaseView<T extends WebService<WebAPI>> extends AppearanceAware {
+  service: T;
 
-  constructor(name: string, serviceType: new (name, api) => WebService, api: WebAPI) {
+  constructor(service: T) {
     super();
-    if (!name || !serviceType || !api)
-      throw new Error('Must pass name, serviceType and api to BaseView');
-    this.name = name;
-    this.serviceType = serviceType;
-    this.api = api;
+    if (!service)
+      throw new Error('Must pass service to BaseView');
+    this.service = service;
   }
 
   // The view has been added as the content view of a window.

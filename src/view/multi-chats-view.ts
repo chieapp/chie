@@ -1,6 +1,7 @@
 import gui from 'gui';
 
-import AppearanceAware from '../model/appearance-aware';
+import AppearanceAware from '../view/appearance-aware';
+import BaseView from '../view/base-view';
 import ChatListItem from './chat-list-item';
 import ChatService from '../model/chat-service';
 import ChatView from './chat-view';
@@ -25,12 +26,9 @@ export const style = {
   },
 };
 
-export default class MultiChatsView extends AppearanceAware {
+export default class MultiChatsView extends BaseView {
   static resizeCursor?: gui.Cursor;
 
-  name: string;
-  api: ChatCompletionAPI;
-  view: gui.Container;
   chatView: ChatView;
 
   #selectedItem?: ChatListItem;
@@ -42,13 +40,14 @@ export default class MultiChatsView extends AppearanceAware {
   #chatList: gui.Container;
   #resizeHandle: gui.Container;
 
-  constructor(name: string, api: ChatCompletionAPI) {
+  constructor(name, serviceType, api: ChatCompletionAPI) {
     if (!(api instanceof ChatCompletionAPI))
       throw new Error('MultiChatsView can only be used with ChatCompletionAPI');
+    if (serviceType != ChatService &&
+        !(serviceType.constructor.prototype instanceof ChatService))
+      throw new Error('MultiChatsView can only be used with ChatService');
 
-    super();
-    this.name = name;
-    this.api = api;
+    super(name, serviceType, api);
     this.view = gui.Container.create();
     this.view.setStyle({flexDirection: 'row'});
 
@@ -108,12 +107,9 @@ export default class MultiChatsView extends AppearanceAware {
     this.#resizeHandle.onMouseMove = this.#onDragHandle.bind(this);
     this.#leftPane.view.addChildView(this.#resizeHandle);
 
-    this.chatView = new ChatView();
+    this.chatView = new ChatView(this.name, this.serviceType, this.api as ChatCompletionAPI);
     this.chatView.view.setStyle({flex: 1});
     this.view.addChildView(this.chatView.view);
-
-    // Always create a new blank chat for the view.
-    this.createChat();
   }
 
   destructor() {
@@ -124,9 +120,17 @@ export default class MultiChatsView extends AppearanceAware {
     this.#leftPane.destructor();
   }
 
+  initAsMainView() {
+    this.createChat();
+  }
+
+  onFocus() {
+    this.chatView.onFocus();
+  }
+
   createChat() {
     // Create chat service.
-    const service = new ChatService(this.name, this.api);
+    const service = new this.serviceType(this.name, this.api as ChatCompletionAPI) as ChatService;
     service.title = 'New chat';
     this.chatView.loadChatService(service);
 

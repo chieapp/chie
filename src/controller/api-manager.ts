@@ -1,6 +1,7 @@
-import WebAPI from '../model/web-api';
-import APIEndpoint, {APIEndpointType} from '../model/api-endpoint';
+import APIEndpoint from '../model/api-endpoint';
 import Serializable from '../model/serializable';
+import WebAPI from '../model/web-api';
+import {getNextId} from '../util/id-generator';
 
 type WebAPIType = new (endpoint: APIEndpoint) => WebAPI;
 
@@ -36,16 +37,20 @@ export class APIManager implements Serializable {
     this.#apis[name] = type;
   }
 
-  createAPIForEndpoint(endpoint: APIEndpoint) {
+  createAPIForEndpoint<T>(target: abstract new (endpoint: APIEndpoint) => T, endpoint: APIEndpoint) {
     if (!(endpoint.type in this.#apis))
       throw new Error(`Unable to find API implementation for endpoint ${endpoint.type}`);
-    return new this.#apis[endpoint.type](endpoint);
+    const api = new this.#apis[endpoint.type](endpoint);
+    // Do a runtime check that the api actually is a type of target.
+    if (!(api.constructor.prototype instanceof target))
+      throw new Error('API type is incompatible with the APIEndpoint');
+    return api as T;
   }
 
   addEndpoint(endpoint: APIEndpoint) {
     if (endpoint.id)
       throw new Error('Re-adding a managed APIEndpoint.');
-    endpoint.id = this.#getNextId(endpoint.name);
+    endpoint.id = getNextId(endpoint.name, Object.keys(this.#endpoints));
     this.#endpoints[endpoint.id] = endpoint;
     return endpoint.id;
   }
@@ -63,25 +68,10 @@ export class APIManager implements Serializable {
     return this.#endpoints[id];
   }
 
-  getEndpointsByType(type: APIEndpointType): APIEndpoint[] {
+  getEndpointsByType(type: string): APIEndpoint[] {
     return Object.keys(this.#endpoints)
       .filter(k => this.#endpoints[k].type == type)
       .map(k => this.#endpoints[k]);
-  }
-
-  #getNextId(name: string) {
-    const prefix = name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() + '-';
-    const ids = Object.keys(this.#endpoints)
-      .filter(k => k.startsWith(prefix))  // id is in the form of "name-1"
-      .map(n => parseInt(n.substr(prefix.length)))  // get the number part
-      .filter(n => Number.isInteger(n))  // valid id must be integer
-      .sort((a: number, b: number) => b - a);  // descend
-    if (ids.length == 0)
-      return prefix + '1';
-    const nextId = prefix + String(ids[0] + 1);
-    if (nextId in this.#endpoints)  // should not happen
-      throw new Error(`Duplicate ID generated: ${nextId}`);
-    return nextId;
   }
 }
 

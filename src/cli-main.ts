@@ -13,7 +13,7 @@ async function cliMain() {
   const endpoint = process.argv.includes('--bingchat') ?
     createBingChat() : createChatGPT();
   const chat = new ChatService(
-    endpoint.name, apiManager.createAPIForEndpoint(endpoint) as ChatAPI);
+    endpoint.name, apiManager.createAPIForEndpoint(ChatAPI, endpoint));
 
   // Create terminal chat interface.
   const rl = readline.createInterface({

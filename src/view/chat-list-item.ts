@@ -1,9 +1,9 @@
 import gui from 'gui';
 import {Signal} from 'typed-signals';
-import AppearanceAware from '../model/appearance-aware';
+import AppearanceAware from '../view/appearance-aware';
 import ChatService from '../model/chat-service';
 import IconButton from './icon-button';
-import {createRoundedCornerPath} from './util';
+import {createRoundedCornerPath} from '../util/draw-utils';
 
 import {style} from './multi-chats-view';
 
@@ -22,6 +22,7 @@ export default class ChatListItem extends AppearanceAware {
     super();
     this.service = service;
     this.connections.add(service.onNewTitle.connect(this.#onNewTitle.bind(this)));
+    this.view.setMouseDownCanMoveWindow(false);
     this.view.setStyle({width: '100%', height: 32, marginBottom: 2});
     this.view.onDraw = this.#onDraw.bind(this);
     this.view.onMouseEnter = () => {

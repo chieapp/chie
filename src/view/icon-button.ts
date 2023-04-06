@@ -1,7 +1,7 @@
 import gui from 'gui';
 import path from 'node:path';
 import {realpathSync} from 'node:fs';
-import AppearanceAware from '../model/appearance-aware';
+import AppearanceAware from '../view/appearance-aware';
 
 const buttonRadius = 8;
 

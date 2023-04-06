@@ -8,8 +8,8 @@ describe('ChatView', function() {
   it('can be garbage collected', async () => {
     let collected = false;
     (() => {
-      const chatView = new ChatView();
-      chatView.loadChatService(new ChatService('Xijinping', createChatCompletionAPI()));
+      const chatView = new ChatView('Xijinping', ChatService, createChatCompletionAPI());
+      chatView.initAsMainView();
       addFinalizer(chatView, () => collected = true);
       chatView.destructor();
     })();
@@ -20,9 +20,9 @@ describe('ChatView', function() {
     let collected = false;
     (() => {
       const win = gui.Window.create({});
-      const chatView = new ChatView();
-      chatView.loadChatService(new ChatService('Xijinping', createChatCompletionAPI()));
+      const chatView = new ChatView('Xijinping', ChatService, createChatCompletionAPI());
       win.setContentView(chatView.view);
+      chatView.initAsMainView();
       addFinalizer(win, () => collected = true);
       chatView.destructor();
     })();

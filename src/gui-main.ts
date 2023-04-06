@@ -3,10 +3,12 @@ import path from 'node:path';
 import gui from 'gui';
 
 import AppMenu from './view/app-menu';
+import ChatWindow from './view/chat-window';
+import ChatView from './view/chat-view';
 import MultiChatsView from './view/multi-chats-view';
-import {ChatCompletionAPI} from './model/chat-api';
 import main from './main';
 import apiManager from './controller/api-manager';
+import serviceManager from './controller/service-manager';
 import * as singleInstance from './util/single-instance';
 
 // Check if it is Yode.
@@ -29,30 +31,15 @@ function guiMain() {
   if (process.argv.includes('--bingchat'))
     type = 'BingChat';
   const endpoint = apiManager.getEndpointsByType(type)[0];
-  const api = apiManager.createAPIForEndpoint(endpoint);
+  const instance = serviceManager.createInstance('ChatGPT', 'Chat', endpoint, MultiChatsView);
 
-  const win = gui.Window.create({});
+  const win = new ChatWindow(instance);
   global.win = win;
-  win.setContentSize({width: 600, height: 400});
-  win.center();
-  win.activate();
-
   if (process.platform == 'darwin') {
     const appMenu = new AppMenu();
-    global.appMenu = appMenu;
     gui.app.setApplicationMenu(appMenu.menu);
-  } else {
-    const appMenu = new AppMenu(win);
-    global.appMenu = appMenu;
-    win.setMenuBar(appMenu.menu);
   }
-
-  const chatView = new MultiChatsView(api.endpoint.name, api as ChatCompletionAPI);
-  win.setContentView(chatView.view);
-
-  win.onFocus = () => chatView.chatView.input.entry.focus();
-  win.onClose = () => {
-    chatView.destructor();
+  win.window.onClose = () => {
     if (process.platform != 'darwin') {
       if (gui.MessageLoop.quit)
         gui.MessageLoop.quit();

@@ -1,5 +1,7 @@
+import gui from 'gui';
+
 // Create rounded rect.
-export function createRoundedCornerPath(painter, r, radius) {
+export function createRoundedCornerPath(painter: gui.Painter, r: gui.RectF, radius: number) {
   const degrees = Math.PI / 180;
   painter.beginPath();
   painter.arc(

@@ -1,11 +1,9 @@
 import Serializable from './serializable';
 
-export type APIEndpointType = string;
-
 export default class APIEndpoint implements Serializable {
   id?: string;
 
-  type: APIEndpointType;
+  type: string;
   name: string;
   url: string;
   key: string;

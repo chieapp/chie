@@ -24,8 +24,10 @@ export class ExtensionManager {
     const extensions = fs.readdirSync(extensionsDir);
     for (const name of extensions)
       this.#builtinExtensions.push(require(path.join(extensionsDir, name)));
+  }
 
-    // Activate extensions.
+  // Activate extensions.
+  activate() {
     for (const extension of this.#builtinExtensions)
       extension.activate();
   }

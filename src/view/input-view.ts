@@ -1,7 +1,7 @@
 import gui from 'gui';
-import AppearanceAware from '../model/appearance-aware';
+import AppearanceAware from '../view/appearance-aware';
 import IconButton from './icon-button';
-import {createRoundedCornerPath} from './util';
+import {createRoundedCornerPath} from '../util/draw-utils';
 
 export default class InputView extends AppearanceAware {
   // Color of TextEdit.

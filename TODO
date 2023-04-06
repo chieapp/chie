@@ -1,9 +1,11 @@
 * app menu
   * hide menu on win
-* window
-  * show suggestions in blank chat view
 * chat view
+  * show suggestions in blank chat view
+  * show tooltip in chat history
   * show error
+  * fix some bad trailings in updatePending
+  * Ctrl+Tab to switch history
 * entry
   * flash when sening empty message
   * change background when disabled on mac
@@ -11,9 +13,10 @@
 * button
   * additional menu button
     * hide/show avatars
+* bug
+  * when not scrolled at bottom, send message and get long reply, does not auto scroll
 * yue
-  * NSTextView is not resized when resizing TextEdit to smaller size
-  * Disabled menu item is not disabled in context menu
   * API to get bounds of View in screen
   * API to convert content bounds to window bounds
   * API to get mouse position
+  * tooltip API

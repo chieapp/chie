@@ -1,4 +1,5 @@
 import {Signal} from 'typed-signals';
+import WebService from './web-service';
 import {
   ChatRole,
   ChatMessage,
@@ -8,9 +9,7 @@ import {
   ChatConversationAPI,
 } from './chat-api';
 
-export default class ChatService {
-  name: string;
-  api: ChatAPI;
+export default class ChatService extends WebService {
   history: ChatMessage[] = [];
 
   onNewTitle: Signal<(title: string | null) => void> = new Signal;
@@ -33,13 +32,10 @@ export default class ChatService {
   #titlePromise?: Promise<void>;
 
   constructor(name: string, api: ChatAPI) {
-    if (!name || !api)
-      throw new Error('Must pass name and api to ChatService');
     if (!(api instanceof ChatCompletionAPI) &&
         !(api instanceof ChatConversationAPI))
       throw new Error('Unsupported API type');
-    this.name = name;
-    this.api = api;
+    super(name, api);
   }
 
   // Send a message and wait for response.

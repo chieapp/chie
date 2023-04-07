@@ -39,7 +39,7 @@ jobs:
         run: |
           set -e
           npm run test
-          npm run gctest
+          npm run test-ui
 
   release:
     if: startsWith(github.ref, 'refs/tags/')

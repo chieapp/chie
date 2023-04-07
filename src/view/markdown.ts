@@ -4,6 +4,7 @@ import {escape} from 'html-escaper';
 
 export function renderMarkdown(str: string, options: {highlight?: boolean} = {}) {
   const renderer = new marked.Renderer();
+  // Add toolbar and code highlight for code blocks.
   renderer.code = (text, lang) => {
     const code = options.highlight ? highlightCode(text, lang) : {html: escape(text), lang};
     const codeToolbar = `
@@ -14,7 +15,12 @@ export function renderMarkdown(str: string, options: {highlight?: boolean} = {})
     `;
     return `<div class="code-block">${codeToolbar}<pre class="unhilighted" lang="${code.lang}">${code.html}</pre></div>`;
   };
-  renderer.html = escape;  // escape all html tags
+  // Do not add h1 tags as they are disturbing the chat.
+  renderer.heading = (text: string, level: number) => {
+    return `<h4>${'#'.repeat(level)} ${text}</h4>`;
+  };
+  // Escape all html tags.
+  renderer.html = escape;
   return marked.parse(str, {renderer, breaks: true, silent: true});
 }
 
@@ -28,9 +34,15 @@ export function veryLikelyMarkdown(str: string) {
 
 // Code highlight.
 export function highlightCode(text: string, language: string) {
-  const code = language ?
-    hljs.highlight(text, {language, ignoreIllegals: true}) :
-    hljs.highlightAuto(text);
+  let code;
+  try {
+    if (language)
+      code = hljs.highlight(text, {language, ignoreIllegals: true});
+  } catch(error) {
+    // Ignore error.
+  }
+  if (!code)
+    code = hljs.highlightAuto(text);
   return {html: code.value, lang: code.language};
 }
 
@@ -38,5 +50,5 @@ export function highlightCode(text: string, language: string) {
 export function escapeText(str: string) {
   if (!str)
     return '';
-  return escape(str).replaceAll('\n', '<br/>');
+  return '<p>' + escape(str.trim()).replaceAll('\n', '<br/>') + '</p>';
 }

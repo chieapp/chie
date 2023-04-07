@@ -82,7 +82,7 @@ export default class InputView extends AppearanceAware {
         height: '100%',  // take full vertical space
         alignItems: 'flex-end',  // buttons aligned to bottom
         flexDirection: 'row',  // horizontal layout
-        margin: 2,
+        margin: 4,
         marginLeft: 0,
       });
       this.view.addChildView(this.buttonsArea);

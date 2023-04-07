@@ -37,7 +37,9 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
   #sidebar: gui.Container;
   #chatListScroll: gui.Scroll;
   #chatList: gui.Container;
+
   #resizeHandle: gui.Container;
+  #resizing = false;
 
   constructor(service: MultiChatsService) {
     if (!(service instanceof MultiChatsService))
@@ -71,11 +73,16 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     this.#chatList.setStyle({
       padding: style.padding,
       paddingRight: style.padding - style.resizeHandleWidth,
+      paddingBottom: 0,
     });
     this.#chatListScroll.setContentView(this.#chatList);
     this.#sidebar.addChildView(this.#chatListScroll);
 
     const button = gui.Button.create('New chat');
+    if (process.platform == 'darwin')
+      button.setControlSize('large');
+    else
+      button.setStyle({height: 28});
     button.setStyle({
       margin: style.padding,
       marginRight: style.padding - style.resizeHandleWidth,
@@ -83,7 +90,11 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     button.onClick = this.createChat.bind(this);
     this.#sidebar.addChildView(button);
 
-    const clear = gui.Button.create('Clear conversations');
+    const clear = gui.Button.create('Clear chats');
+    if (process.platform == 'darwin')
+      clear.setControlSize('large');
+    else
+      clear.setStyle({height: 28});
     clear.setStyle({
       margin: style.padding,
       marginRight: style.padding - style.resizeHandleWidth,
@@ -100,7 +111,9 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     if (!MultiChatsView.resizeCursor)
       MultiChatsView.resizeCursor = gui.Cursor.createWithType('resize-ew');
     this.#resizeHandle.setCursor(MultiChatsView.resizeCursor);
+    this.#resizeHandle.onMouseDown = () => this.#resizing = true;
     this.#resizeHandle.onMouseMove = this.#onDragHandle.bind(this);
+    this.#resizeHandle.onMouseUp = () => this.#resizing = false;
     this.#leftPane.view.addChildView(this.#resizeHandle);
   }
 
@@ -123,7 +136,6 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
   createChat() {
     // Create chat service.
     const service = this.service.createChat();
-    service.title = 'New chat';
 
     // Create chat view lazily.
     if (!this.chatView) {
@@ -131,7 +143,6 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       this.chatView.view.setStyle({flex: 1});
       this.view.addChildView(this.chatView.view);
     }
-    this.chatView.loadChatService(service);
 
     // Create the list item.
     const item = new ChatListItem(service);
@@ -155,8 +166,24 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     this.createChat();
   }
 
+  showPreviousChat() {
+    const index = this.#items.indexOf(this.#selectedItem);
+    if (index > -1)
+      this.#items[(index - 1 + this.#items.length) % this.#items.length].setSelected(true);
+  }
+
+  showNextChat() {
+    const index = this.#items.indexOf(this.#selectedItem);
+    if (index > -1)
+      this.#items[(index + 1) % this.#items.length].setSelected(true);
+  }
+
+  hasMultiChats() {
+    return this.#items.length > 1;
+  }
+
   #onSelectItem(item: ChatListItem) {
-    if (this.#selectedItem)
+    if (this.#selectedItem && this.#selectedItem != item)
       this.#selectedItem.setSelected(false);
     this.#selectedItem = item;
     this.chatView.loadChatService(this.#selectedItem.service);
@@ -185,8 +212,10 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
   }
 
   #onDragHandle(view, event) {
+    if (!this.#resizing)
+      return;
     const max = this.view.getBounds().width - 100;
-    const width = Math.floor(Math.min(max, Math.max(180, event.positionInWindow.x)));
+    const width = Math.floor(Math.min(max, Math.max(100, event.positionInWindow.x)));
     this.#leftPane.view.setStyle({width});
     // The scroll view does not shrink content size automatically.
     this.#updateChatListSize();

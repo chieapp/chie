@@ -1,5 +1,8 @@
+import ChatService from '../src/model/chat-service';
+import ChatView from '../src/view/chat-view';
 import {ChatCompletionAPI, ChatConversationAPI} from '../src/model/chat-api';
 import apiManager from '../src/controller/api-manager';
+import serviceManager from '../src/controller/service-manager';
 
 class DummyCompletionAPI extends ChatCompletionAPI {
   constructor(endpoint) {
@@ -31,5 +34,11 @@ export const mochaHooks = {
     // Register some APIs for testing.
     apiManager.registerAPI('DummyCompletionAPI', DummyCompletionAPI);
     apiManager.registerAPI('DummyConversationAPI', DummyConversationAPI);
+    serviceManager.registerView(ChatView);
+    serviceManager.registerService('DummyChat', {
+      serviceType: ChatService,
+      apiTypes: [ChatConversationAPI],
+      viewType: ChatView,
+    });
   },
 };

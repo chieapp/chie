@@ -3,7 +3,6 @@ import {assert} from 'chai';
 import APIEndpoint from '../src/model/api-endpoint';
 import ChatView from '../src/view/chat-view';
 import ChatService from '../src/model/chat-service';
-import MultiChatsView from '../src/view/multi-chats-view';
 import {ChatConversationAPI} from '../src/model/chat-api';
 import {ServiceManager} from '../src/controller/service-manager';
 import apiManager from '../src/controller/api-manager';
@@ -48,7 +47,7 @@ describe('ServiceManager', () => {
       type: 'DummyConversationAPI',
       url: '',
     });
-    const id = apiManager.addEndpoint(endpoint);
+    apiManager.addEndpoint(endpoint);
     const instance = serviceManager.createInstance('TestChat', 'Chat', endpoint);
     assert.equal(instance, serviceManager.getInstances()[0]);
     // Force a re-initialization by deserializing from serialized data.

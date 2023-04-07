@@ -86,10 +86,17 @@
       // If the tail is something like </p>, then we can insert directly into
       // last child instead of updating whole html.
       var tail = text.innerHTML.slice(text.innerHTML.length - back)
-      if (tail.trim().match(/^<\/[a-z]+>$/) && html.endsWith(tail)) {
-        text.lastElementChild.insertAdjacentHTML('beforeend', html.slice(0, -back))
+      var match = tail.trim().match(/^(<\/\w+>[\s]*)+$/)
+      if (match && html.endsWith(tail)) {
+        // Count how many closing tags.
+        var count = (tail.match(/\//g) || []).length
+        // Find the last child.
+        var target = text
+        for (var i = 0; i < count; ++i)
+          target = target.lastElementChild
+        // Insert to the ending of it.
+        target.insertAdjacentHTML('beforeend', html.slice(0, -back))
       } else {
-        console.warn('Updating whole innerHTML, bad tail is', tail)
         text.innerHTML = text.innerHTML.slice(0, -back) + html
       }
     } else {
@@ -137,16 +144,15 @@
           text.lastElementChild == this.lastChild &&
           text.lastElementChild.tagName.toLowerCase() == 'p')
         inlineText = text.lastElementChild
-      inlineText.insertAdjacentHTML('beforeend', ' <span class="edited label">(aborted)</span>')
+      inlineText.insertAdjacentHTML('beforeend', ' <span class="error label">(aborted)</span>')
       scrollToBottom()
     }
   }
   window.markError = function(error) {
     var text = findPending('text')
-    if (text) {
-      text.innerHTML += '<span class="error label">' + error + '</span>'
-      scrollToBottom()
-    }
+    if (text)
+      text.innerHTML += '<div class="error">' + error + '</div>'
+    endPending();
   }
 
   // DOM event handlers ====================================================
@@ -169,10 +175,10 @@
     }
     var msg = target.parentNode.parentNode.parentNode
     var index = msg.getAttribute('message-index')
-    var content = msg.getElementsByClassName('content')[0]
+    var text = msg.getElementsByClassName('text')[0]
     // Show popup window to display message.
     if (target.href.endsWith('#show-text-at')) {
-      chie.showTextAt(index, content.getBoundingClientRect())
+      chie.showTextAt(index, text.getBoundingClientRect())
       return false
     }
     // Copy text.

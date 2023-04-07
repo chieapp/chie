@@ -4,7 +4,6 @@ import {
   ChatRole,
   ChatMessage,
   ChatResponse,
-  ChatAPI,
   ChatCompletionAPI,
   ChatConversationAPI,
 } from './chat-api';
@@ -33,10 +32,10 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
 
   static deserialize(config: object): ChatService {
     const service = WebService.deserialize(config);
-    return new ChatService(service.name, service.api as ChatAPI);
+    return new ChatService(service.name, service.api as ChatConversationAPI | ChatCompletionAPI);
   }
 
-  constructor(name: string, api: ChatAPI) {
+  constructor(name: string, api: ChatConversationAPI | ChatCompletionAPI) {
     if (!(api instanceof ChatCompletionAPI) &&
         !(api instanceof ChatConversationAPI))
       throw new Error('Unsupported API type');
@@ -62,7 +61,8 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
       throw new Error('Can not regenerate when there is pending message being received.');
     if (!(this.api instanceof ChatCompletionAPI))
       throw new Error('Can only regenerate for ChatCompletionAPI.');
-    this.history.pop();
+    if (this.history[this.history.length - 1].role == ChatRole.Assistant)
+      this.history.pop();
     await this.#generateResponse(options);
   }
 
@@ -170,8 +170,8 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
         '''
         ${this.history.map(m => m.content).join('\n\n------\n\n')}
         '''
-        Provide a concise name, within 5 words and without quotation marks,
-        using the speak language used in the conversation.
+        Provide a concise name, within 20 characters and without quotation marks,
+        use the speak language used in the conversation.
         The conversation is named:
       `
     });

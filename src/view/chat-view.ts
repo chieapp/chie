@@ -85,7 +85,8 @@ export default class ChatView extends BaseView<ChatService> {
       hardwareAcceleration: false,
     });
     this.browser.setStyle({flex: 1});
-    this.browser.setBackgroundColor(style.bgColorDarkMode);
+    if (this.darkMode)
+      this.browser.setBackgroundColor(style.bgColorDarkMode);
 
     // Font style should be the same with messages.
     if (!ChatView.font)
@@ -113,6 +114,7 @@ export default class ChatView extends BaseView<ChatService> {
     this.#setupBrowser();
 
     this.replyButton = new IconButton('send');
+    this.replyButton.view.setTooltip(getTooltipForMode('send'));
     this.replyButton.onClick = this.#onButtonClick.bind(this);
     this.input.addButton(this.replyButton);
 
@@ -325,9 +327,6 @@ export default class ChatView extends BaseView<ChatService> {
     if (response.pending)  // more messages coming
       return;
     this.#parsedMessage = null;
-    if (response.aborted)
-      this.executeJavaScript('window.markAborted()');
-    this.executeJavaScript('window.endPending()');
   }
 
   // Handle UI changes after sending messages.
@@ -354,6 +353,10 @@ export default class ChatView extends BaseView<ChatService> {
         this.#setButtonMode('refresh');
       }
       this.isSending = false;
+      if (this.#aborter?.signal.aborted)
+        this.executeJavaScript('window.markAborted()');
+      this.#aborter = null;
+      this.executeJavaScript('window.endPending()');
     }
   }
 
@@ -361,6 +364,7 @@ export default class ChatView extends BaseView<ChatService> {
   #setButtonMode(mode: ButtonMode) {
     this.replyButton.setImage(mode);
     this.replyButton.setEnabled(true);
+    this.replyButton.view.setTooltip(getTooltipForMode(mode));
     this.menuButton.setEnabled(mode != 'stop');
     this.#buttonMode = mode;
   }
@@ -393,20 +397,16 @@ export default class ChatView extends BaseView<ChatService> {
     gui.Clipboard.get().setText(text);
   }
 
-  #showTextAt(index: number, bounds: {width: number}) {
+  #showTextAt(index: number, textBounds: gui.RectF) {
     if (index in this.#textWindows) {
-      this.#textWindows[index].activate();
+      this.#textWindows[index].window.activate();
       return;
     }
     const text = this.service.history[index].content;
     const win = new TextWindow(text);
     this.#textWindows[index] = win;
     win.window.onClose = () => delete this.#textWindows[index];
-    win.window.setContentSize({
-      width: bounds.width + 20,
-      height: Math.min(win.input.entry.getTextBounds().height + 50, 400),
-    });
-    win.activate();
+    win.showAt(textBounds);
   }
 
   #copyTextAt(index: number) {
@@ -460,4 +460,16 @@ function findStartOfDifference(a: string, b: string) {
       return i;
   }
   return max;
+}
+
+// Return the button tooltip for button mode.
+function getTooltipForMode(mode: ButtonMode) {
+  if (mode == 'refresh')
+    return 'Reload';
+  else if (mode == 'send')
+    return 'Send';
+  else if (mode == 'stop')
+    return 'Stop';
+  else
+    throw new Error(`Invalid button mode ${mode}.`);
 }

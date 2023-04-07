@@ -173,6 +173,10 @@ a.icon i.icon-ok {
   border-radius: 3px;
 }
 
+.text ul, .text ol {
+  padding-left: 0;
+  list-style-position: inside;
+}
 .text table {
   margin: 1rem 0 1rem;
   border: 1px solid;

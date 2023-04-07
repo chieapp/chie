@@ -24,6 +24,9 @@ a.icon:hover {
 .msg .sender .time {
   color: #ABABAD;
 }
+.text .error {
+  color: #FF4D4F;
+}
 .text .edited.label {
   color: #818385;
 }

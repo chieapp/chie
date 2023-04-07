@@ -31,7 +31,4 @@ export default function main() {
   config.addItem('apis', apiManager);
   config.addItem('chats', serviceManager);
   config.initFromFile();
-
-  // Capture all errors if succeeded to start.
-  require('./util/capture-errors');
 }

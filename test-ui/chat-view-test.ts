@@ -4,7 +4,7 @@ import ChatService from '../src/model/chat-service';
 import ChatView from '../src/view/chat-view';
 import {addFinalizer, gcUntil, createChatCompletionAPI} from './util';
 
-describe('ChatView', function() {
+describe('ChatView', () => {
   it('can be garbage collected', async () => {
     let collected = false;
     (() => {

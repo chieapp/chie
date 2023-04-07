@@ -6,7 +6,7 @@ import Mocha from 'mocha';
 const mocha = new Mocha({
   slow: 5 * 1000,
   timeout: 20 * 1000,
-  require: [ '../test/setup.ts' ],
+  rootHooks: require('../test/setup').mochaHooks,
 });
 
 for (const f of fs.readdirSync(__dirname)) {

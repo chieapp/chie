@@ -55,7 +55,6 @@ export default class ChatView extends BaseView<ChatService> {
     isMarkdown: boolean,
     html: string,
   };
-  #aborter?: AbortController;
 
   #buttonMode: ButtonMode = 'send';
   #placeholder?: gui.Container;
@@ -126,6 +125,7 @@ export default class ChatView extends BaseView<ChatService> {
   destructor() {
     this.unload();
     this.input.destructor();
+    this.service.aborter?.abort();
     super.destructor();
   }
 
@@ -167,13 +167,10 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   unload() {
-    if (this.#aborter) {
-      this.#aborter.abort();
-      this.#aborter = null;
-    }
     for (const win of Object.values(this.#textWindows))
       win.window.close();
     this.connections.disconnectAll();
+    this.#parsedMessage = null;
   }
 
   async addMessage(message: Partial<ChatMessage>, response?: {pending: boolean}) {
@@ -187,8 +184,7 @@ export default class ChatView extends BaseView<ChatService> {
   async regenerateLastMessage() {
     this.#parsedMessage = null;
     this.executeJavaScript('window.regenerateLastMessage()');
-    this.#aborter = new AbortController();
-    const promise = this.service.regenerateResponse({signal: this.#aborter.signal});
+    const promise = this.service.regenerateResponse({});
     await this.#startSending(promise);
   }
 
@@ -209,9 +205,7 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   executeJavaScript(js: string) {
-    return new Promise<boolean>((resolve) => {
-      this.browser.executeJavaScript(js, resolve);
-    });
+    return new Promise<boolean>((resolve) => this.browser.executeJavaScript(js, resolve));
   }
 
   async #setupBrowser() {
@@ -256,9 +250,7 @@ export default class ChatView extends BaseView<ChatService> {
       await this.addMessage({role: ChatRole.Assistant}, {pending: true});
     })();
     // Send message.
-    this.#aborter = new AbortController();
-    const promise = this.service.sendMessage(message, {signal: this.#aborter.signal});
-    this.#startSending(promise);
+    this.#startSending(this.service.sendMessage(message));
     return false;
   }
 
@@ -274,7 +266,7 @@ export default class ChatView extends BaseView<ChatService> {
       else
         this.replyButton.setEnabled(true);
     } else if (this.#buttonMode == 'stop') {
-      this.#aborter.abort();
+      this.service.aborter.abort();
     } else if (this.#buttonMode == 'refresh') {
       this.regenerateLastMessage();
     }
@@ -344,19 +336,23 @@ export default class ChatView extends BaseView<ChatService> {
     } catch (error) {
       await this.executeJavaScript(`window.markError(${JSON.stringify(error.message)})`);
     } finally {
-      if (this.service.api instanceof ChatConversationAPI ||
-          this.service.history.length == 0) {
-        this.#setButtonMode('send');
-        this.input.setEntryEnabled(true);
-        this.input.entry.focus();
-      } else {
-        this.#setButtonMode('refresh');
-      }
+      this.#resetUIState();
       this.isSending = false;
-      if (this.#aborter?.signal.aborted)
+      if (this.service.aborter?.signal.aborted)
         this.executeJavaScript('window.markAborted()');
-      this.#aborter = null;
       this.executeJavaScript('window.endPending()');
+    }
+  }
+
+  // Set the input and button to ready to send state.
+  #resetUIState() {
+    if (this.service.api instanceof ChatConversationAPI ||
+        this.service.history.length == 0) {
+      this.#setButtonMode('send');
+      this.input.setEntryEnabled(true);
+      this.input.entry.focus();
+    } else {
+      this.#setButtonMode('refresh');
     }
   }
 
@@ -370,13 +366,20 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   // Browser bindings used inside the browser view.
-  #domReady() {
-    this.input.entry.focus();
+  async #domReady() {
     // Only show browser when it is loaded, this can remove the white flash.
     if (this.#placeholder) {
       this.view.removeChildView(this.#placeholder);
       this.view.addChildViewAt(this.browser, 0);
       this.#placeholder = null;
+    }
+    // There might be pending message when the service is loaded.
+    if (this.service.pendingMessage) {
+      await this.addMessage({role: ChatRole.Assistant}, {pending: true});
+      this.#onMessageDelta(this.service.pendingMessage, {pending: true});
+      this.#startSending(this.service.pendingPromise);
+    } else {
+      this.#resetUIState();
     }
   }
 

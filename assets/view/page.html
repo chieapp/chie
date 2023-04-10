@@ -135,7 +135,7 @@
   window.clearHistory = function() {
     document.getElementById('messages').innerHTML = ''
   }
-  window.markAborted = function(error) {
+  window.markAborted = function() {
     var text = findPending('text')
     if (text) {
       var inlineText = text
@@ -190,7 +190,8 @@
   }
   // Move focus to entry on Tab.
   window.onkeyup = function(event) {
-    if (event.keyCode == 9) {
+    if (event.keyCode == 9 &&  // Tab key
+        !event.ctrlKey && !event.altKey && !event.shiftKey) {
       event.preventDefault()
       chie.focusEntry()
     }

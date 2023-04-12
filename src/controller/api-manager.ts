@@ -9,14 +9,14 @@ export class APIManager implements ConfigStoreItem {
   #apis: Record<string, WebAPIType> = {};
   #endpoints: Record<string, APIEndpoint> = {};
 
-  deserialize(config: object) {
-    if (!config)  // accepts empty config
-      config = {};
-    if (typeof config != 'object')
-      throw new Error(`Unknown config for "apis": ${config}.`);
+  deserialize(data: object) {
+    if (!data)  // accepts empty config
+      data = {};
+    if (typeof data != 'object')
+      throw new Error(`Unknown data for "apis": ${data}.`);
     this.#endpoints = {};
-    for (const id in config)
-      this.#endpoints[id] = APIEndpoint.deserialize(config[id]);
+    for (const id in data)
+      this.#endpoints[id] = APIEndpoint.deserialize(data[id]);
   }
 
   serialize() {

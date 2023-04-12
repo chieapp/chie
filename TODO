@@ -6,5 +6,5 @@
   * change background when disabled on mac
   * resize window to increase the entry height
 * bug
-  * registerView should take name, and make MultiChatsService a generic class
   * inactive background color of input
+  * Ctrl+Tab not working when focus is in browser

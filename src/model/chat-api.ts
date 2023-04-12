@@ -46,6 +46,15 @@ export abstract class ChatAPI extends WebAPI {
   }
 }
 
+export abstract class ChatCompletionAPI extends ChatAPI {
+  constructor(endpoint: APIEndpoint) {
+    super(endpoint);
+  }
+
+  // Send the whole conversation history and get reply.
+  abstract sendConversation(history: ChatMessage[], options: ChatAPIOptions): Promise<void>;
+}
+
 export abstract class ChatConversationAPI extends ChatAPI {
   constructor(endpoint: APIEndpoint) {
     super(endpoint);
@@ -56,13 +65,4 @@ export abstract class ChatConversationAPI extends ChatAPI {
 
   // Clear current session.
   abstract clear();
-}
-
-export abstract class ChatCompletionAPI extends ChatAPI {
-  constructor(endpoint: APIEndpoint) {
-    super(endpoint);
-  }
-
-  // Send the whole conversation history and get reply.
-  abstract sendConversation(history: ChatMessage[], options: ChatAPIOptions): Promise<void>;
 }

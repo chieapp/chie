@@ -6,6 +6,7 @@ import ChatWindow from './view/chat-window';
 import main from './main';
 import serviceManager from './controller/service-manager';
 import * as singleInstance from './util/single-instance';
+import {config} from './controller/config-store';
 
 // Check if it is Yode.
 if (!process.versions.yode)
@@ -44,6 +45,9 @@ function guiMain() {
   global.tray = tray;
 
   setQuitOnException(false);
+
+  // After successful start, we want to write current state into file.
+  config.saveToFile();
 }
 
 async function checkSingleInstanceAndStart() {

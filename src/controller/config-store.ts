@@ -1,6 +1,6 @@
+import os from 'node:os';
+import path from 'node:path';
 import fs from 'fs-extra';
-import os from 'os';
-import path from 'path';
 
 const CONFIG_VERSION = 1;
 
@@ -13,12 +13,12 @@ export class ConfigStore implements ConfigStoreItem {
   inMemory = false;
   #items: Record<string, ConfigStoreItem> = {};
 
-  #dir: string;
+  dir: string;
   #file: string;
 
   constructor(name: string) {
-    this.#dir = getConfigDir(require('../../package.json').build.productName);
-    this.#file = path.join(this.#dir, `${name}.json`);
+    this.dir = getConfigDir(require('../../package.json').build.productName);
+    this.#file = path.join(this.dir, `${name}.json`);
   }
 
   deserialize(config) {
@@ -34,14 +34,10 @@ export class ConfigStore implements ConfigStoreItem {
     const config = {version: CONFIG_VERSION};
     for (const key in this.#items)
       config[key] = this.#items[key].serialize();
-    if (!this.inMemory) {
-      fs.ensureDirSync(this.#dir);
-      fs.writeJsonSync(this.#file, config, {spaces: 2});
-    }
     return config;
   }
 
-  initFromFile() {
+  initFromFileSync() {
     // Read config file.
     let config = {version: CONFIG_VERSION};
     try {
@@ -51,6 +47,11 @@ export class ConfigStore implements ConfigStoreItem {
         throw e;
     }
     this.deserialize(config);
+  }
+
+  async saveToFile() {
+    if (!this.inMemory)
+      await fs.outputJson(this.#file, this.serialize(), {spaces: 2});
   }
 
   addItem(key: string, item: ConfigStoreItem) {

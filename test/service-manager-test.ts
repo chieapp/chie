@@ -3,9 +3,9 @@ import {assert} from 'chai';
 import APIEndpoint from '../src/model/api-endpoint';
 import ChatView from '../src/view/chat-view';
 import ChatService from '../src/model/chat-service';
+import apiManager from '../src/controller/api-manager';
 import {ChatConversationAPI} from '../src/model/chat-api';
 import {ServiceManager} from '../src/controller/service-manager';
-import apiManager from '../src/controller/api-manager';
 
 describe('ServiceManager', () => {
   let serviceManager: ServiceManager;
@@ -18,10 +18,6 @@ describe('ServiceManager', () => {
       apiTypes: [ChatConversationAPI],
       viewType: ChatView,
     });
-  });
-
-  afterEach(() => {
-    apiManager.deserialize({});
   });
 
   it('detect duplicate registrations', () => {
@@ -42,12 +38,7 @@ describe('ServiceManager', () => {
   });
 
   it('serialize and restore instances', () => {
-    const endpoint = APIEndpoint.deserialize({
-      name: 'Some API',
-      type: 'DummyConversationAPI',
-      url: '',
-    });
-    apiManager.addEndpoint(endpoint);
+    const endpoint = apiManager.getEndpointsByType('DummyConversationAPI')[0];
     const instance = serviceManager.createInstance('TestChat', 'Chat', endpoint);
     assert.equal(instance, serviceManager.getInstances()[0]);
     // Force a re-initialization by deserializing from serialized data.

@@ -5,11 +5,15 @@ import apiManager from './controller/api-manager';
 import APIEndpoint from './model/api-endpoint';
 import ChatService from './model/chat-service';
 import {ChatConversationAPI} from './model/chat-api';
+import {config} from './controller/config-store';
 
 main();
 cliMain();
 
 async function cliMain() {
+  // The cli interface is stateless.
+  config.inMemory = true;
+
   const endpoint = process.argv.includes('--bingchat') ?
     createBingChat() : createChatGPT();
   const chat = new ChatService(

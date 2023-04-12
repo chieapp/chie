@@ -1,5 +1,6 @@
 import {Signal} from 'typed-signals';
-import WebService from './web-service';
+
+import WebService, {WebServiceOptions} from './web-service';
 import {
   ChatRole,
   ChatMessage,
@@ -7,9 +8,15 @@ import {
   ChatCompletionAPI,
   ChatConversationAPI,
 } from './chat-api';
+import historyKeeper from '../controller/history-keeper';
+
+export interface ChatServiceOptions extends WebServiceOptions {
+  moment?: string;
+}
 
 export default class ChatService extends WebService<ChatConversationAPI | ChatCompletionAPI> {
   history: ChatMessage[] = [];
+  moment: string;
 
   onNewTitle: Signal<(title: string | null) => void> = new Signal;
   onMessage: Signal<(message: ChatMessage, response: ChatResponse) => void> = new Signal;
@@ -36,16 +43,42 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
   // Track generation of name.
   #titlePromise?: Promise<void>;
 
-  static deserialize(config: object): ChatService {
-    const service = WebService.deserialize(config);
-    return new ChatService(service.name, service.api as ChatConversationAPI | ChatCompletionAPI);
+  static deserialize(data: object): ChatService {
+    const service = WebService.deserialize(data);
+    const options: ChatServiceOptions = service.options;
+    if (typeof data['moment'] == 'string')
+      options.moment = data['moment'];
+    return new ChatService(service.name, service.api as ChatConversationAPI | ChatCompletionAPI, options);
   }
 
-  constructor(name: string, api: ChatConversationAPI | ChatCompletionAPI) {
+  constructor(name: string, api: ChatConversationAPI | ChatCompletionAPI, options: ChatServiceOptions = {}) {
     if (!(api instanceof ChatCompletionAPI) &&
         !(api instanceof ChatConversationAPI))
       throw new Error('Unsupported API type');
-    super(name, api);
+    super(name, api, options);
+    if (options.moment) {
+      this.moment = options.moment;
+      const value = historyKeeper.remember(this.moment);
+      if (value.history)
+        this.history = value.history.slice();
+      this.title = value.title;
+    } else if (api instanceof ChatCompletionAPI) {
+      this.moment = historyKeeper.newMoment();
+    }
+  }
+
+  serialize() {
+    const data = super.serialize();
+    if (this.moment)
+      data['moment'] = this.moment;
+    return data;
+  }
+
+  // Remove this chat and delete its information on disk.
+  async remove() {
+    this.aborter?.abort();
+    if (this.moment)
+      await historyKeeper.forget(this.moment);
   }
 
   // Send a message and wait for response.
@@ -56,6 +89,7 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
       role: message.role ?? ChatRole.User,
       content: message.content ?? '',
     }));
+    await this.#saveMoment();
     await (this.pendingPromise = this.#generateResponse(options));
   }
 
@@ -77,6 +111,7 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
     if (this.pendingMessage)
       throw new Error('Can not clear when there is pending message being received.');
     this.history = [];
+    this.title = null;
     if (this.api instanceof ChatCompletionAPI)
       this.onNewTitle.emit(null);
     else if (this.api instanceof ChatConversationAPI)
@@ -125,6 +160,8 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
         this.history.length > 3 &&
         this.history.length < 10)
       this.#titlePromise = this.#generateName();
+
+    await this.#saveMoment();
   }
 
   // Called by sub-classes when there is message delta available.
@@ -195,5 +232,16 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
     this.title = title;
     this.onNewTitle.emit(title);
     this.#titlePromise = null;
+    await this.#saveMoment();
+  }
+
+  // Write history to disk.
+  async #saveMoment() {
+    if (!this.moment)
+      return;
+    await historyKeeper.save(this.moment, {
+      history: this.history,
+      title: this.title,
+    });
   }
 }

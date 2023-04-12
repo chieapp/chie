@@ -2,7 +2,8 @@ import gui from 'gui';
 
 import ChatService from '../src/model/chat-service';
 import ChatView from '../src/view/chat-view';
-import {addFinalizer, gcUntil, createChatCompletionAPI} from './util';
+import {addFinalizer, gcUntil} from './util';
+import {createChatCompletionAPI} from '../test/util';
 
 describe('ChatView', () => {
   it('can be garbage collected', async () => {

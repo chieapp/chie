@@ -1,6 +1,7 @@
 import MultiChatsService from '../src/model/multi-chats-service';
 import MultiChatsView from '../src/view/multi-chats-view';
-import {addFinalizer, gcUntil, createChatCompletionAPI} from './util';
+import {addFinalizer, gcUntil} from './util';
+import {createChatCompletionAPI} from '../test/util';
 
 describe('MultiChatsView', function() {
   this.timeout(10 * 1000);

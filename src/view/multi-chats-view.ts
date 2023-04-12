@@ -5,6 +5,7 @@ import BaseView from '../view/base-view';
 import ChatListItem from './chat-list-item';
 import ChatView from './chat-view';
 import MultiChatsService from '../model/multi-chats-service';
+import {config} from '../controller/config-store';
 
 export const style = {
   padding: 14,
@@ -115,6 +116,17 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     this.#resizeHandle.onMouseMove = this.#onDragHandle.bind(this);
     this.#resizeHandle.onMouseUp = () => this.#resizing = false;
     this.#leftPane.view.addChildView(this.#resizeHandle);
+
+    // Load existing chats.
+    for (const service of this.service.chats) {
+      const item = this.#createItemForChat(service);
+      this.#items.push(item);
+      this.#chatList.addChildView(item.view);
+    }
+    if (this.#items.length > 0) {
+      this.#items[0].setSelected(true);
+      this.#updateChatListSize();
+    }
   }
 
   destructor() {
@@ -126,7 +138,8 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
   }
 
   initAsMainView() {
-    this.createChat();
+    if (this.service.chats.length == 0)
+      this.createChat();
   }
 
   onFocus() {
@@ -136,24 +149,14 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
   createChat() {
     // Create chat service.
     const service = this.service.createChat();
-
-    // Create chat view lazily.
-    if (!this.chatView) {
-      this.chatView = new ChatView(service);
-      this.chatView.view.setStyle({flex: 1});
-      this.view.addChildView(this.chatView.view);
-    }
-
-    // Create the list item.
-    const item = new ChatListItem(service);
+    // Create item.
+    const item = this.#createItemForChat(service);
     this.#items.unshift(item);
     this.#chatList.addChildViewAt(item.view, 0);
     this.#updateChatListSize();
-
-    // Link the item to this view.
-    item.connections.add(item.onSelect.connect(this.#onSelectItem.bind(this)));
-    item.connections.add(item.onClose.connect(this.#onCloseItem.bind(this)));
     item.setSelected(true);
+    // Save state.
+    config.saveToFile();
   }
 
   clearChats() {
@@ -180,6 +183,21 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
 
   hasMultiChats() {
     return this.#items.length > 1;
+  }
+
+  #createItemForChat(service) {
+    // Create chat view lazily.
+    if (!this.chatView) {
+      this.chatView = new ChatView(service);
+      this.chatView.view.setStyle({flex: 1});
+      this.view.addChildView(this.chatView.view);
+    }
+    // Create the list item.
+    const item = new ChatListItem(service);
+    // Link the item to this view.
+    item.connections.add(item.onSelect.connect(this.#onSelectItem.bind(this)));
+    item.connections.add(item.onClose.connect(this.#onCloseItem.bind(this)));
+    return item;
   }
 
   #onSelectItem(item: ChatListItem) {
@@ -209,6 +227,8 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       this.createChat();
     else
       this.#updateChatListSize();
+    // Save state.
+    config.saveToFile();
   }
 
   #onDragHandle(view, event) {

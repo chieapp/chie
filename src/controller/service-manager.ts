@@ -25,18 +25,18 @@ export class ServiceManager implements ConfigStoreItem {
   #views: BaseViewType[] = [];
   #instances: Record<string, Instance> = {};
 
-  deserialize(config: object) {
-    if (!config)  // accepts empty config
-      config = {};
-    if (typeof config != 'object')
-      throw new Error(`Unknown config for "chats": ${JSON.stringify(config)}.`);
+  deserialize(data: object) {
+    if (!data)  // accepts empty data
+      data = {};
+    if (typeof data != 'object')
+      throw new Error(`Unknown data for "chats": ${JSON.stringify(data)}.`);
     this.#instances = {};
-    for (const id in config) {
-      const item = config[id];
+    for (const id in data) {
+      const item = data[id];
       if (typeof item['serviceType'] != 'string' ||
           typeof item['service'] != 'object' ||
           typeof item['view'] != 'string')
-        throw new Error(`Unknown config for Instance: ${JSON.stringify(item)}.`);
+        throw new Error(`Unknown data for Instance: ${JSON.stringify(item)}.`);
       // Get the service type first.
       const serviceType = item['serviceType'];
       if (!(serviceType in this.#services))
@@ -53,16 +53,16 @@ export class ServiceManager implements ConfigStoreItem {
   }
 
   serialize() {
-    const plain = {};
+    const data = {};
     for (const id in this.#instances) {
       const ins = this.#instances[id];
-      plain[id] = {
+      data[id] = {
         serviceType: ins.serviceType,
         service: ins.service.serialize(),
         view: ins.viewType.name,
       };
     }
-    return plain;
+    return data;
   }
 
   registerView(viewType: BaseViewType) {

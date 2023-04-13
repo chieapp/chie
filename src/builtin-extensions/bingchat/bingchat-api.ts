@@ -8,6 +8,7 @@ import {
   ChatMessage,
   ChatResponse,
   ChatRole,
+  Icon,
   NetworkError,
 } from 'chie';
 import WebSocket from 'ws';
@@ -28,7 +29,7 @@ export default class BingChatAPI extends ChatConversationAPI {
     if (endpoint.type != 'BingChat')
       throw new Error('Expect BingChat API endpoint in BingChatAPI.');
     super(endpoint);
-    this.avatar = 'chie://app-file/assets/icons/bingchat.png';
+    this.icon = new Icon({name: 'bingchat'});
   }
 
   async sendMessage(text: string, options: ChatAPIOptions) {

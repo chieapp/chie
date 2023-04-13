@@ -1,4 +1,5 @@
 import APIEndpoint from './api-endpoint';
+import Icon from './icon';
 import WebAPI from './web-api';
 
 export enum ChatRole {
@@ -38,11 +39,10 @@ export type ChatAPIOptions = {
   onMessageDelta: onMessageDeltaCallback,
 };
 
-export abstract class ChatAPI extends WebAPI {
-  avatar = 'chie://app-file/assets/icons/bot.png';
-
+abstract class ChatAPI extends WebAPI {
   constructor(endpoint: APIEndpoint) {
     super(endpoint);
+    this.icon = new Icon({name: 'bot'});
   }
 }
 

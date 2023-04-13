@@ -6,6 +6,7 @@ import ChatListItem from './chat-list-item';
 import ChatView from './chat-view';
 import MultiChatsService from '../model/multi-chats-service';
 import {config} from '../controller/config-store';
+import {collectGarbage} from '../controller/gc-center';
 
 export const style = {
   padding: 14,
@@ -40,7 +41,7 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
   #chatList: gui.Container;
 
   #resizeHandle: gui.Container;
-  #resizing = false;
+  #resizeOrigin?: {x: number, width: number};
 
   constructor(service: MultiChatsService) {
     if (!(service instanceof MultiChatsService))
@@ -112,9 +113,9 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     if (!MultiChatsView.resizeCursor)
       MultiChatsView.resizeCursor = gui.Cursor.createWithType('resize-ew');
     this.#resizeHandle.setCursor(MultiChatsView.resizeCursor);
-    this.#resizeHandle.onMouseDown = () => this.#resizing = true;
+    this.#resizeHandle.onMouseDown = (view, event) => this.#resizeOrigin = {x: event.positionInWindow.x, width: this.#leftPane.view.getBounds().width};
     this.#resizeHandle.onMouseMove = this.#onDragHandle.bind(this);
-    this.#resizeHandle.onMouseUp = () => this.#resizing = false;
+    this.#resizeHandle.onMouseUp = () => this.#resizeOrigin = null;
     this.#leftPane.view.addChildView(this.#resizeHandle);
 
     // Load existing chats.
@@ -140,6 +141,7 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
   initAsMainView() {
     if (this.service.chats.length == 0)
       this.createChat();
+    this.chatView.input.entry.focus();
   }
 
   onFocus() {
@@ -229,13 +231,14 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       this.#updateChatListSize();
     // Save state.
     config.saveToFile();
+    collectGarbage();
   }
 
   #onDragHandle(view, event) {
-    if (!this.#resizing)
+    if (!this.#resizeOrigin)
       return;
     const max = this.view.getBounds().width - 100;
-    const width = Math.floor(Math.min(max, Math.max(100, event.positionInWindow.x)));
+    const width = Math.floor(Math.min(max, Math.max(100, event.positionInWindow.x - this.#resizeOrigin.x + this.#resizeOrigin.width)));
     this.#leftPane.view.setStyle({width});
     // The scroll view does not shrink content size automatically.
     this.#updateChatListSize();

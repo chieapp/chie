@@ -55,6 +55,7 @@ export default class ChatView extends BaseView<ChatService> {
     isMarkdown: boolean,
     html: string,
   };
+  #lastError?: Error;
 
   #buttonMode: ButtonMode = 'send';
   #placeholder?: gui.Container;
@@ -330,14 +331,16 @@ export default class ChatView extends BaseView<ChatService> {
     this.input.setText('');
     // Wait for sending.
     try {
+      this.#lastError = null;
       await promise;
       this.input.setEntryEnabled(true);
       this.input.entry.focus();
     } catch (error) {
+      this.#lastError = error;
       await this.executeJavaScript(`window.markError(${JSON.stringify(error.message)})`);
     } finally {
-      this.#resetUIState();
       this.isSending = false;
+      this.#resetUIState();
       if (this.service.aborter?.signal.aborted)
         this.executeJavaScript('window.markAborted()');
       this.executeJavaScript('window.endPending()');
@@ -349,10 +352,12 @@ export default class ChatView extends BaseView<ChatService> {
     if (this.service.api instanceof ChatConversationAPI ||
         this.service.history.length == 0) {
       this.#setButtonMode('send');
-      this.input.setEntryEnabled(true);
-      this.input.entry.focus();
     } else {
       this.#setButtonMode('refresh');
+    }
+    if (!this.#lastError) {
+      this.input.setEntryEnabled(true);
+      this.input.entry.focus();
     }
   }
 
@@ -450,8 +455,8 @@ function messageToDom(service: ChatService, message: Partial<ChatMessage>, index
     [ChatRole.System]: 'System',
   }[message.role];
   let avatar = null;
-  if (message.role == ChatRole.Assistant)
-    avatar = service.api.avatar;
+  if (message.role == ChatRole.Assistant && service.api.icon)
+    avatar = service.api.icon.getChieUrl();
   return {role: message.role, sender, avatar, content, index};
 }
 

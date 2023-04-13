@@ -1,6 +1,5 @@
 import gui from 'gui';
 import BaseWindow from './base-window';
-import ChatWindow from './chat-window';
 import MultiChatsView from './multi-chats-view';
 
 export default class AppMenu {
@@ -85,9 +84,11 @@ export default class AppMenu {
 
   getCurrentMultiChatsView(): MultiChatsView | null {
     const win = this.getCurrentWindow();
+    // Lazy load ChatWindow to avoid circular reference.
+    const ChatWindow = require('./chat-window').default;
     if (!(win instanceof ChatWindow))
       return null;
-    const view = win.chatView;
+    const view = (win as typeof ChatWindow).chatView;
     if (!(view instanceof MultiChatsView))
       return null;
     return view;

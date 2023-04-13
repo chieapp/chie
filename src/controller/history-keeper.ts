@@ -17,7 +17,7 @@ export class HistoryKeeper {
 
   remember(moment: string) {
     try {
-      return fs.readJsonSync(path.join(this.dir, moment + '.json'));
+      return fs.readJsonSync(this.getFilePath(moment));
     } catch (error) {
       if (error.code != 'ENOENT')  // ignore file not exist error
         throw error;
@@ -27,19 +27,19 @@ export class HistoryKeeper {
 
   async save(moment: string, memory: object) {
     if (!config.inMemory)
-      await fs.outputJson(this.getFile(moment), memory, {spaces: 2});
+      await fs.outputJson(this.getFilePath(moment), memory, {spaces: 2});
   }
 
   async forget(moment: string) {
     try {
-      await fs.remove(this.getFile(moment));
+      await fs.remove(this.getFilePath(moment));
     } catch (error) {
       if (error.code != 'ENOENT')  // ignore file not exist error
         throw error;
     }
   }
 
-  getFile(moment: string) {
+  getFilePath(moment: string) {
     return path.join(this.dir, moment + '.json');
   }
 }

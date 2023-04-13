@@ -1,6 +1,7 @@
 import gui from 'gui';
 import AppMenu from '../view/app-menu';
 import BaseWindow from '../view/base-window';
+import {collectGarbage} from './gc-center';
 
 export class WindowManager {
   #appMenu?: AppMenu;
@@ -19,6 +20,7 @@ export class WindowManager {
 
   removeWindow(win: BaseWindow) {
     this.#windows.splice(this.#windows.indexOf(win), 1);
+    collectGarbage();
   }
 
   getCurrentWindow() {

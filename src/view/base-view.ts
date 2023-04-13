@@ -2,7 +2,7 @@ import AppearanceAware from '../view/appearance-aware';
 import WebAPI from '../model/web-api';
 import WebService from '../model/web-service';
 
-export default abstract class BaseView<T extends WebService<WebAPI>> extends AppearanceAware {
+export default abstract class BaseView<T extends WebService<WebAPI> = WebService<WebAPI>> extends AppearanceAware {
   service: T;
 
   constructor(service: T) {

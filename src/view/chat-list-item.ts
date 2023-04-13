@@ -1,10 +1,10 @@
 import gui from 'gui';
 import {Signal} from 'typed-signals';
+
 import AppearanceAware from '../view/appearance-aware';
 import ChatService from '../model/chat-service';
 import IconButton from './icon-button';
 import {createRoundedCornerPath} from '../util/draw-utils';
-
 import {style} from './multi-chats-view';
 
 export default class ChatListItem extends AppearanceAware {
@@ -40,8 +40,7 @@ export default class ChatListItem extends AppearanceAware {
       this.view.schedulePaint();
     };
     this.view.onMouseUp = () => {
-      if (!this.selected)
-        this.setSelected(true);
+      this.setSelected(true);
     };
     this.view.onSizeChanged = this.#updateTooltip.bind(this);
 

@@ -54,6 +54,11 @@ export class ConfigStore implements ConfigStoreItem {
       await fs.outputJson(this.#file, this.serialize(), {spaces: 2});
   }
 
+  saveToFileSync() {
+    if (!this.inMemory)
+      fs.outputJsonSync(this.#file, this.serialize(), {spaces: 2});
+  }
+
   addItem(key: string, item: ConfigStoreItem) {
     if (key in this.#items)
       throw new Error(`Key "${key}" already exists.`);
@@ -63,6 +68,7 @@ export class ConfigStore implements ConfigStoreItem {
 
 // The global config.
 export const config = new ConfigStore('config');
+export const windowConfig = new ConfigStore('windowStates');
 
 function getConfigDir(name) {
   switch (process.platform) {

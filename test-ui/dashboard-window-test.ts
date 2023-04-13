@@ -4,7 +4,7 @@ import serviceManager from '../src/controller/service-manager';
 
 import {addFinalizer, gcUntil} from './util';
 
-describe('DashboardWindow', () => {
+describe('DashboardWindow', async () => {
   afterEach(() => {
     serviceManager.deserialize({});
   });

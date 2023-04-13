@@ -1,8 +1,8 @@
 import gui from 'gui';
 
 import AppearanceAware from '../view/appearance-aware';
-import BaseView from './base-view';
-import BaseWindow from './base-window';
+import BaseView, {ViewState} from './base-view';
+import BaseWindow, {WindowState} from './base-window';
 import Instance from '../model/instance';
 import ToggleButton from './toggle-button';
 import serviceManager from '../controller/service-manager';
@@ -17,7 +17,7 @@ export const style = {
     handleColor: '#00B386',
   },
   dark: {
-    bgColor: '#2C3849',
+    bgColor: '#454545',
     handleColor: '#00B386',
   },
 };
@@ -27,6 +27,11 @@ type InstanceView = {
   button: ToggleButton,
   mainView: BaseView,
 };
+
+interface DashboardState extends WindowState {
+  selected?: string;
+  views?: ViewState[];
+}
 
 export default class DashboardWindow extends BaseWindow {
   #contentView: gui.Container;
@@ -68,10 +73,27 @@ export default class DashboardWindow extends BaseWindow {
     this.#sidebar.destructor();
   }
 
+  saveState(): DashboardState {
+    return Object.assign(super.saveState(), {
+      selected: this.#selectedView?.instance.id,
+      views: this.#views.map(v => v.mainView.saveState()),
+    });
+  }
+
+  restoreState(state: DashboardState) {
+    if (state.views) {
+      for (const i in state.views)
+        this.#views[i].mainView.restoreState(state.views[i]);
+    }
+    if (state.selected)
+      this.switchTo(this.#views.findIndex(v => v.instance.id == state.selected));
+    super.restoreState(state);
+  }
+
   switchTo(index: number) {
     if (!(index in this.#views))
       throw new Error(`Invalid index: ${index}.`);
-    this.#onSelect(this.#views[0]);
+    this.#onSelect(this.#views[index]);
   }
 
   #createViewForInstance(instance: Instance) {
@@ -88,9 +110,12 @@ export default class DashboardWindow extends BaseWindow {
     mainView.view.setVisible(false);
     mainView.view.setStyle({flex: 1});
     this.#contentView.addChildView(mainView.view);
+    // Save them.
     const view = {instance, button, mainView};
     this.#views.push(view);
     button.onClick = this.#onSelect.bind(this, view);
+    mainView.connections.add(mainView.onNewTitle.connect(
+      this.#onNewTitle.bind(this, view)));
   }
 
   #onSelect(view: InstanceView) {
@@ -104,7 +129,25 @@ export default class DashboardWindow extends BaseWindow {
     this.#selectedView?.mainView.view.setVisible(false);
     view.mainView.view.setVisible(true);
     view.mainView.initAsMainView();
+    // The main view size should keep unchanged when switching.
+    const size = this.#selectedView?.mainView.getMainViewSize();
+    if (size) {
+      const oldSize = this.#selectedView.mainView.view.getBounds();
+      const newSize = view.mainView.getSizeFromMainViewSize(size);
+      if (newSize.width != oldSize.width) {
+        const bounds = this.window.getBounds();
+        bounds.width += newSize.width - oldSize.width;
+        this.window.setBounds(bounds);
+      }
+    }
     this.#selectedView = view;
+    // Change window title.
+    this.window.setTitle(view.mainView.getTitle());
+  }
+
+  #onNewTitle(view: InstanceView) {
+    if (view == this.#selectedView)
+      this.window.setTitle(view.mainView.getTitle());
   }
 
   #onDraw(view: gui.Container, painter: gui.Painter) {

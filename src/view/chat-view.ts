@@ -3,6 +3,7 @@ import path from 'node:path';
 import ejs from 'ejs';
 import gui from 'gui';
 import open from 'open';
+import {SignalConnections} from 'typed-signals';
 import {realpathSync} from 'node:fs';
 
 import BaseView from '../view/base-view';
@@ -51,6 +52,7 @@ export default class ChatView extends BaseView<ChatService> {
   replyButton: IconButton;
   menuButton: IconButton;
 
+  #serviceConnections: SignalConnections = new SignalConnections();
   #parsedMessage?: {
     isMarkdown: boolean,
     html: string,
@@ -124,10 +126,10 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   destructor() {
+    super.destructor();
     this.unload();
     this.input.destructor();
     this.service.aborter?.abort();
-    super.destructor();
   }
 
   initAsMainView() {
@@ -135,14 +137,21 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   onFocus() {
-    this.input.entry.focus();
+    if (this.view.isVisibleInHierarchy())
+      this.input.entry.focus();
+  }
+
+  getTitle() {
+    return this.service.title ?? this.service.name;
   }
 
   async loadChatService(service: ChatService) {
     this.unload();
     this.service = service;
-    this.connections.add(
-      this.service.onMessageDelta.connect(this.#onMessageDelta.bind(this)));
+    this.#serviceConnections.add(this.service.onMessageDelta.connect(
+      this.#onMessageDelta.bind(this)));
+    this.#serviceConnections.add(this.service.onNewTitle.connect(
+      this.onNewTitle.emit.bind(this.onNewTitle)));
 
     // Delay loading the templates for rendering conversation.
     if (!ChatView.pageTemplate) {
@@ -170,7 +179,7 @@ export default class ChatView extends BaseView<ChatService> {
   unload() {
     for (const win of Object.values(this.#textWindows))
       win.window.close();
-    this.connections.disconnectAll();
+    this.#serviceConnections.disconnectAll();
     this.#parsedMessage = null;
   }
 
@@ -192,7 +201,7 @@ export default class ChatView extends BaseView<ChatService> {
   async clearHistory() {
     this.#parsedMessage = null;
     this.executeJavaScript('window.clearHistory()');
-    this.input.entry.focus();
+    this.onFocus();
     await this.service.clear();
   }
 
@@ -212,7 +221,7 @@ export default class ChatView extends BaseView<ChatService> {
   async #setupBrowser() {
     // Add bindings to the browser.
     this.browser.setBindingName('chie');
-    this.browser.addBinding('focusEntry', this.input.entry.focus.bind(this.input.entry));
+    this.browser.addBinding('focusEntry', this.onFocus.bind(this));
     this.browser.addBinding('domReady', this.#domReady.bind(this));
     this.browser.addBinding('catchDomError', this.#catchDomError.bind(this));
     this.browser.addBinding('log', this.#log.bind(this));
@@ -334,7 +343,7 @@ export default class ChatView extends BaseView<ChatService> {
       this.#lastError = null;
       await promise;
       this.input.setEntryEnabled(true);
-      this.input.entry.focus();
+      this.onFocus();
     } catch (error) {
       this.#lastError = error;
       await this.executeJavaScript(`window.markError(${JSON.stringify(error.message)})`);
@@ -357,7 +366,7 @@ export default class ChatView extends BaseView<ChatService> {
     }
     if (!this.#lastError) {
       this.input.setEntryEnabled(true);
-      this.input.entry.focus();
+      this.onFocus();
     }
   }
 

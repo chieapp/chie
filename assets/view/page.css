@@ -85,6 +85,7 @@ a.icon i.icon-ok {
   width: 32px;
 }
 .msg .avatar > * {
+  border-radius: 6px;
   /* Image size */
   width: 32px;
   height: 32px;

@@ -20,10 +20,10 @@ export class APIManager implements ConfigStoreItem {
   }
 
   serialize() {
-    const plain = {};
+    const data = {};
     for (const id in this.#endpoints)
-      plain[id] = this.#endpoints[id].serialize();
-    return plain;
+      data[id] = this.#endpoints[id].serialize();
+    return data;
   }
 
   registerAPI(name: string, type: WebAPIType) {

@@ -48,7 +48,7 @@ export class ServiceManager implements ConfigStoreItem {
         throw new Error(`Unknown View "${item['view']}".`);
       // Deserialize using the service type's method.
       const service = record.serviceType.deserialize(item['service']);
-      this.#instances[id] = {serviceType, service, viewType};
+      this.#instances[id] = {id, serviceType, service, viewType};
     }
   }
 
@@ -92,6 +92,7 @@ export class ServiceManager implements ConfigStoreItem {
     const id = getNextId(name, Object.keys(this.#instances));
     const record = this.#services[serviceType];
     return this.#instances[id] = {
+      id,
       serviceType,
       service: new record.serviceType(name, api),
       viewType: record.viewType,

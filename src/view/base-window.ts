@@ -1,6 +1,9 @@
 import gui from 'gui';
 import AppMenu from './app-menu';
-import windowManager from '../controller/window-manager';
+
+export interface WindowState {
+  bounds: gui.RectF;
+}
 
 export default class BaseWindow {
   window: gui.Window;
@@ -14,7 +17,16 @@ export default class BaseWindow {
       this.window.setMenuBarVisible(false);
     }
 
+    const windowManager = require('../controller/window-manager').default;
     windowManager.addWindow(this);
     this.window.onClose = () => windowManager.removeWindow(this);
+  }
+
+  saveState(): WindowState {
+    return {bounds: this.window.getBounds()};
+  }
+
+  restoreState(state: WindowState) {
+    this.window.setBounds(state.bounds);
   }
 }

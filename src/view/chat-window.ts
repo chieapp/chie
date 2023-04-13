@@ -1,8 +1,12 @@
-import BaseView from './base-view';
-import BaseWindow from './base-window';
+import BaseView, {ViewState} from './base-view';
+import BaseWindow, {WindowState} from './base-window';
 import Instance from '../model/instance';
 import WebAPI from '../model/web-api';
 import WebService from '../model/web-service';
+
+export interface ChatWindowState extends WindowState {
+  viewState?: ViewState;
+}
 
 export default class ChatWindow extends BaseWindow {
   instance: Instance;
@@ -27,8 +31,15 @@ export default class ChatWindow extends BaseWindow {
     this.chatView.destructor();
   }
 
-  show() {
-    this.window.center();
-    this.window.activate();
+  saveState(): ChatWindowState {
+    return Object.assign(super.saveState(), {
+      viewState: this.chatView.saveState(),
+    });
+  }
+
+  restoreState(state: ChatWindowState) {
+    if (state.viewState)
+      this.chatView.restoreState(state.viewState);
+    super.restoreState(state);
   }
 }

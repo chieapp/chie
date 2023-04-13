@@ -6,6 +6,7 @@ export type BaseViewType = new (service) => BaseView<WebService<WebAPI>>;
 
 // Describes an instance of service.
 export default interface Instance {
+  id?: string;
   serviceType: string;
   service: WebService<WebAPI>;
   viewType: BaseViewType;

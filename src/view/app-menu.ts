@@ -1,4 +1,5 @@
 import gui from 'gui';
+
 import BaseWindow from './base-window';
 import MultiChatsView from './multi-chats-view';
 
@@ -19,11 +20,7 @@ export default class AppMenu {
           {
             label: 'Quit',
             accelerator: 'CmdOrCtrl+Q',
-            onClick() {
-              if (gui.MessageLoop.quit)
-                gui.MessageLoop.quit();
-              process.exit(0);
-            }
+            onClick: () => this.getWindowManager().quit(),
           },
         ],
       });
@@ -78,8 +75,7 @@ export default class AppMenu {
   }
 
   getCurrentWindow(): BaseWindow | null {
-    const windowManager = require('../controller/window-manager').default;
-    return this.window ?? windowManager.getCurrentWindow();
+    return this.window ?? this.getWindowManager().getCurrentWindow();
   }
 
   getCurrentMultiChatsView(): MultiChatsView | null {
@@ -92,5 +88,10 @@ export default class AppMenu {
     if (!(view instanceof MultiChatsView))
       return null;
     return view;
+  }
+
+  getWindowManager() {
+    // Delay loaded to avoid circular reference.
+    return require('../controller/window-manager').default;
   }
 }

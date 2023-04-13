@@ -2,10 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import gui from 'gui';
 
-import DashboardWindow from './view/dashboard-window';
 import main from './main';
+import windowManager from './controller/window-manager';
 import * as singleInstance from './util/single-instance';
-import {config} from './controller/config-store';
+import {config, windowConfig} from './controller/config-store';
+import {setQuitOnException} from './controller/exception-handler';
 
 // Check if it is Yode.
 if (!process.versions.yode)
@@ -21,22 +22,10 @@ if (process.platform == 'darwin') {
 }
 
 function guiMain() {
-  const {setQuitOnException} = require('./controller/exception-handler');
-
   main();
 
-  const win = new DashboardWindow();
-  global.win = win;
-  win.window.onClose = () => {
-    global.win = null;
-    if (process.platform != 'darwin') {
-      if (gui.MessageLoop.quit)
-        gui.MessageLoop.quit();
-      process.exit(0);
-    }
-  };
-  win.window.center();
-  win.window.activate();
+  windowConfig.addItem('windows', windowManager);
+  windowConfig.initFromFileSync();
 
   const trayImage = gui.Image.createFromPath(fs.realpathSync(path.join(__dirname, '../assets/icons/tray@2x.png')));
   if (process.platform == 'darwin')

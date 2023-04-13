@@ -1,7 +1,7 @@
 import gui from 'gui';
 
 import AppearanceAware from '../view/appearance-aware';
-import BaseView from '../view/base-view';
+import BaseView, {ViewState} from '../view/base-view';
 import ChatListItem from './chat-list-item';
 import ChatView from './chat-view';
 import MultiChatsService from '../model/multi-chats-service';
@@ -27,13 +27,18 @@ export const style = {
   },
 };
 
+export interface SplitViewState extends ViewState {
+  leftPaneWidth?: number;
+  selected?: number;
+}
+
 export default class MultiChatsView extends BaseView<MultiChatsService> {
   static resizeCursor?: gui.Cursor;
 
   chatView: ChatView;
 
-  #selectedItem?: ChatListItem;
   #items: ChatListItem[] = [];
+  #selectedItem?: ChatListItem;
 
   #leftPane: AppearanceAware;
   #sidebar: gui.Container;
@@ -48,7 +53,6 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       throw new Error('MultiChatsView can only be used with MultiChatsService');
     super(service);
 
-    this.view = gui.Container.create();
     this.view.setStyle({flexDirection: 'row'});
 
     this.#leftPane = new AppearanceAware();
@@ -148,6 +152,33 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     this.chatView.onFocus();
   }
 
+  saveState(): SplitViewState {
+    return {
+      leftPaneWidth: this.#leftPane.view.getBounds().width,
+      selected: this.#items.indexOf(this.#selectedItem),
+    };
+  }
+
+  restoreState(state?: SplitViewState) {
+    if (state?.leftPaneWidth)
+      this.#leftPane.view.setStyle({width: state.leftPaneWidth});
+    if (state?.selected)
+      this.#items[state.selected].setSelected(true);
+  }
+
+  getTitle() {
+    return this.chatView?.getTitle() ?? this.service.name;
+  }
+
+  getMainViewSize(): gui.SizeF {
+    return this.chatView?.view.getBounds();
+  }
+
+  getSizeFromMainViewSize(size: gui.SizeF) {
+    size.width += this.#leftPane.view.getBounds().width;
+    return size;
+  }
+
   createChat() {
     // Create chat service.
     const service = this.service.createChat();
@@ -193,6 +224,8 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       this.chatView = new ChatView(service);
       this.chatView.view.setStyle({flex: 1});
       this.view.addChildView(this.chatView.view);
+      this.connections.add(this.chatView.onNewTitle.connect(
+        this.onNewTitle.emit.bind(this.onNewTitle)));
     }
     // Create the list item.
     const item = new ChatListItem(service);
@@ -207,6 +240,7 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       this.#selectedItem.setSelected(false);
     this.#selectedItem = item;
     this.chatView.loadChatService(this.#selectedItem.service);
+    this.onNewTitle.emit();
   }
 
   #onCloseItem(item: ChatListItem) {

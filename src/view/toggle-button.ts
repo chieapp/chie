@@ -52,11 +52,11 @@ export default class ToggleButton extends SignalsOwner {
     createRoundedCornerPath(painter, bounds, style.buttonRadius);
     painter.clip();
 
-    painter.setFillColor('#A3A3A3');
-    painter.fillRect(bounds);
     if (this.image) {
       painter.drawImage(this.image, bounds);
     } else {
+      painter.setFillColor('#A3A3A3');
+      painter.fillRect(bounds);
       painter.drawText('?', bounds, {
         font: gui.Font.create('Helvetica', 30, 'normal', 'normal'),
         color: '#FFF',

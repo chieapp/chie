@@ -116,6 +116,7 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
       this.onNewTitle.emit(null);
     else if (this.api instanceof ChatConversationAPI)
       this.api.clear();
+    await this.#saveMoment();
   }
 
   // Call the API.

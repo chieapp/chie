@@ -53,6 +53,7 @@ export default class BingChatAPI extends ChatConversationAPI {
     } finally {
       if (options.signal)
         options.signal.removeEventListener('abort', handler);
+      this.#lastContent = '';
     }
   }
 

@@ -27,13 +27,13 @@ async function cliMain() {
   });
   // Print ChatGPT answers with streaming interface.
   let state = 'waitUser';
-  chat.onMessageDelta.connect((message, response) => {
+  chat.onMessageDelta.connect((message, info) => {
     if (state == 'waitAnswer') {
       // Print content.
       if (message.content)
         process.stdout.write(message.content);
     }
-    if (response.pending)  // more messages coming.
+    if (info.pending)  // more messages coming.
       return;
     process.stdout.write('\n');
     state = 'waitUser';

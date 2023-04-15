@@ -114,6 +114,7 @@ export default class DashboardWindow extends BaseWindow {
     const view = {instance, button, mainView};
     this.#views.push(view);
     button.onClick = this.#onSelect.bind(this, view);
+    button.onContextMenu = this.#onContextMenu.bind(this, view);
     mainView.connections.add(mainView.onNewTitle.connect(
       this.#onNewTitle.bind(this, view)));
   }
@@ -144,6 +145,19 @@ export default class DashboardWindow extends BaseWindow {
     this.#selectedView = view;
     // Change window title.
     this.window.setTitle(view.mainView.getTitle());
+  }
+
+  #onContextMenu(view: InstanceView) {
+    const menu = gui.Menu.create([
+      {
+        label: 'Show in new window',
+        onClick() {
+          const windowManager = require('../controller/window-manager').default;
+          windowManager.getChatWindow(view.instance).window.activate();
+        },
+      },
+    ]);
+    menu.popup();
   }
 
   #onNewTitle(view: InstanceView) {

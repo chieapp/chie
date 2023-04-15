@@ -14,6 +14,11 @@ export interface ChatServiceOptions extends WebServiceOptions {
   moment?: string;
 }
 
+export interface ChatMessageInfo {
+  first: boolean;
+  pending: boolean;
+}
+
 export default class ChatService extends WebService<ChatConversationAPI | ChatCompletionAPI> {
   history: ChatMessage[] = [];
   isLoaded = false;
@@ -21,8 +26,11 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
 
   onLoad: Signal<() => void> = new Signal;
   onNewTitle: Signal<(title: string | null) => void> = new Signal;
-  onMessage: Signal<(message: ChatMessage, response: ChatResponse) => void> = new Signal;
-  onMessageDelta: Signal<(delta: Partial<ChatMessage>, response: ChatResponse) => void> = new Signal;
+  onMessage: Signal<(message: ChatMessage) => void> = new Signal;
+  onMessageDelta: Signal<(delta: Partial<ChatMessage>, info: ChatMessageInfo) => void> = new Signal;
+  onMessageError: Signal<(error: Error) => void> = new Signal;
+  onRemoveMessage: Signal<((index: number) => void)> = new Signal;
+  onClearMessages: Signal<() => void> = new Signal;
 
   // Title of the chat.
   title?: string;
@@ -38,9 +46,6 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
 
   // The aborter that can be used to abort current call.
   aborter: AbortController;
-
-  // The response of last partial message.
-  #lastResponse?: ChatResponse;
 
   // Track generation of name.
   #titlePromise?: Promise<void>;
@@ -67,8 +72,9 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
         this.isLoaded = true;
         this.onLoad.emit();
       });
-    } else if (api instanceof ChatCompletionAPI) {
-      this.moment = historyKeeper.newMoment();
+    } else {
+      if (api instanceof ChatCompletionAPI)
+        this.moment = historyKeeper.newMoment();
       this.isLoaded = true;
     }
   }
@@ -91,11 +97,14 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
   async sendMessage(message: Partial<ChatMessage>, options: object = {}) {
     if (this.pendingMessage)
       throw new Error('There is pending message being received.');
-    this.history.push(new ChatMessage({
+    // The message being sent is also notified.
+    const senderMessage = new ChatMessage({
       role: message.role ?? ChatRole.User,
       content: message.content ?? '',
-    }));
+    });
+    this.#handleMessageDelta(senderMessage, new ChatResponse({pending: false}));
     await this.#saveMoment();
+    // Start sending.
     await (this.pendingPromise = this.#generateResponse(options));
   }
 
@@ -107,13 +116,17 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
       throw new Error('Can not regenerate when there is pending message being received.');
     if (!(this.api instanceof ChatCompletionAPI))
       throw new Error('Can only regenerate for ChatCompletionAPI.');
-    if (this.history[this.history.length - 1].role == ChatRole.Assistant)
+    // When last message is from assistant, do regenerate, otherwise it would
+    // be the same with sending message.
+    if (this.history[this.history.length - 1].role == ChatRole.Assistant) {
       this.history.pop();
+      this.onRemoveMessage.emit(this.history.length);
+    }
     await (this.pendingPromise = this.#generateResponse(options));
   }
 
   // Clear chat history.
-  async clear() {
+  clear() {
     if (this.pendingMessage)
       throw new Error('Can not clear when there is pending message being received.');
     this.history = [];
@@ -122,11 +135,16 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
       this.onNewTitle.emit(null);
     else if (this.api instanceof ChatConversationAPI)
       this.api.clear();
-    await this.#saveMoment();
+    this.onClearMessages.emit();
+    if (this.moment)
+      historyKeeper.forget(this.moment);
   }
 
   // Call the API.
   async #generateResponse(options: object) {
+    // Send a partial message to indicate the start.
+    this.#handleMessageDelta(new ChatMessage({role: ChatRole.Assistant}), new ChatResponse({pending: true}));
+    // Call API.
     this.aborter = new AbortController();
     try {
       const apiOptions = {
@@ -142,10 +160,9 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
     } catch (error) {
       // AbortError is not treated as error.
       if (error.name == 'AbortError') {
-        if (!this.#lastResponse)
-          this.#lastResponse = new ChatResponse();
-        this.#lastResponse.aborted = true;
+        this.#responseEnded();
       } else {
+        this.onMessageError.emit(error);
         throw error;
       }
     }
@@ -154,9 +171,7 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
     // received, if there is no such signal and the partial message has been
     // left after API call ends, send an end signal here.
     if (this.pendingMessage) {
-      const response = new ChatResponse(this.#lastResponse ?? {});
-      response.pending = false;
-      this.onMessageDelta.emit({}, response);
+      this.onMessageDelta.emit({}, {first: false, pending: false});
       this.#responseEnded();
     }
 
@@ -173,7 +188,7 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
 
   // Called by sub-classes when there is message delta available.
   #handleMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
-    this.onMessageDelta.emit(delta, response);
+    this.onMessageDelta.emit(delta, {first: !this.pendingMessage, pending: response.pending});
 
     // Concatenate to the pendingMessage.
     if (!this.pendingMessage) {
@@ -188,8 +203,6 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
         this.pendingMessage.content = delta.content;
     }
 
-    this.#lastResponse = response;
-
     // Send onMessage when all pending messags have been received.
     if (!response.pending) {
       if (!this.pendingMessage.role || !this.pendingMessage.content)
@@ -197,7 +210,7 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
       this.onMessage.emit({
         role: this.pendingMessage.role,
         content: this.pendingMessage.content.trim(),
-      }, response);
+      });
       this.#responseEnded();
     }
   }
@@ -208,7 +221,6 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
       this.history.push(new ChatMessage(this.pendingMessage));
     this.pendingMessage = null;
     this.pendingPromise = null;
-    this.#lastResponse = null;
   }
 
   // Generate a name for the conversation.

@@ -59,15 +59,16 @@ export default class MessagesView extends BrowserView {
     this.executeJavaScript('window.removePendingMark()');
   }
 
+  // Remove a message.
+  removeMessage(index: number) {
+    this.messagesCount--;
+    this.executeJavaScript(`window.removeMessage(${index})`);
+  }
+
   // Remove all messages.
   clearMessages() {
     this.messagesCount = 0;
     this.executeJavaScript('window.clearMessages()');
-  }
-
-  // Reset the last message to pending state.
-  resetLastMessageAsPending() {
-    this.executeJavaScript('window.resetLastMessageAsPending()');
   }
 
   // Add (aborted) label to the pending message.

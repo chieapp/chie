@@ -129,22 +129,13 @@
     if (wasAtBottom)
       scrollToBottom();
   }
-  window.resetLastMessageAsPending = function() {
-    var pending = document.getElementById('pending');
+  window.removeMessage = function(index) {
     var messages = document.getElementsByClassName('msg');
-    if (messages.length == 0) {
-      console.error('No message for regenerating.');
+    if (index < 0 || index >= messages.length) {
+      console.error('No message for removing.');
       return;
     }
-    var message = messages[messages.length - 1];
-    if (pending && pending != message) {
-      console.error('Pending message is not last message.');
-      pending.removeAttribute('id');
-    }
-    message.setAttribute('id', 'pending');
-    var text = message.getElementsByClassName('text')[0];
-    text.innerHTML = '';
-    text.insertAdjacentHTML('beforebegin', '<img id="loader" src="chie://app-file/assets/icons/typing.gif"/>');
+    messages[index].parentNode.removeChild(messages[index]);
   };
   window.clearMessages = function() {
     document.getElementById('messages').innerHTML = '';

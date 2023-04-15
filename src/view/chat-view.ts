@@ -2,7 +2,7 @@ import gui from 'gui';
 import {SignalConnections} from 'typed-signals';
 
 import BaseView from './base-view';
-import ChatService from '../model/chat-service';
+import ChatService, {ChatMessageInfo} from '../model/chat-service';
 import IconButton from './icon-button';
 import InputView from './input-view';
 import MessagesView from './messages-view';
@@ -23,7 +23,6 @@ export default class ChatView extends BaseView<ChatService> {
     min: number;
   };
 
-  isSending = false;
   messagesView: MessagesView;
   input: InputView;
   replyButton: IconButton;
@@ -115,10 +114,16 @@ export default class ChatView extends BaseView<ChatService> {
       throw new Error('ChatView can only be used with ChatService');
     this.unload();
     this.service = service;
-    this.#serviceConnections.add(service.onMessageDelta.connect(
-      this.#onMessageDelta.bind(this)));
     this.#serviceConnections.add(service.onNewTitle.connect(
       this.onNewTitle.emit.bind(this.onNewTitle)));
+    this.#serviceConnections.add(service.onMessageDelta.connect(
+      this.#onMessageDelta.bind(this)));
+    this.#serviceConnections.add(service.onMessageError.connect(
+      this.#onMessageError.bind(this)));
+    this.#serviceConnections.add(service.onRemoveMessage.connect(
+      this.messagesView.removeMessage.bind(this.messagesView)));
+    this.#serviceConnections.add(service.onClearMessages.connect(
+      this.messagesView.clearMessages.bind(this.messagesView)));
     this.messagesView.assistantName = service.name;
     if (service.api.icon)
       this.messagesView.assistantAvatar = service.api.icon.getChieUrl();
@@ -135,25 +140,10 @@ export default class ChatView extends BaseView<ChatService> {
     for (const win of Object.values(this.#textWindows))
       win.window.close();
     this.#serviceConnections.disconnectAll();
-    this.#markdown = null;
-  }
-
-  async regenerateLastMessage() {
-    this.#markdown = null;
-    this.messagesView.resetLastMessageAsPending();
-    const promise = this.service.regenerateResponse({});
-    await this.#startSending(promise);
-  }
-
-  async clearHistory() {
-    this.#markdown = null;
-    this.messagesView.clearMessages();
-    this.onFocus();
-    await this.service.clear();
   }
 
   getDraft(): string | null {
-    if (this.isSending)
+    if (this.service.pendingMessage)
       return null;
     const content = this.input.entry.getText();
     if (content.trim().length == 0)
@@ -176,20 +166,15 @@ export default class ChatView extends BaseView<ChatService> {
   #onEnter() {
     if (gui.Event.isShiftPressed())  // user wants new line
       return true;
-    if (this.isSending)  // should never happen
+    if (this.service.pendingMessage)  // should never happen
       throw new Error('Sending message while a message is being received');
     const content = this.getDraft();
     if (!content)
       return false;
-    const message = {role: ChatRole.User, content};
-    (async () => {
-      // Append user's reply directly.
-      await this.messagesView.appendMessage(message);
-      // Show a pending message.
-      await this.messagesView.appendMessage({role: ChatRole.Assistant}, {pending: true});
-    })();
     // Send message.
-    this.#startSending(this.service.sendMessage(message));
+    this.service.sendMessage({role: ChatRole.User, content}).catch(() => {
+      // Error handled elsewhere.
+    });
     return false;
   }
 
@@ -207,7 +192,7 @@ export default class ChatView extends BaseView<ChatService> {
     } else if (this.#buttonMode == 'stop') {
       this.service.aborter.abort();
     } else if (this.#buttonMode == 'refresh') {
-      this.regenerateLastMessage();
+      this.service.regenerateResponse();
     }
   }
 
@@ -217,52 +202,51 @@ export default class ChatView extends BaseView<ChatService> {
       {
         label: 'Regenerate response',
         enabled: this.service.history.length > 0,
-        onClick: () => this.regenerateLastMessage(),
+        onClick: () => this.service.regenerateResponse(),
       },
       {
         label: 'Clear',
         enabled: this.service.history.length > 0,
-        onClick: () => this.clearHistory(),
+        onClick: () => this.service.clear(),
       },
     ]);
     menu.popup();
   }
 
   // Message being received.
-  #onMessageDelta(delta: Partial<ChatMessage>, response) {
-    if (delta.content) {
+  #onMessageDelta(delta: Partial<ChatMessage>, info: ChatMessageInfo) {
+    if (info.first) {
+      // Show the message if we are receiving it for the first time.
+      this.messagesView.appendMessage(delta, info);
+      if (info.pending) {
+        // Prevent editing until message is received.
+        this.#setButtonMode('stop');
+        this.input.setEntryEnabled(false);
+        this.input.setText('');
+      }
+    } else if (delta.content) {
+      // Update the message when receiving deltas.
       if (!this.#markdown)
         this.#markdown = new StreamedMarkdown();
       const change = this.#markdown.appendText(delta.content);
       this.messagesView.appendHtmlToPendingMessage(change);
     }
-    if (!response.pending)
-      this.#markdown = null;
-  }
-
-  // Handle UI changes after sending messages.
-  async #startSending(promise: Promise<void>) {
-    // Prevent editing until sent.
-    this.isSending = true;
-    this.#setButtonMode('stop');
-    this.input.setEntryEnabled(false);
-    this.input.setText('');
-    // Wait for sending.
-    try {
-      this.#lastError = null;
-      await promise;
-      this.input.setEntryEnabled(true);
-      this.onFocus();
-    } catch (error) {
-      this.#lastError = error;
-      await this.messagesView.appendError(error.message);
-    } finally {
-      this.isSending = false;
+    if (info.pending)
+      return;
+    // Reset after message is received.
+    this.#markdown = null;
+    if (!info.first) {
       this.#resetUIState();
       if (this.service.aborter?.signal.aborted)
         this.messagesView.addAbortedLabelToPendingMessage();
       this.messagesView.removePendingMark();
     }
+  }
+
+  // There is error thrown when sending message.
+  #onMessageError(error: Error) {
+    this.#lastError = error;
+    this.messagesView.appendError(error.message);
   }
 
   // Set the input and button to ready to send state.
@@ -290,13 +274,10 @@ export default class ChatView extends BaseView<ChatService> {
 
   async #onDomReady() {
     // There might be pending message when the service is loaded.
-    if (this.service.pendingMessage) {
-      await this.messagesView.appendMessage({role: ChatRole.Assistant}, {pending: true});
-      this.#onMessageDelta(this.service.pendingMessage, {pending: true});
-      this.#startSending(this.service.pendingPromise);
-    } else {
+    if (this.service.pendingMessage)
+      this.#onMessageDelta(this.service.pendingMessage, {first: true, pending: true});
+    else
       this.#resetUIState();
-    }
   }
 
   // Browser bindings.

@@ -24,8 +24,6 @@ export class ChatResponse {
   filtered: boolean = false;
   // This message is in progress, and waiting for more.
   pending: boolean = false;
-  // The response was aborted by user.
-  aborted: boolean = false;
 
   constructor(init?: Partial<ChatResponse>) {
     Object.assign(this, init);

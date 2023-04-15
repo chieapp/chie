@@ -55,7 +55,12 @@ export default class ChatListItem extends AppearanceAware {
     this.closeButton.onClick = () => this.onClose.emit(this);
     this.view.addChildView(this.closeButton.view);
 
-    this.setTitle(this.service.title);
+    this.setTitle(service.title);
+    if (!service.isLoaded) {
+      this.connections.add(service.onLoad.connect(() => {
+        this.setTitle(service.title);
+      }));
+    }
   }
 
   setSelected(selected: boolean) {

@@ -129,6 +129,7 @@ export default class DashboardWindow extends BaseWindow {
     this.#selectedView?.mainView.view.setVisible(false);
     view.mainView.view.setVisible(true);
     view.mainView.initAsMainView();
+    view.mainView.onFocus();
     // The main view size should keep unchanged when switching.
     const size = this.#selectedView?.mainView.getMainViewSize();
     if (size) {

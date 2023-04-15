@@ -122,6 +122,12 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     this.#resizeHandle.onMouseUp = () => this.#resizeOrigin = null;
     this.#leftPane.view.addChildView(this.#resizeHandle);
 
+    this.chatView = new ChatView();
+    this.chatView.view.setStyle({flex: 1});
+    this.view.addChildView(this.chatView.view);
+    this.connections.add(this.chatView.onNewTitle.connect(
+      this.onNewTitle.emit.bind(this.onNewTitle)));
+
     // Load existing chats.
     for (const service of this.service.chats) {
       const item = this.#createItemForChat(service);
@@ -145,7 +151,6 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
   initAsMainView() {
     if (this.service.chats.length == 0)
       this.createChat();
-    this.chatView.input.entry.focus();
   }
 
   onFocus() {
@@ -219,14 +224,6 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
   }
 
   #createItemForChat(service) {
-    // Create chat view lazily.
-    if (!this.chatView) {
-      this.chatView = new ChatView(service);
-      this.chatView.view.setStyle({flex: 1});
-      this.view.addChildView(this.chatView.view);
-      this.connections.add(this.chatView.onNewTitle.connect(
-        this.onNewTitle.emit.bind(this.onNewTitle)));
-    }
     // Create the list item.
     const item = new ChatListItem(service);
     // Link the item to this view.

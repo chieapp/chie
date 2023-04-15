@@ -23,8 +23,8 @@
 <body>
 
 <div id="messages">
-  <% for (const message of history) { %>
-    <%- await include('message.html', {message, style, response: null}) %>
+  <% for (const message of messages) { %>
+    <%- await include('message.html', {message, response: {pending: false}}) %>
   <% } %>
 </div>
 
@@ -32,295 +32,296 @@
   // Global variables ======================================================
 
   // Which element is on top.
-  var topElement = null
+  var topElement = null;
   // Offset from the top element.
-  var scrollOffset = 0
+  var scrollOffset = 0;
   // Mark page is resizing.
-  var ignoreNextScroll = false
+  var ignoreNextScroll = false;
 
   // Initialization ========================================================
 
-  var isIE = /Trident|MSIE/.test(navigator.userAgent)
+  var isIE = /Trident|MSIE/.test(navigator.userAgent);
   if (isIE) {
     // Add endsWith polyfill.
     if (!String.prototype.endsWith) {
       String.prototype.endsWith = function(suffix) {
-        return this.indexOf(suffix, this.length - suffix.length) !== -1
-      }
+        return this.indexOf(suffix, this.length - suffix.length) !== -1;
+      };
     }
   } else {
     // For IE we need to scroll after ready, as the window body's size may be
     // incorrect before showing the browser.
     // For morden browsers scrolling before showing has the best visual effect.
-    scrollToBottom()
+    scrollToBottom();
   }
 
   // External APIs =========================================================
 
   // External API for invoking callbacks from outside world.
-  var callbacks = {}
+  var callbacks = {};
   window.executeCallback = function(id, arg) {
     if (!callbacks[id])
-      return
-    callbacks[id](arg)
-    delete callbacks[id]
-  }
+      return;
+    callbacks[id](arg);
+    delete callbacks[id];
+  };
   // External API to add a new message.
-  var messages = document.getElementById('messages')
-  window.addMessage = function(html) {
-    var children = HTMLToDOM(html)
+  var messages = document.getElementById('messages');
+  window.appendMessage = function(html) {
+    var children = HTMLToDOM(html);
     for (var i = 0; i < children.length; i++)
-      messages.appendChild(children[i])
+      messages.appendChild(children[i]);
     // Scroll to bottom for new messages.
-    scrollToBottom()
-  }
+    scrollToBottom();
+  };
   // External API to update pending message.
-  window.updatePending = function(html, back) {
-    var text = findPending('text')
+  window.appendHtmlToPendingMessage = function(html, back) {
+    var text = findPending('text');
     if (!text)
-      return
-    removeLoader()
+      return;
+    removeLoader();
     var wasAtBottom = isPageBottom();
     // Update the message html.
     if (back) {
       // If the tail is something like </p>, then we can insert directly into
       // last child instead of updating whole html.
-      var tail = text.innerHTML.slice(text.innerHTML.length - back)
-      var match = tail.trim().match(/^(<\/\w+>[\s]*)+$/)
+      var tail = text.innerHTML.slice(text.innerHTML.length - back);
+      var match = tail.trim().match(/^(<\/\w+>[\s]*)+$/);
       if (match && html.endsWith(tail)) {
         // Count how many closing tags.
-        var count = (tail.match(/\//g) || []).length
+        var count = (tail.match(/\//g) || []).length;
         // Find the last child.
-        var target = text
+        var target = text;
         for (var i = 0; i < count; ++i)
-          target = target.lastElementChild
+          target = target.lastElementChild;
         // Insert to the ending of it.
-        target.insertAdjacentHTML('beforeend', html.slice(0, -back))
+        target.insertAdjacentHTML('beforeend', html.slice(0, -back));
       } else {
-        text.innerHTML = text.innerHTML.slice(0, -back) + html
+        console.warn('Refresh whole innerHTML with bad tail:', tail);
+        text.innerHTML = text.innerHTML.slice(0, -back) + html;
       }
     } else {
-      text.insertAdjacentHTML('beforeend', html)
+      text.insertAdjacentHTML('beforeend', html);
     }
     if (wasAtBottom)
-      scrollToBottom()
-  }
-  window.endPending = function() {
-    var wasAtBottom = isPageBottom()
-    var pending = findPending()
+      scrollToBottom();
+  };
+  window.removePendingMark = function() {
+    var wasAtBottom = isPageBottom();
+    var pending = findPending();
     if (pending)
-      pending.removeAttribute('id')
-    removeLoader()
-    highlightCodes()
+      pending.removeAttribute('id');
+    removeLoader();
+    highlightCodes();
     if (wasAtBottom)
-      scrollToBottom()
+      scrollToBottom();
   }
-  window.regenerateLastMessage = function() {
-    var pending = document.getElementById('pending')
-    var messages = document.getElementsByClassName('msg')
+  window.resetLastMessageAsPending = function() {
+    var pending = document.getElementById('pending');
+    var messages = document.getElementsByClassName('msg');
     if (messages.length == 0) {
-      console.error('No message for regenerating.')
-      return
+      console.error('No message for regenerating.');
+      return;
     }
     var message = messages[messages.length - 1];
     if (pending && pending != message) {
-      console.error('Pending message is not last message.')
-      pending.removeAttribute('id')
+      console.error('Pending message is not last message.');
+      pending.removeAttribute('id');
     }
-    message.setAttribute('id', 'pending')
-    var text = message.getElementsByClassName('text')[0]
+    message.setAttribute('id', 'pending');
+    var text = message.getElementsByClassName('text')[0];
     text.innerHTML = '';
-    text.insertAdjacentHTML('beforebegin', '<img id="loader" src="chie://app-file/assets/icons/typing.gif"/>')
-  }
-  window.clearHistory = function() {
-    document.getElementById('messages').innerHTML = ''
-  }
-  window.markAborted = function() {
-    var text = findPending('text')
+    text.insertAdjacentHTML('beforebegin', '<img id="loader" src="chie://app-file/assets/icons/typing.gif"/>');
+  };
+  window.clearMessages = function() {
+    document.getElementById('messages').innerHTML = '';
+  };
+  window.addAbortedLabelToPendingMessage = function() {
+    var text = findPending('text');
     if (text) {
-      var inlineText = text
+      var inlineText = text;
       // If the last child of text is an element, append into it.
       if (text.lastElementChild &&
           text.lastElementChild == this.lastChild &&
           text.lastElementChild.tagName.toLowerCase() == 'p')
-        inlineText = text.lastElementChild
-      inlineText.insertAdjacentHTML('beforeend', ' <span class="error label">(aborted)</span>')
-      scrollToBottom()
+        inlineText = text.lastElementChild;
+      inlineText.insertAdjacentHTML('beforeend', ' <span class="error label">(aborted)</span>');
+      scrollToBottom();
     }
-  }
-  window.markError = function(error) {
-    var text = findPending('text')
+  };
+  window.appendError = function(error) {
+    var text = findPending('text');
     if (text)
-      text.innerHTML += '<div class="error">' + error + '</div>'
-    endPending();
-  }
+      text.innerHTML += '<div class="error">' + error + '</div>';
+    removePendingMark();
+  };
 
   // DOM event handlers ====================================================
 
   // Capture clicks on <a>.
   window.onclick = function(event) {
-    var target = findParent('a', event.target)
+    var target = findParent('a', event.target);
     if (!target)
-      return false
+      return false;
     // Open links in actual browsers.
     if (target.href.indexOf('#') == -1 && !target.onclick) {
-      chie.openLink(target.href)
-      return false
+      chie.openLink(target.href);
+      return false;
     }
     // Copy code.
     if (target.href.endsWith('#copy-code')) {
-      chie.copyText(target.parentNode.parentNode.children[1].textContent)
-      showOk(target)
-      return false
+      chie.copyText(target.parentNode.parentNode.children[1].textContent);
+      showOk(target);
+      return false;
     }
-    var msg = target.parentNode.parentNode.parentNode
-    var index = msg.getAttribute('message-index')
-    var text = msg.getElementsByClassName('text')[0]
+    var msg = target.parentNode.parentNode.parentNode;
+    var index = msg.getAttribute('message-index');
+    var text = msg.getElementsByClassName('text')[0];
     // Show popup window to display message.
     if (target.href.endsWith('#show-text-at')) {
-      chie.showTextAt(index, text.getBoundingClientRect())
-      return false
+      chie.showTextAt(index, text.getBoundingClientRect());
+      return false;
     }
     // Copy text.
     if (target.href.endsWith('#copy-text-at')) {
-      chie.copyTextAt(index)
-      showOk(target)
-      return false
+      chie.copyTextAt(index);
+      showOk(target);
+      return false;
     }
-  }
+  };
   // Move focus to entry on Tab.
   window.onkeyup = function(event) {
     if (event.keyCode == 9 &&  // Tab key
         !event.ctrlKey && !event.altKey && !event.shiftKey) {
-      event.preventDefault()
-      chie.focusEntry()
+      event.preventDefault();
+      chie.focusEntry();
     }
-  }
+  };
   // Update states when scrolling.
   window.onscroll = function() {
     if (ignoreNextScroll) {
-      ignoreNextScroll = false
-      return
+      ignoreNextScroll = false;
+      return;
     }
-    topElement = null
-    scrollOffset = 0
-    var messages = document.getElementsByClassName('msg')
+    topElement = null;
+    scrollOffset = 0;
+    var messages = document.getElementsByClassName('msg');
     if (messages.length === 0)
-      return
-    var setTopElement = !isPageBottom()
+      return;
+    var setTopElement = !isPageBottom();
     // Search backwards.
     for (var i = messages.length - 1; i >= 0;  --i) {
-      var rect = messages[i].getBoundingClientRect()
+      var rect = messages[i].getBoundingClientRect();
       // Make sure the action menu is always visible.
-      var actionMenu = messages[i].getElementsByClassName('action-menu')[0]
-      actionMenu.style.position = rect.top > 0 ? 'absolute' : 'fixed'
+      var actionMenu = messages[i].getElementsByClassName('action-menu')[0];
+      actionMenu.style.position = rect.top > 0 ? 'absolute' : 'fixed';
       // Find out which message is the oldest visible one.
       if (setTopElement) {
-        topElement = messages[i]
-        scrollOffset = rect.top
+        topElement = messages[i];
+        scrollOffset = rect.top;
       }
       if (rect.top < 0)
-        break
+        break;
     }
-  }
+  };
   // Make sure the view is always scrolled at current message.
   window.onresize = function() {
-    ignoreNextScroll = true
+    ignoreNextScroll = true;
     if (topElement)
-      window.scrollTo(0, topElement.getBoundingClientRect().top + window.pageYOffset - scrollOffset)
+      window.scrollTo(0, topElement.getBoundingClientRect().top + window.pageYOffset - scrollOffset);
     else
-      scrollToBottom()
-  }
+      scrollToBottom();
+  };
   // Catch errors.
   window.onerror = function(message, url, line, column, error) {
-    chie.catchDomError(message, url, line, column, error)
-  }
+    chie.catchDomError(message, url, line, column, error);
+  };
 
   // Ready =================================================================
 
   // We are ready.
-  chie.domReady()
+  chie.domReady();
   // See comment above on IE.
   if (isIE)
-    scrollToBottom()
+    scrollToBottom();
 
   // Helpers ===============================================================
 
   // Find all unhilighted code blocks and highlight them.
   function highlightCodes() {
-    var pres = [].slice.call(document.getElementsByClassName('unhilighted'))
+    var pres = [].slice.call(document.getElementsByClassName('unhilighted'));
     for (var i = 0; i < pres.length; ++i) {
-      var pre = pres[i]
-      pre.classList.remove('unhilighted')
-      highlightCode(pre, pre.getAttribute('lang'))
+      var pre = pres[i];
+      pre.classList.remove('unhilighted');
+      highlightCode(pre, pre.getAttribute('lang'));
     }
   }
   // Highlight a single code block.
-  var nextCallbackId = 0
+  var nextCallbackId = 0;
   function highlightCode(element, lang) {
     callbacks[++nextCallbackId] = function(code) {
-      element.innerHTML = code.html
+      element.innerHTML = code.html;
       if (code.lang)
-        element.parentNode.firstElementChild.firstElementChild.textContent = code.lang
+        element.parentNode.firstElementChild.firstElementChild.textContent = code.lang;
     }
-    chie.highlightCode(element.textContent, lang, nextCallbackId)
+    chie.highlightCode(element.textContent, lang, nextCallbackId);
   }
   // Show ok when clicked on icon.
   function showOk(target) {
-    var i = target.firstElementChild
-    var oldClassName = i.className
-    i.className = 'icon-ok'
-    setTimeout(function () { i.className = oldClassName }, 1000)
+    var i = target.firstElementChild;
+    var oldClassName = i.className;
+    i.className = 'icon-ok';
+    setTimeout(function () { i.className = oldClassName }, 1000);
   }
   // Remove the load indicator.
   function removeLoader() {
-    var loader = document.getElementById('loader')
+    var loader = document.getElementById('loader');
     if (loader)
-      loader.parentNode.removeChild(loader)
+      loader.parentNode.removeChild(loader);
   }
   // Helper to convert HTML to DOM.
   function HTMLToDOM(html) {
     // Note: Don't use DOMParser, it has problems with applying CSS styles.
-    var wrapper = document.createElement('div')
-    wrapper.innerHTML = html
-    return wrapper.childNodes
+    var wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+    return wrapper.childNodes;
   }
   // Find the pending message.
   function findPending(child) {
-    var pending = document.getElementById('pending')
+    var pending = document.getElementById('pending');
     if (!pending) {
-      console.error('Unable to find the pending message.')
-      return
+      console.error('Unable to find the pending message.');
+      return;
     }
     if (!child)
-      return pending
-    var text = pending.getElementsByClassName(child)[0]
+      return pending;
+    var text = pending.getElementsByClassName(child)[0];
     if (!text) {
-      console.error('The pending message has no '+ child + ' element.')
-      return
+      console.error('The pending message has no '+ child + ' element.');
+      return;
     }
-    return text
+    return text;
   }
   // Scroll to the bottom of page.
   function scrollToBottom() {
-    window.scrollTo(0, document.body.scrollHeight)
+    window.scrollTo(0, document.body.scrollHeight);
   }
   // Check scrolled at page bottom.
   function isPageBottom() {
     // IE has one pixel offset problem so we can not do precise comparison, and
     // we want to treat as at bottom if only slightly scrolled above to provide
     // more natural experience.
-    return document.body.scrollHeight - (window.pageYOffset + window.innerHeight) < 5
+    return document.body.scrollHeight - (window.pageYOffset + window.innerHeight) < 5;
   }
   // Helper function to find parent element.
   function findParent(tagName, target) {
-    var loops = 0
+    var loops = 0;
     while (target && ++loops < 4) {
       if (target.tagName && target.tagName.toLowerCase() === tagName)
-        return target
-      target = target.parentNode
+        return target;
+      target = target.parentNode;
     }
-    return null
+    return null;
   }
 </script>
 </body>

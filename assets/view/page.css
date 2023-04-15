@@ -29,7 +29,7 @@ a:hover {
 .action-menu {
   display: none;
   position: absolute;
-  right: <%= style.chatViewPadding %>px;
+  right: <%= style.padding %>px;
   top: 2px;
   padding: 2px;
   border: 1px solid;
@@ -79,8 +79,8 @@ a.icon i.icon-ok {
   vertical-align: top;
 }
 .msg .avatar {
-  padding: <%= style.chatViewPadding %>px;
-  padding-right: <%= style.chatViewPadding / 2 %>px;
+  padding: <%= style.padding %>px;
+  padding-right: <%= style.padding / 2 %>px;
   /* Table cell width */
   width: 32px;
 }
@@ -92,8 +92,8 @@ a.icon i.icon-ok {
 }
 .msg .content {
   word-wrap: break-word;
-  padding: <%= style.chatViewPadding %>px;
-  padding-left: <%= style.chatViewPadding / 2 %>px;
+  padding: <%= style.padding %>px;
+  padding-left: <%= style.padding / 2 %>px;
   /* Required for making action menu's absolute position relative to this div */
   position: relative;
 }

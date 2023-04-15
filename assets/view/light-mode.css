@@ -1,5 +1,5 @@
 body {
-  background: white;
+  background: <%= style.light.bgColor %>;
   color: #2C2D30;
 }
 a, a:link, a:visited {
@@ -9,7 +9,7 @@ a, a:link, a:visited {
   background: rgba(255, 204, 0, .1);
 }
 .action-menu {
-  background: white;
+  background: <%= style.light.bgColor %>;
   border-color: #E8E8E8;
 }
 a.icon {

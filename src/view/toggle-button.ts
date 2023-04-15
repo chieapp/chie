@@ -1,43 +1,16 @@
 import gui from 'gui';
 
-import SignalsOwner from '../model/signals-owner';
+import Clickable from './clickable';
 import {createRoundedCornerPath} from '../util/draw-utils';
 import {style} from './dashboard-window';
 
-export default class ToggleButton extends SignalsOwner {
-  view: gui.Container;
+export default class ToggleButton extends Clickable {
   image?: gui.Image;
-
-  onClick?: () => void;
-
-  // States.
-  hover = false;
   selected = false;
 
   constructor(image?: gui.Image) {
     super();
-    this.view = gui.Container.create();
     this.image = image;
-
-    this.view.setMouseDownCanMoveWindow(false);
-    this.view.onDraw = this.#onDraw.bind(this);
-    this.view.onMouseEnter = () => {
-      this.hover = true;
-      this.view.schedulePaint();
-    };
-    this.view.onMouseLeave = () => {
-      this.hover = false;
-      this.view.schedulePaint();
-    };
-    this.view.onMouseUp = (view, event) => {
-      if (this.onClick) {
-        const bounds = view.getBounds();
-        const pos = event.positionInView;
-        if (pos.x >= 0 && pos.y >= 0 && pos.x <= bounds.width && pos.y <= bounds.height)
-          this.onClick();
-      }
-      return true;
-    };
   }
 
   setSelected(selected: boolean) {
@@ -47,7 +20,7 @@ export default class ToggleButton extends SignalsOwner {
     this.view.schedulePaint();
   }
 
-  #onDraw(view: gui.Container, painter: gui.Painter) {
+  onDraw(view: gui.Container, painter: gui.Painter) {
     const bounds = Object.assign(view.getBounds(), {x: 0, y: 0});
     createRoundedCornerPath(painter, bounds, style.buttonRadius);
     painter.clip();

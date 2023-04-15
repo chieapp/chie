@@ -9,14 +9,12 @@ export interface ViewState {
 }
 
 export default abstract class BaseView<T extends WebService<WebAPI> = WebService<WebAPI>> extends AppearanceAware {
-  service: T;
+  service?: T;
 
   onNewTitle: Signal<() => void> = new Signal;
 
-  constructor(service: T) {
+  constructor(service?: T) {
     super();
-    if (!service)
-      throw new Error('Must pass service to BaseView');
     this.service = service;
   }
 

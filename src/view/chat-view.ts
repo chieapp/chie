@@ -1,42 +1,19 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import ejs from 'ejs';
 import gui from 'gui';
-import open from 'open';
 import {SignalConnections} from 'typed-signals';
-import {realpathSync} from 'node:fs';
 
-import BaseView from '../view/base-view';
+import BaseView from './base-view';
 import ChatService from '../model/chat-service';
 import IconButton from './icon-button';
 import InputView from './input-view';
+import MessagesView from './messages-view';
+import StreamedMarkdown from '../util/streamed-markdown';
 import TextWindow from './text-window';
-import {
-  renderMarkdown,
-  veryLikelyMarkdown,
-  highlightCode,
-  escapeText,
-} from './markdown';
-import {
-  ChatRole,
-  ChatMessage,
-  ChatConversationAPI,
-} from '../model/chat-api';
-
-const assetsDir = path.join(__dirname, '../../assets');
-
-export const style = {
-  chatViewPadding: 14,
-  bgColorDarkMode: '#1B1D21',
-};
+import {ChatRole, ChatMessage, ChatConversationAPI} from '../model/chat-api';
+import {style} from './browser-view';
 
 type ButtonMode = 'refresh' | 'send' | 'stop';
 
 export default class ChatView extends BaseView<ChatService> {
-  // EJS templates.
-  static pageTemplate?: ejs.AsyncTemplateFunction;
-  static messageTemplate?: ejs.AsyncTemplateFunction;
-
   // Font in entry.
   static font?: gui.Font;
 
@@ -47,48 +24,32 @@ export default class ChatView extends BaseView<ChatService> {
   };
 
   isSending = false;
-  browser: gui.Browser;
+  messagesView: MessagesView;
   input: InputView;
   replyButton: IconButton;
   menuButton: IconButton;
 
   #serviceConnections: SignalConnections = new SignalConnections();
-  #parsedMessage?: {
-    isMarkdown: boolean,
-    html: string,
-  };
+  #markdown?: StreamedMarkdown;
   #lastError?: Error;
 
   #buttonMode: ButtonMode = 'send';
-  #placeholder?: gui.Container;
   #textWindows: Record<number, TextWindow> = {};
 
-  constructor(service: ChatService) {
-    if (!(service instanceof ChatService))
-      throw new Error('ChatView can only be used with ChatService');
-    super(service);
+  constructor(service?: ChatService) {
+    super();
 
     this.view.setStyle({flex: 1});
     if (process.platform == 'win32')
       this.view.setBackgroundColor('#E5E5E5');
 
-    this.#placeholder = gui.Container.create();
-    this.#placeholder.setStyle({flex: 1});
-    if (this.darkMode)
-      this.#placeholder.setBackgroundColor(style.bgColorDarkMode);
-    else
-      this.#placeholder.setBackgroundColor('#FFF');
-    this.view.addChildView(this.#placeholder);
-
-    this.browser = gui.Browser.create({
-      devtools: true,
-      contextMenu: true,
-      allowFileAccessFromFiles: true,
-      hardwareAcceleration: false,
-    });
-    this.browser.setStyle({flex: 1});
-    if (this.darkMode)
-      this.browser.setBackgroundColor(style.bgColorDarkMode);
+    this.messagesView = new MessagesView();
+    this.messagesView.view.setStyle({flex: 1});
+    this.messagesView.browser.addBinding('focusEntry', this.onFocus.bind(this));
+    this.messagesView.browser.addBinding('showTextAt', this.#showTextAt.bind(this));
+    this.messagesView.browser.addBinding('copyTextAt', this.#copyTextAt.bind(this));
+    this.messagesView.onDomReady.connect(this.#onDomReady.bind(this));
+    this.view.addChildView(this.messagesView.view);
 
     // Font style should be the same with messages.
     if (!ChatView.font)
@@ -97,7 +58,7 @@ export default class ChatView extends BaseView<ChatService> {
     this.input = new InputView();
     if (process.platform == 'win32')
       this.input.view.setBackgroundColor('#E5E5E5');
-    this.input.view.setStyle({margin: style.chatViewPadding});
+    this.input.view.setStyle({margin: style.padding});
     this.input.entry.setFont(ChatView.font);
     // Calculate height for 1 and 5 lines.
     if (!ChatView.entryHeights) {
@@ -113,8 +74,6 @@ export default class ChatView extends BaseView<ChatService> {
     this.input.entry.shouldInsertNewLine = this.#onEnter.bind(this);
     this.view.addChildView(this.input.view);
 
-    this.#setupBrowser();
-
     this.replyButton = new IconButton('send');
     this.replyButton.view.setTooltip(getTooltipForMode('send'));
     this.replyButton.onClick = this.#onButtonClick.bind(this);
@@ -123,11 +82,15 @@ export default class ChatView extends BaseView<ChatService> {
     this.menuButton = new IconButton('menu');
     this.menuButton.onClick = this.#onMenuButton.bind(this);
     this.input.addButton(this.menuButton);
+
+    if (service)
+      this.loadChatService(service);
   }
 
   destructor() {
     super.destructor();
     this.unload();
+    this.messagesView.destructor();
     this.input.destructor();
     this.service.aborter?.abort();
   }
@@ -146,61 +109,39 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   async loadChatService(service: ChatService) {
+    if (this.service == service)
+      return;
+    if (!(service instanceof ChatService))
+      throw new Error('ChatView can only be used with ChatService');
     this.unload();
     this.service = service;
-    this.#serviceConnections.add(this.service.onMessageDelta.connect(
+    this.#serviceConnections.add(service.onMessageDelta.connect(
       this.#onMessageDelta.bind(this)));
-    this.#serviceConnections.add(this.service.onNewTitle.connect(
+    this.#serviceConnections.add(service.onNewTitle.connect(
       this.onNewTitle.emit.bind(this.onNewTitle)));
-
-    // Delay loading the templates for rendering conversation.
-    if (!ChatView.pageTemplate) {
-      await Promise.all([
-        (async () => {
-          const filename = path.join(assetsDir, 'view', 'page.html');
-          const html = await fs.readFile(filename);
-          ChatView.pageTemplate = await ejs.compile(html.toString(), {filename, async: true});
-        })(),
-        (async () => {
-          const filename = path.join(assetsDir, 'view', 'message.html');
-          const html = await fs.readFile(filename);
-          ChatView.messageTemplate = await ejs.compile(html.toString(), {filename, async: true});
-        })(),
-      ]);
-    }
-    // Render.
-    const data = {
-      style,
-      history: this.service.history.map(messageToDom.bind(null, this.service)),
-    };
-    this.browser.loadHTML(await ChatView.pageTemplate(data), 'https://chie.app');
+    this.messagesView.assistantName = service.name;
+    if (service.api.icon)
+      this.messagesView.assistantAvatar = service.api.icon.getChieUrl();
+    await this.messagesView.loadMessages(service.history);
   }
 
   unload() {
     for (const win of Object.values(this.#textWindows))
       win.window.close();
     this.#serviceConnections.disconnectAll();
-    this.#parsedMessage = null;
-  }
-
-  async addMessage(message: Partial<ChatMessage>, response?: {pending: boolean}) {
-    const html = await ChatView.messageTemplate({
-      message: messageToDom(this.service, message, this.service.history.length),
-      response,
-    });
-    await this.executeJavaScript(`window.addMessage(${JSON.stringify(html)})`);
+    this.#markdown = null;
   }
 
   async regenerateLastMessage() {
-    this.#parsedMessage = null;
-    this.executeJavaScript('window.regenerateLastMessage()');
+    this.#markdown = null;
+    this.messagesView.resetLastMessageAsPending();
     const promise = this.service.regenerateResponse({});
     await this.#startSending(promise);
   }
 
   async clearHistory() {
-    this.#parsedMessage = null;
-    this.executeJavaScript('window.clearHistory()');
+    this.#markdown = null;
+    this.messagesView.clearMessages();
     this.onFocus();
     await this.service.clear();
   }
@@ -212,24 +153,6 @@ export default class ChatView extends BaseView<ChatService> {
     if (content.trim().length == 0)
       return null;
     return content;
-  }
-
-  executeJavaScript(js: string) {
-    return new Promise<boolean>((resolve) => this.browser.executeJavaScript(js, resolve));
-  }
-
-  async #setupBrowser() {
-    // Add bindings to the browser.
-    this.browser.setBindingName('chie');
-    this.browser.addBinding('focusEntry', this.onFocus.bind(this));
-    this.browser.addBinding('domReady', this.#domReady.bind(this));
-    this.browser.addBinding('catchDomError', this.#catchDomError.bind(this));
-    this.browser.addBinding('log', this.#log.bind(this));
-    this.browser.addBinding('highlightCode', this.#highlightCode.bind(this));
-    this.browser.addBinding('copyText', this.#copyText.bind(this));
-    this.browser.addBinding('showTextAt', this.#showTextAt.bind(this));
-    this.browser.addBinding('copyTextAt', this.#copyTextAt.bind(this));
-    this.browser.addBinding('openLink', this.#openLink.bind(this));
   }
 
   // User editing in the entry.
@@ -255,9 +178,9 @@ export default class ChatView extends BaseView<ChatService> {
     const message = {role: ChatRole.User, content};
     (async () => {
       // Append user's reply directly.
-      await this.addMessage(message);
+      await this.messagesView.appendMessage(message);
       // Show a pending message.
-      await this.addMessage({role: ChatRole.Assistant}, {pending: true});
+      await this.messagesView.appendMessage({role: ChatRole.Assistant}, {pending: true});
     })();
     // Send message.
     this.#startSending(this.service.sendMessage(message));
@@ -302,33 +225,13 @@ export default class ChatView extends BaseView<ChatService> {
   // Message being received.
   #onMessageDelta(delta: Partial<ChatMessage>, response) {
     if (delta.content) {
-      if (this.#parsedMessage) {
-        // Get html of full message.
-        const isMarkdown = this.#parsedMessage.isMarkdown || veryLikelyMarkdown(delta.content);
-        let html = this.service.pendingMessage.content + delta.content;
-        if (isMarkdown)
-          html = renderMarkdown(html);
-        else
-          html = escapeText(html);
-        // Pass the delta to browser.
-        const pos = findStartOfDifference(this.#parsedMessage.html, html);
-        const back = this.#parsedMessage.html.length - pos;
-        const substr = html.substr(pos);
-        this.#parsedMessage = {isMarkdown, html};
-        this.executeJavaScript(`window.updatePending(${JSON.stringify(substr)}, ${back})`);
-      } else {
-        // This is the first part of message, just update.
-        const isMarkdown = veryLikelyMarkdown(delta.content);
-        this.#parsedMessage = {
-          isMarkdown,
-          html: isMarkdown ? renderMarkdown(delta.content) : escapeText(delta.content),
-        };
-        this.executeJavaScript(`window.updatePending(${JSON.stringify(this.#parsedMessage.html)})`);
-      }
+      if (!this.#markdown)
+        this.#markdown = new StreamedMarkdown();
+      const {html, back} = this.#markdown.appendText(delta.content);
+      this.messagesView.appendHtmlToPendingMessage(html, back);
     }
-    if (response.pending)  // more messages coming
-      return;
-    this.#parsedMessage = null;
+    if (!response.pending)
+      this.#markdown = null;
   }
 
   // Handle UI changes after sending messages.
@@ -346,13 +249,13 @@ export default class ChatView extends BaseView<ChatService> {
       this.onFocus();
     } catch (error) {
       this.#lastError = error;
-      await this.executeJavaScript(`window.markError(${JSON.stringify(error.message)})`);
+      await this.messagesView.appendError(error.message);
     } finally {
       this.isSending = false;
       this.#resetUIState();
       if (this.service.aborter?.signal.aborted)
-        this.executeJavaScript('window.markAborted()');
-      this.executeJavaScript('window.endPending()');
+        this.messagesView.addAbortedLabelToPendingMessage();
+      this.messagesView.removePendingMark();
     }
   }
 
@@ -379,17 +282,10 @@ export default class ChatView extends BaseView<ChatService> {
     this.#buttonMode = mode;
   }
 
-  // Browser bindings used inside the browser view.
-  async #domReady() {
-    // Only show browser when it is loaded, this can remove the white flash.
-    if (this.#placeholder) {
-      this.view.removeChildView(this.#placeholder);
-      this.view.addChildViewAt(this.browser, 0);
-      this.#placeholder = null;
-    }
+  async #onDomReady() {
     // There might be pending message when the service is loaded.
     if (this.service.pendingMessage) {
-      await this.addMessage({role: ChatRole.Assistant}, {pending: true});
+      await this.messagesView.appendMessage({role: ChatRole.Assistant}, {pending: true});
       this.#onMessageDelta(this.service.pendingMessage, {pending: true});
       this.#startSending(this.service.pendingPromise);
     } else {
@@ -397,23 +293,7 @@ export default class ChatView extends BaseView<ChatService> {
     }
   }
 
-  #catchDomError(message: string) {
-    console.error('Error in browser:', message);
-  }
-
-  #log(...args) {
-    console.log(...args);
-  }
-
-  #highlightCode(text: string, language: string, callbackId: number) {
-    const code = highlightCode(text, language);
-    this.executeJavaScript(`window.executeCallback(${callbackId}, ${JSON.stringify(code)})`);
-  }
-
-  #copyText(text: string) {
-    gui.Clipboard.get().setText(text);
-  }
-
+  // Browser bindings.
   #showTextAt(index: number, textBounds: gui.RectF) {
     if (index in this.#textWindows) {
       this.#textWindows[index].window.activate();
@@ -427,56 +307,8 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   #copyTextAt(index: number) {
-    this.#copyText(this.service.history[index].content);
+    gui.Clipboard.get().setText(this.service.history[index].content);
   }
-
-  #openLink(url: string) {
-    open(url);
-  }
-}
-
-// Register chie:// protocol to work around CROS problem with file:// protocol.
-gui.Browser.registerProtocol('chie', (url) => {
-  const u = new URL(url);
-  if (u.host !== 'app-file')
-    return gui.ProtocolStringJob.create('text/plain', 'Unsupported type');
-  const p = realpathSync(`${__dirname}/../..${u.pathname}`);
-  return gui.ProtocolFileJob.create(p);
-});
-
-// Remove protocol on exit to work around crash.
-process.on('exit', () => {
-  gui.Browser.unregisterProtocol('chie');
-});
-
-// Translate the message into data to be parsed by EJS template.
-function messageToDom(service: ChatService, message: Partial<ChatMessage>, index: number) {
-  if (!message.role)  // should not happen
-    throw new Error('Role of message expected for serialization.');
-  let content = message.content;
-  if (content && message.role == ChatRole.Assistant && veryLikelyMarkdown(content))
-    content = renderMarkdown(content, {highlight: true});
-  else
-    content = escapeText(content);
-  const sender = {
-    [ChatRole.User]: 'You',
-    [ChatRole.Assistant]: service.name,
-    [ChatRole.System]: 'System',
-  }[message.role];
-  let avatar = null;
-  if (message.role == ChatRole.Assistant && service.api.icon)
-    avatar = service.api.icon.getChieUrl();
-  return {role: message.role, sender, avatar, content, index};
-}
-
-// Find the common prefix of two strings.
-function findStartOfDifference(a: string, b: string) {
-  const max = Math.min(a.length, b.length);
-  for (let i = 0; i < max; ++i) {
-    if (a[i] != b[i])
-      return i;
-  }
-  return max;
 }
 
 // Return the button tooltip for button mode.

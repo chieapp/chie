@@ -1,5 +1,5 @@
 body {
-  background: <%= style.bgColorDarkMode %>;
+  background: <%= style.dark.bgColor %>;
   color: white;
 }
 a, a:link, a:visited {
@@ -9,7 +9,7 @@ a, a:link, a:visited {
   background: #302E27;
 }
 .action-menu {
-  background: <%= style.bgColorDarkMode %>;
+  background: <%= style.dark.bgColor %>;
   border-color: rgba(232, 232, 232, 0.13);
 }
 a.icon {

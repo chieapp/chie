@@ -1,7 +1,7 @@
 import gui from 'gui';
 import path from 'node:path';
 import {realpathSync} from 'node:fs';
-import AppearanceAware from '../view/appearance-aware';
+import Clickable from './clickable';
 
 const buttonRadius = 8;
 
@@ -18,21 +18,15 @@ const style = {
 
 const assetsDir = path.join(__dirname, '../../assets');
 
-export default class IconButton extends AppearanceAware {
+export default class IconButton extends Clickable {
   // Stock images.
   static stockImage: Record<string, gui.Image> = {};
 
   image: gui.Image;
   imageSize: gui.SizeF;
-  onClick?: () => void;
 
   // Force using specified color mode.
   colorMode?: 'dark' | 'light';
-
-  // States.
-  hover = false;
-  pressed = false;
-  enabled = true;
 
   // Alternative images.
   imageDisabled?: gui.Image;
@@ -41,34 +35,7 @@ export default class IconButton extends AppearanceAware {
 
   constructor(image: gui.Image | string) {
     super();
-
     this.setImage(image);
-    this.view.setMouseDownCanMoveWindow(false);
-    this.view.onDraw = this.#onDraw.bind(this);
-    this.view.onMouseEnter = () => {
-      this.hover = true;
-      this.view.schedulePaint();
-    };
-    this.view.onMouseLeave = () => {
-      this.hover = false;
-      this.view.schedulePaint();
-    };
-    this.view.onMouseDown = () => {
-      this.pressed = true;
-      this.view.schedulePaint();
-      return true;
-    };
-    this.view.onMouseUp = (view, event) => {
-      if (this.enabled && this.onClick) {
-        const bounds = view.getBounds();
-        const pos = event.positionInView;
-        if (pos.x >= 0 && pos.y >= 0 && pos.x <= bounds.width && pos.y <= bounds.height)
-          this.onClick();
-      }
-      this.pressed = false;
-      this.view.schedulePaint();
-      return true;
-    };
   }
 
   setImage(image: gui.Image | string) {
@@ -88,14 +55,7 @@ export default class IconButton extends AppearanceAware {
     this.view.schedulePaint();
   }
 
-  setEnabled(enabled: boolean) {
-    if (this.enabled != enabled) {
-      this.enabled = enabled;
-      this.view.schedulePaint();
-    }
-  }
-
-  #onDraw(view, painter: gui.Painter) {
+  onDraw(view, painter: gui.Painter) {
     const colorMode = this.colorMode ?? (this.darkMode ? 'dark' : 'light');
     const bounds = view.getBounds();
     // Round background on hover.

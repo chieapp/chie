@@ -227,8 +227,8 @@ export default class ChatView extends BaseView<ChatService> {
     if (delta.content) {
       if (!this.#markdown)
         this.#markdown = new StreamedMarkdown();
-      const {html, back} = this.#markdown.appendText(delta.content);
-      this.messagesView.appendHtmlToPendingMessage(html, back);
+      const change = this.#markdown.appendText(delta.content);
+      this.messagesView.appendHtmlToPendingMessage(change);
     }
     if (!response.pending)
       this.#markdown = null;

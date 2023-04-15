@@ -2,6 +2,13 @@ import hljs from 'highlight.js';
 import {escape} from 'html-escaper';
 import {marked} from 'marked';
 
+export interface MarkdownHtmlDelta {
+  type: 'append' | 'insert' | 'reset';
+  html: string;
+  insertDepth?: number;
+  deleteText?: number;
+}
+
 // Provide an interface to parse markdown from streamed data, and output minimal
 // html changes.
 // Note that we are using marked.js which is not a streaming library, we should
@@ -34,21 +41,16 @@ export default class StreamedMarkdown {
     this.renderer.html = escape;
   }
 
-  appendText(text: string): {html: string, back?: number} {
+  appendText(text: string): MarkdownHtmlDelta {
     this.isMarkdown = this.isMarkdown || veryLikelyMarkdown(text);
     this.text += text;
-    const fullHtml = this.isMarkdown ?
+    const html = this.isMarkdown ?
       marked.parse(this.text, {renderer: this.renderer, breaks: true, silent: true}) :
       escapeText(this.text);
-    let result;
-    if (this.html) {
-      // Return delta of html.
-      const pos = findStartOfDifference(this.html, fullHtml);
-      result = {html: fullHtml.substr(pos), back: this.html.length - pos};
-    } else {
-      result = {html: fullHtml};
-    }
-    this.html = fullHtml;
+    const result = computeHtmlDelta(this.html, html);
+    if (!result)  // essentially no change
+      return {type: 'append', html: ''};
+    this.html = html;
     return result;
   }
 }
@@ -57,7 +59,7 @@ export default class StreamedMarkdown {
 export function escapeText(str: string) {
   if (!str)
     return '';
-  return '<p>' + escape(str.trim()).replaceAll('\n', '<br/>') + '</p>';
+  return '<p>' + escape(str.trim()).replaceAll('\n', '<br>') + '</p>';
 }
 
 // Code highlight.
@@ -78,16 +80,50 @@ export function highlightCode(text: string, language: string) {
 // know it before parsing. So we only treat text as markdown if there are some
 // very strong indicators that the text is markdown format.
 function veryLikelyMarkdown(str: string) {
-  const markdownChars = /[#*-\d.>`[\]()_~]/g;
+  const markdownChars = /[#*`[\]()]/g;
   return markdownChars.test(str);
+}
+
+// Compare 2 htmls and return the minimal operaion needed for updating.
+function computeHtmlDelta(before: string | null, after: string): MarkdownHtmlDelta | null{
+  if (!before)
+    return {type: 'append', html: after};
+  const pos = findStartOfDifference(before, after);
+  const oldTail = before.slice(pos).trimRight();
+  const newTail = after.slice(pos).trimRight();
+  // The change is append only.
+  if (oldTail.length == 0)
+    return {type: 'append', html: newTail};
+  // If the tail is something like "sometext</p>", then we can insert directly
+  // into last child instead of updating whole html.
+  const match = oldTail.match(/^([^<>]*)(<\/\w+>[\s]*)+$/);
+  if (match) {
+    const deleteText = match[1].length;
+    const tail = oldTail.slice(deleteText);
+    if (newTail.endsWith(tail)) {
+      // Count how many closing tags.
+      const depth = (oldTail.match(/\//g) || []).length;
+      return {type: 'insert', html: newTail.slice(0, -tail.length), insertDepth: depth, deleteText};
+    }
+  }
+  // Fallback to updating the whole HTML.
+  return {type: 'reset', html: after};
 }
 
 // Find the common prefix of two strings.
 function findStartOfDifference(a: string, b: string) {
   const max = Math.min(a.length, b.length);
-  for (let i = 0; i < max; ++i) {
+  let i = 0;
+  for (; i < max; ++i) {
     if (a[i] != b[i])
-      return i;
+      break;
   }
-  return max;
+  // When there is change of trailing tag, like from "</p>" to "<br></p>",
+  // or from "</p>" to </pre></p>", we would like to match the whole tag instead
+  // of the minimum difference like "/p>".
+  if (i > 2 && a.slice(i - 2, i) == '</')
+    return i - 2;
+  if (i > 1 && a.slice(i - 1, i) == '<')
+    return i - 1;
+  return i;
 }

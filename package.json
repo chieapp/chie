@@ -49,6 +49,7 @@
     "html-escaper": "3.0.3",
     "marked": "4.3.0",
     "open": "6.4.0",
+    "queue": "6.0.2",
     "sanitize-html": "2.10.0",
     "typed-signals": "2.5.0",
     "ws": "8.13.0"

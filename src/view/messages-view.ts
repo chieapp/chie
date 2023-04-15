@@ -46,38 +46,38 @@ export default class MessagesView extends BrowserView {
       message: this.#messageToData(message, this.messagesCount++),
       response,
     });
-    await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
+    this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
   }
 
   // Append html to the pending message.
-  async appendHtmlToPendingMessage(html: string, back: number = 0) {
-    await this.executeJavaScript(`window.appendHtmlToPendingMessage(${JSON.stringify(html)}, ${back ?? 0})`);
+  appendHtmlToPendingMessage(delta) {
+    this.executeJavaScript(`window.appendHtmlToPendingMessage(${JSON.stringify(delta)})`);
   }
 
   // Mark the pending message as not pending.
-  async removePendingMark() {
-    await this.executeJavaScript('window.removePendingMark()');
+  removePendingMark() {
+    this.executeJavaScript('window.removePendingMark()');
   }
 
   // Remove all messages.
-  async clearMessages() {
+  clearMessages() {
     this.messagesCount = 0;
-    await this.executeJavaScript('window.clearMessages()');
+    this.executeJavaScript('window.clearMessages()');
   }
 
   // Reset the last message to pending state.
-  async resetLastMessageAsPending() {
-    await this.executeJavaScript('window.resetLastMessageAsPending()');
+  resetLastMessageAsPending() {
+    this.executeJavaScript('window.resetLastMessageAsPending()');
   }
 
   // Add (aborted) label to the pending message.
-  async addAbortedLabelToPendingMessage() {
-    await this.executeJavaScript('window.addAbortedLabelToPendingMessage()');
+  addAbortedLabelToPendingMessage() {
+    this.executeJavaScript('window.addAbortedLabelToPendingMessage()');
   }
 
   // Show error.
-  async appendError(error: string) {
-    await this.executeJavaScript(`window.appendError(${JSON.stringify(error)})`);
+  appendError(error: string) {
+    this.executeJavaScript(`window.appendError(${JSON.stringify(error)})`);
   }
 
   // Translate the message into data to be parsed by EJS template.

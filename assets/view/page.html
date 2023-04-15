@@ -75,33 +75,46 @@
     scrollToBottom();
   };
   // External API to update pending message.
-  window.appendHtmlToPendingMessage = function(html, back) {
+  window.appendHtmlToPendingMessage = function(delta) {
     var text = findPending('text');
     if (!text)
       return;
     removeLoader();
     var wasAtBottom = isPageBottom();
-    // Update the message html.
-    if (back) {
-      // If the tail is something like </p>, then we can insert directly into
-      // last child instead of updating whole html.
-      var tail = text.innerHTML.slice(text.innerHTML.length - back);
-      var match = tail.trim().match(/^(<\/\w+>[\s]*)+$/);
-      if (match && html.endsWith(tail)) {
-        // Count how many closing tags.
-        var count = (tail.match(/\//g) || []).length;
-        // Find the last child.
-        var target = text;
-        for (var i = 0; i < count; ++i)
-          target = target.lastElementChild;
-        // Insert to the ending of it.
-        target.insertAdjacentHTML('beforeend', html.slice(0, -back));
-      } else {
-        console.warn('Refresh whole innerHTML with bad tail:', tail);
-        text.innerHTML = text.innerHTML.slice(0, -back) + html;
+    if (delta.type == 'append') {
+      text.insertAdjacentHTML('beforeend', delta.html);
+    } else if (delta.type == 'insert') {
+      // Find the last child.
+      var target = text;
+      for (var i = 0; i < delta.insertDepth; ++i)
+        target = target.lastElementChild;
+      // Remove text from the target element.
+      if (delta.deleteText) {
+        var textNodes = target.childNodes;
+        if (textNodes.length <= 0)
+          throw new Error('Trying to remove text while there is no text node.');
+        // Iterate text nodes and remove them until enough text is deleted.
+        for (var i = textNodes.length - 1; i >= 0; --i) {
+          var node = textNodes[i];
+          if (node.nodeType != Node.TEXT_NODE)
+            throw new Error('See non text node when trying to remove text.');
+          if (node.textContent.length >= delta.deleteText) {
+            node.textContent = node.textContent.slice(0, -delta.deleteText);
+            delta.deleteText = 0;
+            break;
+          }
+          delta.deleteText -= node.textContent.length;
+          target.removeChild(node);
+        }
+        if (delta.deleteText != 0)
+          throw new Error('Unable to delete enough text requested');
       }
+      // Insert html to the ending of the element.
+      target.insertAdjacentHTML('beforeend', delta.html);
+    } else if (delta.type == 'reset') {
+      text.innerHTML = delta.html;
     } else {
-      text.insertAdjacentHTML('beforeend', html);
+      throw new Error(`Invalid html delta: ${delta}.`);
     }
     if (wasAtBottom)
       scrollToBottom();

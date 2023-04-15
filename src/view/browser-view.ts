@@ -1,3 +1,4 @@
+import Queue from 'queue';
 import gui from 'gui';
 import {Signal} from 'typed-signals';
 import {realpathSync} from 'node:fs';
@@ -16,8 +17,11 @@ export const style = {
 
 export default class BrowserView extends AppearanceAware {
   browser: gui.Browser;
+  isDomReady = false;
 
   onDomReady: Signal<() => void> = new Signal();
+
+  #queue: Queue;
 
   constructor() {
     super();
@@ -41,16 +45,30 @@ export default class BrowserView extends AppearanceAware {
     this.browser.addBinding('domReady', this.#domReady.bind(this));
     this.browser.addBinding('catchDomError', this.#catchDomError.bind(this));
     this.browser.addBinding('log', this.#log.bind(this));
+
+    // Calls of executeJavaScript are queued.
+    this.#queue = new Queue({concurrency: 1, autostart: false});
+  }
+
+  loadHtml(html: string, baseUrl: string) {
+    this.#queue.end();
+    this.isDomReady = false;
+    this.browser.loadHTML(html, baseUrl);
   }
 
   executeJavaScript(js: string) {
-    return new Promise<boolean>((resolve) => this.browser.executeJavaScript(js, resolve));
+    this.#queue.push(cb => this.browser.executeJavaScript(js, () => cb()));
+    if (this.isDomReady)
+      this.#queue.start();
   }
 
   #domReady() {
     // Only show browser when it is loaded, this can remove the white flash.
     this.browser.setVisible(true);
+    // Start pending works.
+    this.isDomReady = true;
     this.onDomReady.emit();
+    this.#queue.start();
   }
 
   #catchDomError(message: string) {

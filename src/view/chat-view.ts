@@ -122,7 +122,13 @@ export default class ChatView extends BaseView<ChatService> {
     this.messagesView.assistantName = service.name;
     if (service.api.icon)
       this.messagesView.assistantAvatar = service.api.icon.getChieUrl();
-    await this.messagesView.loadMessages(service.history);
+    if (service.isLoaded) {
+      await this.messagesView.loadMessages(service.history);
+    } else {
+      this.#serviceConnections.add(service.onLoad.connect(() => {
+        this.messagesView.loadMessages(service.history);
+      }));
+    }
   }
 
   unload() {

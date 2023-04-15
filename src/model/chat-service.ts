@@ -16,8 +16,10 @@ export interface ChatServiceOptions extends WebServiceOptions {
 
 export default class ChatService extends WebService<ChatConversationAPI | ChatCompletionAPI> {
   history: ChatMessage[] = [];
+  isLoaded = false;
   moment: string;
 
+  onLoad: Signal<() => void> = new Signal;
   onNewTitle: Signal<(title: string | null) => void> = new Signal;
   onMessage: Signal<(message: ChatMessage, response: ChatResponse) => void> = new Signal;
   onMessageDelta: Signal<(delta: Partial<ChatMessage>, response: ChatResponse) => void> = new Signal;
@@ -58,12 +60,16 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
     super(name, api, options);
     if (options.moment) {
       this.moment = options.moment;
-      const value = historyKeeper.remember(this.moment);
-      if (value.history)
-        this.history = value.history.slice();
-      this.title = value.title;
+      historyKeeper.remember(this.moment).then(value => {
+        if (value.history)
+          this.history = value.history.slice();
+        this.title = value.title;
+        this.isLoaded = true;
+        this.onLoad.emit();
+      });
     } else if (api instanceof ChatCompletionAPI) {
       this.moment = historyKeeper.newMoment();
+      this.isLoaded = true;
     }
   }
 

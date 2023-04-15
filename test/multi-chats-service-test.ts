@@ -45,6 +45,7 @@ describe('MultiChatsService', () => {
       chats: [ {moment} ],
     };
     service = MultiChatsService.deserialize(data);
+    await new Promise<void>((resolve) => service.chats[0].onLoad.connect(resolve));
     assert.equal(service.chats[0].title, record.title);
     assert.deepEqual(service.chats[0].history, record.history);
     assert.deepEqual(service.serialize(), data);

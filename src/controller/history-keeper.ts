@@ -15,9 +15,9 @@ export class HistoryKeeper {
     return crypto.randomUUID();
   }
 
-  remember(moment: string) {
+  async remember(moment: string) {
     try {
-      return fs.readJsonSync(this.getFilePath(moment));
+      return await fs.readJson(this.getFilePath(moment));
     } catch (error) {
       if (error.code != 'ENOENT')  // ignore file not exist error
         throw error;

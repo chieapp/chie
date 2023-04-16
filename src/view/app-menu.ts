@@ -53,7 +53,7 @@ export default class AppMenu {
           label: 'New Chat',
           accelerator: 'CmdOrCtrl+N',
           validate: () => this.getCurrentMultiChatsView() != null,
-          onClick: () => this.getCurrentMultiChatsView()?.createChat(),
+          onClick: () => this.getCurrentMultiChatsView()?.service.createChat(),
         },
         {
           label: 'Show Previous Chat',

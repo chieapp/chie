@@ -20,14 +20,15 @@ describe('MultiChatsView', function() {
   it('can be garbage collected after adding and remove chats', async () => {
     let collected = false;
     (() => {
-      const chatView = new MultiChatsView(new MultiChatsService('FreeTibet', createChatCompletionAPI()));
+      const service = new MultiChatsService('FreeTibet', createChatCompletionAPI());
+      const chatView = new MultiChatsView(service);
       chatView.initAsMainView();
-      chatView.createChat();
-      chatView.createChat();
-      chatView.createChat();
-      chatView.clearChats();
-      chatView.createChat();
-      chatView.createChat();
+      service.createChat();
+      service.createChat();
+      service.createChat();
+      service.clearChats();
+      service.createChat();
+      service.createChat();
       addFinalizer(chatView, () => collected = true);
       chatView.destructor();
     })();

@@ -87,7 +87,7 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
   }
 
   // Remove this chat and delete its information on disk.
-  async remove() {
+  async destructor() {
     this.aborter?.abort();
     if (this.moment)
       await historyKeeper.forget(this.moment);

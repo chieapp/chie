@@ -93,7 +93,7 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       margin: style.padding,
       marginRight: style.padding - style.resizeHandleWidth,
     });
-    button.onClick = this.createChat.bind(this);
+    button.onClick = service.createChat.bind(service);
     this.#sidebar.addChildView(button);
 
     const clear = gui.Button.create('Clear chats');
@@ -106,7 +106,7 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       marginRight: style.padding - style.resizeHandleWidth,
       marginTop: 0,
     });
-    clear.onClick = this.clearChats.bind(this);
+    clear.onClick = service.clearChats.bind(service);
     this.#sidebar.addChildView(clear);
 
     this.#resizeHandle = gui.Container.create();
@@ -129,8 +129,8 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       this.onNewTitle.emit.bind(this.onNewTitle)));
 
     // Load existing chats.
-    for (const service of this.service.chats) {
-      const item = this.#createItemForChat(service);
+    for (const chat of service.chats) {
+      const item = this.#createItemForChat(chat);
       this.#items.push(item);
       this.#chatList.addChildView(item.view);
     }
@@ -138,6 +138,9 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       this.#items[0].setSelected(true);
       this.#updateChatListSize();
     }
+    this.connections.add(service.onNewChat.connect(this.#onNewChat.bind(this)));
+    this.connections.add(service.onRemoveChat.connect(this.#onRemoveChat.bind(this)));
+    this.connections.add(service.onClearChats.connect(this.#onClearChats.bind(this)));
   }
 
   destructor() {
@@ -150,7 +153,7 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
 
   initAsMainView() {
     if (this.service.chats.length == 0)
-      this.createChat();
+      this.service.createChat();
   }
 
   onFocus() {
@@ -168,7 +171,7 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     if (state?.leftPaneWidth)
       this.#leftPane.view.setStyle({width: state.leftPaneWidth});
     if (state?.selected)
-      this.#items[state.selected].setSelected(true);
+      this.#items[state.selected]?.setSelected(true);
   }
 
   getTitle() {
@@ -182,29 +185,6 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
   getSizeFromMainViewSize(size: gui.SizeF) {
     size.width += this.#leftPane.view.getBounds().width;
     return size;
-  }
-
-  createChat() {
-    // Create chat service.
-    const service = this.service.createChat();
-    // Create item.
-    const item = this.#createItemForChat(service);
-    this.#items.unshift(item);
-    this.#chatList.addChildViewAt(item.view, 0);
-    this.#updateChatListSize();
-    item.setSelected(true);
-    // Save state.
-    config.saveToFile();
-  }
-
-  clearChats() {
-    for (const item of this.#items) {
-      this.#chatList.removeChildView(item.view);
-      item.destructor();
-    }
-    this.#items = [];
-    this.service.clearChats();
-    this.createChat();
   }
 
   showPreviousChat() {
@@ -244,6 +224,23 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     const index = this.#items.indexOf(item);
     if (index < 0)
       throw new Error('Closing an unexist chat.');
+    this.service.removeChatAt(index);
+  }
+
+  #onNewChat(chat) {
+    // Create item.
+    const item = this.#createItemForChat(chat);
+    this.#items.unshift(item);
+    this.#chatList.addChildViewAt(item.view, 0);
+    this.#updateChatListSize();
+    item.setSelected(true);
+    config.saveToFile();
+  }
+
+  #onRemoveChat(index: number) {
+    if (this.#items.length == 1)  // shortcut
+      return this.#onClearChats();
+    const item = this.#items[index];
     if (this.#selectedItem == item) {
       // If closed item is selected, move selection to siblings.
       if (index + 1 < this.#items.length)
@@ -253,15 +250,19 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     }
     this.#chatList.removeChildView(item.view);
     this.#items.splice(index, 1);
-    this.service.removeChatAt(index);
+    this.#updateChatListSize();
     item.destructor();
-    // Always have a chat available.
-    if (this.#items.length == 0)
-      this.createChat();
-    else
-      this.#updateChatListSize();
-    // Save state.
     config.saveToFile();
+    collectGarbage();
+  }
+
+  #onClearChats() {
+    for (const item of this.#items) {
+      this.#chatList.removeChildView(item.view);
+      item.destructor();
+    }
+    this.#items = [];
+    this.#selectedItem = null;
     collectGarbage();
   }
 

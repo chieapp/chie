@@ -15,7 +15,7 @@ describe('ChatService', () => {
     service = new ChatService('Test', api);
   });
   afterEach(() => {
-    service.remove();
+    service.destructor();
     config.inMemory = true;
   });
 

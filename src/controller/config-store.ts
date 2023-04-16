@@ -1,3 +1,4 @@
+import Queue from 'queue';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'fs-extra';
@@ -15,10 +16,12 @@ export class ConfigStore implements ConfigStoreItem {
 
   dir: string;
   #file: string;
+  #queue: Queue;
 
   constructor(name: string) {
     this.dir = getConfigDir(require('../../package.json').build.productName);
     this.#file = path.join(this.dir, `${name}.json`);
+    this.#queue = new Queue({concurrency: 1});
   }
 
   deserialize(config) {
@@ -50,13 +53,17 @@ export class ConfigStore implements ConfigStoreItem {
   }
 
   async saveToFile() {
-    if (!this.inMemory)
-      await fs.outputJson(this.#file, this.serialize(), {spaces: 2});
+    if (this.inMemory)
+      return;
+    this.#queue.end();
+    await fs.outputJson(this.#file, this.serialize(), {spaces: 2});
   }
 
   saveToFileSync() {
-    if (!this.inMemory)
-      fs.outputJsonSync(this.#file, this.serialize(), {spaces: 2});
+    if (this.inMemory)
+      return;
+    this.#queue.end();
+    fs.outputJsonSync(this.#file, this.serialize(), {spaces: 2});
   }
 
   addItem(key: string, item: ConfigStoreItem) {

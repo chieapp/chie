@@ -16,12 +16,12 @@ export default class ChatWindow extends BaseWindow {
     super();
     this.instance = instance;
 
-    this.window.setContentSize({width: 600, height: 400});
     this.window.setTitle(instance.service.name);
     this.window.onFocus = () => this.chatView.onFocus();
     this.window.onClose = () => this.destructor();
 
     this.chatView = new instance.viewType(instance.service);
+    this.window.setContentSize(this.chatView.getSizeFromMainViewSize({width: 400, height: 400}));
     this.window.setContentView(this.chatView.view);
 
     this.chatView.initAsMainView();

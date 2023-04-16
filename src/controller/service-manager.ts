@@ -99,6 +99,12 @@ export class ServiceManager implements ConfigStoreItem {
     };
   }
 
+  getInstanceById(id: string) {
+    if (!(id in this.#instances))
+      throw new Error(`Can not find instance with ID: ${id}`);
+    return this.#instances[id];
+  }
+
   getInstances() {
     return Object.values(this.#instances);
   }

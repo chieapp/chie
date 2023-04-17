@@ -1,5 +1,6 @@
 import MultiChatsService from '../src/model/multi-chats-service';
 import MultiChatsView from '../src/view/multi-chats-view';
+import {ChatRole} from '../src/model/chat-api';
 import {addFinalizer, gcUntil} from './util';
 import {createChatCompletionAPI} from '../test/util';
 
@@ -11,6 +12,20 @@ describe('MultiChatsView', function() {
     (() => {
       const chatView = new MultiChatsView(new MultiChatsService('FreeTibet', createChatCompletionAPI()));
       chatView.initAsMainView();
+      addFinalizer(chatView, () => collected = true);
+      chatView.destructor();
+    })();
+    await gcUntil(() => collected);
+  });
+
+  it('can be garbage collected after sending message', async () => {
+    let collected = false;
+    await (async () => {
+      const service = new MultiChatsService('FreeTibet', createChatCompletionAPI());
+      const chatView = new MultiChatsView(service);
+      chatView.initAsMainView();
+      const chat = service.createChat();
+      await chat.sendMessage({role: ChatRole.User, content: 'message'});
       addFinalizer(chatView, () => collected = true);
       chatView.destructor();
     })();

@@ -8,6 +8,7 @@ import WebService from '../model/web-service';
 import apiManager from './api-manager';
 import {ConfigStoreItem} from './config-store';
 import {Selection} from '../model/param';
+import {collectGarbage} from './gc-center';
 import {getNextId} from '../util/id-generator';
 
 type WebAPIType = (new (endpoint) => WebAPI) | (abstract new (endpoint) => WebAPI);
@@ -125,6 +126,7 @@ export class ServiceManager extends ConfigStoreItem {
     delete this.#instances[id];
     this.onRemoveInstance.emit(instance);
     this.saveConfig();
+    collectGarbage();
   }
 
   getInstanceById(id: string) {

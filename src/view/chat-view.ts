@@ -89,7 +89,6 @@ export default class ChatView extends BaseView<ChatService> {
     this.unload();
     this.messagesView.destructor();
     this.input.destructor();
-    this.service.aborter?.abort();
   }
 
   initAsMainView() {

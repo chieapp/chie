@@ -40,7 +40,7 @@ export default class ChatView extends BaseView<ChatService> {
 
     this.view.setStyle({flex: 1});
     if (process.platform == 'win32')
-      this.view.setBackgroundColor('#E5E5E5');
+      this.view.setBackgroundColor('#D3D3D3');
 
     this.messagesView = new MessagesView();
     this.messagesView.view.setStyle({flex: 1});
@@ -55,8 +55,6 @@ export default class ChatView extends BaseView<ChatService> {
       ChatView.font = gui.Font.create(gui.Font.default().getName(), 15, 'normal', 'normal');
 
     this.input = new InputView();
-    if (process.platform == 'win32')
-      this.input.view.setBackgroundColor('#E5E5E5');
     this.input.view.setStyle({margin: style.padding});
     this.input.entry.setFont(ChatView.font);
     // Calculate height for 1 and 5 lines.
@@ -281,7 +279,7 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   // Browser bindings.
-  #showTextAt(index: number, textBounds: gui.RectF) {
+  #showTextAt(index: number, textWidth: number) {
     if (index in this.#textWindows) {
       this.#textWindows[index].window.activate();
       return;
@@ -290,7 +288,7 @@ export default class ChatView extends BaseView<ChatService> {
     const win = new TextWindow(text);
     this.#textWindows[index] = win;
     win.window.onClose = () => delete this.#textWindows[index];
-    win.showAt(textBounds);
+    win.showWithWidth(textWidth);
   }
 
   #copyTextAt(index: number) {

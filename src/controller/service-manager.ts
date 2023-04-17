@@ -1,3 +1,5 @@
+import {Signal} from 'typed-signals';
+
 import APIEndpoint from '../model/api-endpoint';
 import BaseView from '../view/base-view';
 import Instance, {BaseViewType} from '../model/instance';
@@ -5,6 +7,7 @@ import WebAPI from '../model/web-api';
 import WebService from '../model/web-service';
 import apiManager from './api-manager';
 import {ConfigStoreItem} from './config-store';
+import {Selection} from '../model/param';
 import {getNextId} from '../util/id-generator';
 
 type WebAPIType = (new (endpoint) => WebAPI) | (abstract new (endpoint) => WebAPI);
@@ -14,13 +17,17 @@ interface WebServiceType {
   deserialize(config: object): WebService<WebAPI>;
 }
 
-type ServiceRecord = {
+export type ServiceRecord = {
+  serviceName?: string,
   serviceType: WebServiceType,
   apiTypes: WebAPIType[],
   viewType: BaseViewType,
 };
 
-export class ServiceManager implements ConfigStoreItem {
+export class ServiceManager extends ConfigStoreItem {
+  onNewInstance: Signal<(instance: Instance) => void> = new Signal;
+  onRemoveInstance: Signal<(instance: Instance) => void> = new Signal;
+
   #services: Record<string, ServiceRecord> = {};
   #views: BaseViewType[] = [];
   #instances: Record<string, Instance> = {};
@@ -33,22 +40,22 @@ export class ServiceManager implements ConfigStoreItem {
     this.#instances = {};
     for (const id in data) {
       const item = data[id];
-      if (typeof item['serviceType'] != 'string' ||
+      if (typeof item['serviceName'] != 'string' ||
           typeof item['service'] != 'object' ||
           typeof item['view'] != 'string')
         throw new Error(`Unknown data for Instance: ${JSON.stringify(item)}.`);
       // Get the service type first.
-      const serviceType = item['serviceType'];
-      if (!(serviceType in this.#services))
-        throw new Error(`Unknown service "${serviceType}".`);
-      const record = this.#services[serviceType];
+      const serviceName = item['serviceName'];
+      if (!(serviceName in this.#services))
+        throw new Error(`Unknown service "${serviceName}".`);
+      const record = this.#services[serviceName];
       // Check view type.
       const viewType = this.#views.find(v => v.name == item['view']);
       if (!viewType)
         throw new Error(`Unknown View "${item['view']}".`);
       // Deserialize using the service type's method.
       const service = record.serviceType.deserialize(item['service']);
-      this.#instances[id] = {id, serviceType, service, viewType};
+      this.#instances[id] = {id, serviceName, service, viewType};
     }
   }
 
@@ -57,7 +64,7 @@ export class ServiceManager implements ConfigStoreItem {
     for (const id in this.#instances) {
       const ins = this.#instances[id];
       data[id] = {
-        serviceType: ins.serviceType,
+        serviceName: ins.serviceName,
         service: ins.service.serialize(),
         view: ins.viewType.name,
       };
@@ -73,30 +80,51 @@ export class ServiceManager implements ConfigStoreItem {
     this.#views.push(viewType);
   }
 
+  getViewSelections(): Selection<BaseViewType>[] {
+    return this.#views.map(v => ({name: v.name, value: v}));
+  }
+
   registerService(name: string, record: ServiceRecord) {
     if (name in this.#services)
       throw new Error(`Service "${name}" has already been registered.`);
     if (!this.#views.includes(record.viewType))
       throw new Error(`View "${record.viewType.name}" is not registered`);
+    record.serviceName = name;
     this.#services[name] = record;
   }
 
-  createInstance(name: string, serviceType: string, endpoint: APIEndpoint) {
-    if (!(serviceType in this.#services))
-      throw new Error(`Service with name "${serviceType}" does not exist.`);
+  getServiceSelections(): Selection<ServiceRecord>[] {
+    return Object.keys(this.#services).map(k => ({name: k, value: this.#services[k]}));
+  }
+
+  createInstance(name: string, serviceName: string, endpoint: APIEndpoint) {
+    if (!(serviceName in this.#services))
+      throw new Error(`Service with name "${serviceName}" does not exist.`);
     // Do runtime check of API type compatibility.
     const api = apiManager.createAPIForEndpoint(endpoint);
-    if (!this.#services[serviceType].apiTypes.find(A => api instanceof A))
-      throw new Error(`Service "${serviceType}" does not support API type "${endpoint.type}".`);
+    const record = this.#services[serviceName];
+    if (!record.apiTypes.find(A => api instanceof A))
+      throw new Error(`Service "${serviceName}" does not support API type "${endpoint.type}".`);
     // Create a new instance of service.
     const id = getNextId(name, Object.keys(this.#instances));
-    const record = this.#services[serviceType];
-    return this.#instances[id] = {
+    const instance = {
       id,
-      serviceType,
+      serviceName,
       service: new record.serviceType(name, api),
       viewType: record.viewType,
     };
+    this.#instances[id] = instance;
+    this.onNewInstance.emit(instance);
+    this.saveConfig();
+    return instance;
+  }
+
+  removeInstanceById(id: string) {
+    const instance = this.getInstanceById(id);
+    instance.service.destructor();
+    delete this.#instances[id];
+    this.onRemoveInstance.emit(instance);
+    this.saveConfig();
   }
 
   getInstanceById(id: string) {

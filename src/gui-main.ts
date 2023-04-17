@@ -27,6 +27,9 @@ function guiMain() {
   windowConfig.addItem('windows', windowManager);
   windowConfig.initFromFileSync();
 
+  if (process.platform != 'darwin')
+    windowManager.getDashboard().window.activate();
+
   const trayImage = gui.Image.createFromPath(fs.realpathSync(path.join(__dirname, '../assets/icons/tray@2x.png')));
   if (process.platform == 'darwin')
     trayImage.setTemplate(true);

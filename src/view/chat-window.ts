@@ -13,21 +13,22 @@ export default class ChatWindow extends BaseWindow {
   chatView: BaseView<WebService<WebAPI>>;
 
   constructor(instance: Instance) {
-    super();
+    super({useClassicBackground: true});
     this.instance = instance;
 
     this.window.setTitle(instance.service.name);
     this.window.onFocus = () => this.chatView.onFocus();
-    this.window.onClose = () => this.destructor();
 
     this.chatView = new instance.viewType(instance.service);
+    this.chatView.view.setStyle({flex: 1});
+    this.contentView.addChildView(this.chatView.view);
     this.window.setContentSize(this.chatView.getSizeFromMainViewSize({width: 400, height: 400}));
-    this.window.setContentView(this.chatView.view);
 
     this.chatView.initAsMainView();
   }
 
   destructor() {
+    super.destructor();
     this.chatView.destructor();
   }
 

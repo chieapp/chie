@@ -36,7 +36,7 @@ export default class MessagesView extends BrowserView {
       messages: messages.map(this.#messageToData.bind(this)),
     };
     await initTemplates();
-    this.browser.loadHTML(await pageTemplate(data), 'https://chie.app');
+    this.loadHtml(await pageTemplate(data), 'https://chie.app');
     this.messagesCount = messages.length;
   }
 

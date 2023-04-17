@@ -114,7 +114,7 @@
     } else if (delta.type == 'reset') {
       text.innerHTML = delta.html;
     } else {
-      throw new Error(`Invalid html delta: ${delta}.`);
+      throw new Error('Invalid html delta: ' + delta + '.');
     }
     if (wasAtBottom)
       scrollToBottom();
@@ -183,7 +183,7 @@
     var text = msg.getElementsByClassName('text')[0];
     // Show popup window to display message.
     if (target.href.endsWith('#show-text-at')) {
-      chie.showTextAt(index, text.getBoundingClientRect());
+      chie.showTextAt(index, isIE ? text.offsetWidth : text.getBoundingClientRect().width);
       return false;
     }
     // Copy text.

@@ -5,12 +5,22 @@ import fs from 'fs-extra';
 
 const CONFIG_VERSION = 1;
 
-export interface ConfigStoreItem {
-  deserialize(config: object): void;
-  serialize(): object;
+export abstract class ConfigStoreItem {
+  store?: ConfigStore;
+
+  abstract deserialize(config: object): void;
+  abstract serialize(): object;
+
+  saveConfig() {
+    return this.store?.saveToFile();
+  }
+
+  saveConfigSync() {
+    this.store?.saveToFileSync();
+  }
 }
 
-export class ConfigStore implements ConfigStoreItem {
+export class ConfigStore extends ConfigStoreItem {
   inMemory = false;
   #items: Record<string, ConfigStoreItem> = {};
 
@@ -19,6 +29,7 @@ export class ConfigStore implements ConfigStoreItem {
   #queue: Queue;
 
   constructor(name: string) {
+    super();
     this.dir = getConfigDir(require('../../package.json').build.productName);
     this.#file = path.join(this.dir, `${name}.json`);
     this.#queue = new Queue({concurrency: 1});
@@ -69,6 +80,9 @@ export class ConfigStore implements ConfigStoreItem {
   addItem(key: string, item: ConfigStoreItem) {
     if (key in this.#items)
       throw new Error(`Key "${key}" already exists.`);
+    if (item.store)
+      throw new Error('Item has already been added to a ConfigStore');
+    item.store = this;
     this.#items[key] = item;
   }
 }

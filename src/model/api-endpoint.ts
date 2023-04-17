@@ -28,6 +28,11 @@ export default class APIEndpoint implements Serializable {
   }
 
   serialize() {
-    return this;
+    const data = {type: this.type, name: this.name, url: this.url};
+    if (this.key)
+      data['key'] = this.key;
+    if (this.params)
+      data['params'] = this.params;
+    return data;
   }
 }

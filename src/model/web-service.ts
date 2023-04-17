@@ -43,4 +43,8 @@ export default class WebService<T extends WebAPI> implements Serializable {
       data['params'] = this.options.params;
     return data;
   }
+
+  destructor() {
+    // Nothing to destructor by default.
+  }
 }

@@ -172,6 +172,7 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       this.#leftPane.view.setStyle({width: state.leftPaneWidth});
     if (state?.selected)
       this.#items[state.selected]?.setSelected(true);
+    this.#updateChatListSize();
   }
 
   getTitle() {

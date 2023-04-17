@@ -36,6 +36,13 @@ export default class MultiChatsService extends WebService<ChatCompletionAPI> {
     return Object.assign(super.serialize(), {chats});
   }
 
+  destructor() {
+    super.destructor();
+    for (const chat of this.chats)
+      chat.destructor();
+    this.chats = [];
+  }
+
   createChat() {
     const chat = new ChatService(this.name, this.api);
     this.chats.unshift(chat);

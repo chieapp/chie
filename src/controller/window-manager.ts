@@ -1,17 +1,20 @@
 import gui from 'gui';
+
 import AppMenu from '../view/app-menu';
 import BaseWindow, {WindowState} from '../view/base-window';
 import ChatWindow from '../view/chat-window';
 import DashboardWindow from '../view/dashboard-window';
 import Instance from '../model/instance';
+import NewAssistantWindow from '../view/new-assistant-window';
 import serviceManager from './service-manager';
-import {windowConfig, ConfigStoreItem} from './config-store';
 import {collectGarbage} from './gc-center';
+import {ConfigStoreItem} from './config-store';
 
-export class WindowManager implements ConfigStoreItem {
+export class WindowManager extends ConfigStoreItem {
   #appMenu?: AppMenu;
   #windows: BaseWindow[] = [];
 
+  #newAssistantWindow?: NewAssistantWindow;
   #dashboard?: DashboardWindow;
   #chatWindows: Record<string, ChatWindow> = {};
 
@@ -19,14 +22,18 @@ export class WindowManager implements ConfigStoreItem {
   #chatWindowStates: Record<string, WindowState> = {};
 
   constructor() {
+    super();
     if (process.platform == 'darwin') {
       this.#appMenu = new AppMenu();
       gui.app.setApplicationMenu(this.#appMenu.menu);
       gui.lifetime.onActivate = () => this.getDashboard().window.activate();
     }
+    serviceManager.onRemoveInstance.connect(this.#onRemoveInstance.bind(this));
   }
 
   deserialize(data: object) {
+    if (!data)
+      return;
     if (typeof data['chatWindows'] == 'object') {
       for (const id in data['chatWindows']) {
         const wd = data['chatWindows'][id];
@@ -59,6 +66,14 @@ export class WindowManager implements ConfigStoreItem {
     };
   }
 
+  showNewAssistantWindow() {
+    if (!this.#newAssistantWindow) {
+      this.#newAssistantWindow = new NewAssistantWindow();
+      this.#newAssistantWindow.window.onClose = () => this.#newAssistantWindow = null;
+    }
+    this.#newAssistantWindow.window.activate();
+  }
+
   getDashboard() {
     // Create dashboard window lazily.
     if (!this.#dashboard) {
@@ -72,7 +87,7 @@ export class WindowManager implements ConfigStoreItem {
       this.#dashboard.window.onClose = () => {
         this.#saveDashboardState();
         this.#dashboard = null;
-        windowConfig.saveToFile();
+        this.saveConfig();
       };
     }
     return this.#dashboard;
@@ -88,7 +103,7 @@ export class WindowManager implements ConfigStoreItem {
       win.window.onClose = () => {
         this.#saveChatWindowState(win);
         delete this.#chatWindows[instance.id];
-        windowConfig.saveToFile();
+        this.saveConfig();
       };
       this.#chatWindows[instance.id] = win;
     }
@@ -103,7 +118,7 @@ export class WindowManager implements ConfigStoreItem {
     // Save states before quitting.
     this.#saveChatWindowStates();
     this.#saveDashboardState();
-    windowConfig.saveToFileSync();
+    this.saveConfigSync();
     // Quit.
     if (gui.MessageLoop.quit)
       gui.MessageLoop.quit();
@@ -140,6 +155,13 @@ export class WindowManager implements ConfigStoreItem {
   #onAllWindowsClosed() {
     if (process.platform != 'darwin')
       this.quit();
+  }
+
+  #onRemoveInstance(instance: Instance) {
+    this.#chatWindows[instance.id]?.window.close();
+    delete this.#chatWindowStates[instance.id];
+    this.#saveDashboardState();
+    this.saveConfig();
   }
 }
 

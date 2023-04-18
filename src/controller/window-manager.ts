@@ -1,6 +1,6 @@
 import gui from 'gui';
 
-import AppMenu from '../view/app-menu';
+import AppMenuBar from '../view/app-menu-bar';
 import BaseWindow, {WindowState} from '../view/base-window';
 import ChatWindow from '../view/chat-window';
 import DashboardWindow from '../view/dashboard-window';
@@ -11,7 +11,7 @@ import {collectGarbage} from './gc-center';
 import {ConfigStoreItem} from './config-store';
 
 export class WindowManager extends ConfigStoreItem {
-  #appMenu?: AppMenu;
+  #appMenu?: AppMenuBar;
   #windows: BaseWindow[] = [];
 
   #newAssistantWindow?: NewAssistantWindow;
@@ -23,17 +23,19 @@ export class WindowManager extends ConfigStoreItem {
 
   constructor() {
     super();
-    if (process.platform == 'darwin') {
-      this.#appMenu = new AppMenu();
-      gui.app.setApplicationMenu(this.#appMenu.menu);
+    if (process.platform == 'darwin')
       gui.lifetime.onActivate = () => this.getDashboard().window.activate();
-    }
     serviceManager.onRemoveInstance.connect(this.#onRemoveInstance.bind(this));
   }
 
   deserialize(data: object) {
     if (!data)  // accepts empty data
       data = {};
+    if (process.platform == 'darwin') {
+      // Create menu bar after config is loaded.
+      this.#appMenu = new AppMenuBar();
+      gui.app.setApplicationMenu(this.#appMenu.menu);
+    }
     this.#chatWindowStates = {};
     if (typeof data['chatWindows'] == 'object') {
       for (const id in data['chatWindows']) {

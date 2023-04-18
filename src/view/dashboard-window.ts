@@ -8,6 +8,7 @@ import Instance from '../model/instance';
 import ToggleButton from './toggle-button';
 import serviceManager from '../controller/service-manager';
 import {createRoundedCornerPath} from '../util/draw-utils';
+import {getWindowManager} from './base-menu-bar';
 
 export const style = {
   buttonSize: 32,
@@ -60,16 +61,16 @@ export default class DashboardWindow extends BaseWindow {
     this.#addButton = new IconButton('add');
     this.#addButton.view.setTooltip('Add new assistant');
     this.#addButton.view.setStyle({marginTop: style.padding});
-    this.#addButton.onClick = () => this.#getWindowManager().showNewAssistantWindow();
+    this.#addButton.onClick = () => getWindowManager().showNewAssistantWindow();
     this.#sidebar.view.addChildView(this.#addButton.view);
 
     for (const instance of serviceManager.getInstances())
       this.#createViewForInstance(instance);
     this.connections.add(serviceManager.onRemoveInstance.connect(
       this.#removeViewForInstance.bind(this)));
-    this.connections.add(serviceManager.onNewInstance.connect((instance) => {
+    this.connections.add(serviceManager.onNewInstance.connect((instance, index) => {
       this.#createViewForInstance(instance);
-      this.switchTo(this.views.length - 1);
+      this.switchTo(index);
     }));
 
     if (this.views.length > 0)
@@ -201,7 +202,7 @@ export default class DashboardWindow extends BaseWindow {
     const menu = gui.Menu.create([
       {
         label: 'Show in new window',
-        onClick: () => this.#getWindowManager().getChatWindow(view.instance).window.activate(),
+        onClick: () => getWindowManager().getChatWindow(view.instance).window.activate(),
       },
       {
         label: 'Remove',

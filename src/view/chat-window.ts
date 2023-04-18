@@ -45,6 +45,6 @@ export default class ChatWindow extends BaseWindow {
   }
 
   getMainView() {
-    return this.chatView.getMainView();
+    return this.chatView.getMainView() ?? this.chatView;
   }
 }

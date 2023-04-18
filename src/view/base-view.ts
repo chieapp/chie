@@ -41,8 +41,8 @@ export default abstract class BaseView<T extends WebService<WebAPI> = WebService
   }
 
   // Return the main view the user is working on.
-  getMainView(): BaseView {
-    return this;
+  getMainView(): BaseView | null {
+    return null;
   }
 
   // Return the size of the main view inside view.
@@ -54,4 +54,16 @@ export default abstract class BaseView<T extends WebService<WebAPI> = WebService
   getSizeFromMainViewSize(size: gui.SizeF) {
     return size;
   }
+}
+
+// Define the class type of BaseView with optional getMenuItems static method.
+type BaseViewConstructorType = new (service) => BaseView<WebService<WebAPI>>;
+export type MenuItemOptions<T> = {
+  label: string,
+  accelerator?: string,
+  validate?: (view: T) => boolean,
+  onClick?: (view: T) => void,
+};
+export interface BaseViewType extends BaseViewConstructorType {
+  getMenuItems?(): MenuItemOptions<BaseView<WebService<WebAPI>>>[];
 }

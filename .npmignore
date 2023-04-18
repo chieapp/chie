@@ -1,5 +1,7 @@
 # Unused source files
 /src/
+/test/
+/test-ui/
 .eslintrc.json
 .github
 tsconfig.json

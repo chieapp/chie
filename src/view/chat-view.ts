@@ -23,6 +23,17 @@ export default class ChatView extends BaseView<ChatService> {
     min: number;
   };
 
+  static getMenuItems() {
+    return [
+      {
+        label: 'Clear Conversation',
+        accelerator: 'Shift+CmdOrCtrl+C',
+        validate: (view: ChatView) => view.service?.history.length > 0,
+        onClick: (view: ChatView) => view.service?.clear(),
+      },
+    ];
+  }
+
   messagesView: MessagesView;
   input: InputView;
   replyButton: IconButton;

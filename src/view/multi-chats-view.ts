@@ -35,6 +35,32 @@ export interface SplitViewState extends ViewState {
 export default class MultiChatsView extends BaseView<MultiChatsService> {
   static resizeCursor?: gui.Cursor;
 
+  static getMenuItems() {
+    return [
+      {
+        label: 'New Chat',
+        accelerator: 'CmdOrCtrl+N',
+        onClick: (view: MultiChatsView) => view.service.createChat(),
+      },
+      {
+        label: 'Show Previous Chat',
+        accelerator: 'Ctrl+Shift+Tab',
+        validate: (view: MultiChatsView) => view.service.chats.length > 1,
+        onClick: (view: MultiChatsView) => view.showPreviousChat(),
+      },
+      {
+        label: 'Show Next Chat',
+        accelerator: 'Ctrl+Tab',
+        validate: (view: MultiChatsView) => view.service.chats.length > 1,
+        onClick: (view: MultiChatsView) => view.showNextChat(),
+      },
+      {
+        label: 'Clear Chats',
+        onClick: (view: MultiChatsView) => view.service.clearChats(),
+      },
+    ];
+  }
+
   chatView: ChatView;
 
   #items: ChatListItem[] = [];
@@ -202,10 +228,6 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     const index = this.#items.indexOf(this.#selectedItem);
     if (index > -1)
       this.#items[(index + 1) % this.#items.length].setSelected(true);
-  }
-
-  hasMultiChats() {
-    return this.#items.length > 1;
   }
 
   #createItemForChat(service) {

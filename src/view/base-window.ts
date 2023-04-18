@@ -1,7 +1,7 @@
 import gui from 'gui';
 
 import BaseView from './base-view';
-import WindowMenu from './window-menu';
+import WindowMenuBar from './window-menu-bar';
 import SignalsOwner from '../model/signals-owner';
 
 export interface WindowState {
@@ -16,10 +16,10 @@ export interface BaseWindowOptions extends gui.WindowOptions {
   useClassicBackground?: boolean;
 }
 
-export default abstract class BaseWindow extends SignalsOwner {
+export default class BaseWindow extends SignalsOwner {
   window: gui.Window;
   contentView: gui.Container;
-  menuBar: WindowMenu;
+  menuBar: WindowMenuBar;
 
   constructor(options: BaseWindowOptions = {}) {
     super();
@@ -28,7 +28,7 @@ export default abstract class BaseWindow extends SignalsOwner {
     if (process.platform == 'win32')
       this.window.setBackgroundColor('#F5F5F5');
     if (process.platform != 'darwin') {
-      this.menuBar = new WindowMenu(this);
+      this.menuBar = new WindowMenuBar(this);
       this.window.setMenuBar(this.menuBar.menu);
       if (!options.showMenuBar)
         this.window.setMenuBarVisible(false);

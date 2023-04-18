@@ -1,8 +1,8 @@
 import {Signal} from 'typed-signals';
 
 import APIEndpoint from '../model/api-endpoint';
-import BaseView from '../view/base-view';
-import Instance, {BaseViewType} from '../model/instance';
+import BaseView, {BaseViewType} from '../view/base-view';
+import Instance from '../model/instance';
 import WebAPI from '../model/web-api';
 import WebService from '../model/web-service';
 import apiManager from './api-manager';
@@ -26,7 +26,7 @@ export type ServiceRecord = {
 };
 
 export class ServiceManager extends ConfigStoreItem {
-  onNewInstance: Signal<(instance: Instance) => void> = new Signal;
+  onNewInstance: Signal<(instance: Instance, index: number) => void> = new Signal;
   onRemoveInstance: Signal<(instance: Instance) => void> = new Signal;
 
   #services: Record<string, ServiceRecord> = {};
@@ -81,6 +81,10 @@ export class ServiceManager extends ConfigStoreItem {
     this.#views.push(viewType);
   }
 
+  getRegisteredViews() {
+    return this.#views;
+  }
+
   getViewSelections(): Selection<BaseViewType>[] {
     return this.#views.map(v => ({name: v.name, value: v}));
   }
@@ -107,7 +111,8 @@ export class ServiceManager extends ConfigStoreItem {
     if (!record.apiTypes.find(A => api instanceof A))
       throw new Error(`Service "${serviceName}" does not support API type "${endpoint.type}".`);
     // Create a new instance of service.
-    const id = getNextId(name, Object.keys(this.#instances));
+    const ids = Object.keys(this.#instances);
+    const id = getNextId(name, ids);
     const instance = {
       id,
       serviceName,
@@ -115,7 +120,7 @@ export class ServiceManager extends ConfigStoreItem {
       viewType: record.viewType,
     };
     this.#instances[id] = instance;
-    this.onNewInstance.emit(instance);
+    this.onNewInstance.emit(instance, ids.length);
     this.saveConfig();
     return instance;
   }

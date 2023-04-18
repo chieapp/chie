@@ -1,14 +1,17 @@
 import {assert} from 'chai';
 
 import DashboardWindow from '../src/view/dashboard-window';
+import MultiChatsService from '../src/model/multi-chats-service';
 import apiManager from '../src/controller/api-manager';
 import serviceManager from '../src/controller/service-manager';
-
+import windowManager from '../src/controller/window-manager';
+import {ChatRole} from '../src/model/chat-api';
 import {addFinalizer, gcUntil} from './util';
 
 describe('DashboardWindow', async () => {
   afterEach(() => {
     serviceManager.deserialize({});
+    windowManager.deserialize({});
   });
 
   it('can be garbage collected', async () => {
@@ -20,6 +23,19 @@ describe('DashboardWindow', async () => {
       const dashboard = new DashboardWindow();
       addFinalizer(dashboard, () => collected = true);
       dashboard.switchTo(1);
+      dashboard.window.close();
+    })();
+    await gcUntil(() => collected);
+  });
+
+  it('can be garbage collected after sending message', async () => {
+    let collected = false;
+    await (async () => {
+      const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
+      const instance = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint);
+      const dashboard = new DashboardWindow();
+      await (instance.service as MultiChatsService).chats[0].sendMessage({role: ChatRole.User, content: 'message'});
+      addFinalizer(dashboard, () => collected = true);
       dashboard.window.close();
     })();
     await gcUntil(() => collected);
@@ -43,5 +59,18 @@ describe('DashboardWindow', async () => {
     serviceManager.removeInstanceById(i1.id);
     assert.equal(dashboard.views.length, 0);
     assert.equal(dashboard.selectedView, null);
+  });
+
+  it('does not reference removed instance', async () => {
+    let collected = false;
+    const dashboard = new DashboardWindow();
+    (() => {
+      const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
+      const instance = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint);
+      addFinalizer(instance.service, () => collected = true);
+      serviceManager.removeInstanceById(instance.id);
+    })();
+    await gcUntil(() => collected);
+    dashboard.window.close();
   });
 });

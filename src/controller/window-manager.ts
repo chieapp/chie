@@ -32,8 +32,9 @@ export class WindowManager extends ConfigStoreItem {
   }
 
   deserialize(data: object) {
-    if (!data)
-      return;
+    if (!data)  // accepts empty data
+      data = {};
+    this.#chatWindowStates = {};
     if (typeof data['chatWindows'] == 'object') {
       for (const id in data['chatWindows']) {
         const wd = data['chatWindows'][id];
@@ -42,6 +43,7 @@ export class WindowManager extends ConfigStoreItem {
           this.getChatWindow(serviceManager.getInstanceById(id)).window.activate();
       }
     }
+    this.#dashboardState = null;
     if (typeof data['dashboard'] == 'object') {
       this.#dashboardState = data['dashboard']['state'];
       if (data['dashboard']['opened'])

@@ -1,5 +1,6 @@
 import {assert} from 'chai';
 
+import ChatListItem from '../src/view/chat-list-item';
 import MultiChatsService from '../src/model/multi-chats-service';
 import MultiChatsView from '../src/view/multi-chats-view';
 import {ChatRole} from '../src/model/chat-api';
@@ -52,7 +53,20 @@ describe('MultiChatsView', function() {
     await gcUntil(() => collected);
   });
 
-  it('chat can be garbage collected after removed', async () => {
+  it('item can be garbage collected', async () => {
+    let collected = false;
+    (() => {
+      const service = new MultiChatsService('chat', createChatCompletionAPI());
+      const chat = service.createChat();
+      const item = new ChatListItem(chat);
+      service.removeChatAt(0);
+      addFinalizer(item, () => collected = true);
+      item.destructor();
+    })();
+    await gcUntil(() => collected);
+  });
+
+  it('does not reference removed chat', async () => {
     let collected = false;
     (() => {
       const service = new MultiChatsService('chat', createChatCompletionAPI());

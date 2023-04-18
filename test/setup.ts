@@ -1,6 +1,8 @@
 import APIEndpoint from '../src/model/api-endpoint';
 import ChatService from '../src/model/chat-service';
 import ChatView from '../src/view/chat-view';
+import MultiChatsService from '../src/model/multi-chats-service';
+import MultiChatsView from '../src/view/multi-chats-view';
 import apiManager from '../src/controller/api-manager';
 import serviceManager from '../src/controller/service-manager';
 import {
@@ -47,14 +49,15 @@ export const mochaHooks = {
     apiManager.registerAPI('DummyCompletionAPI', DummyCompletionAPI);
     apiManager.registerAPI('DummyConversationAPI', DummyConversationAPI);
     serviceManager.registerView(ChatView);
+    serviceManager.registerView(MultiChatsView);
     serviceManager.registerService('DummyCompletionChatService', {
-      serviceType: ChatService,
+      serviceType: MultiChatsService,
       apiTypes: [ChatCompletionAPI],
-      viewType: ChatView,
+      viewType: MultiChatsView,
     });
     serviceManager.registerService('DummyConversationChatService', {
       serviceType: ChatService,
-      apiTypes: [ChatConversationAPI],
+      apiTypes: [ChatCompletionAPI, ChatConversationAPI],
       viewType: ChatView,
     });
     apiManager.addEndpoint(new APIEndpoint({

@@ -15,7 +15,7 @@ describe('ChatWindow', () => {
     let collected = false;
     (() => {
       const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const instance = serviceManager.createInstance('TestChat', 'DummyCompletionChatService', endpoint);
+      const instance = serviceManager.createInstance('TestChat', 'DummyConversationChatService', endpoint);
       const chatWindow = new ChatWindow(instance);
       addFinalizer(chatWindow, () => collected = true);
       chatWindow.window.close();
@@ -27,7 +27,7 @@ describe('ChatWindow', () => {
     let collected = false;
     await (async () => {
       const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const instance = serviceManager.createInstance('TestChat', 'DummyCompletionChatService', endpoint);
+      const instance = serviceManager.createInstance('TestChat', 'DummyConversationChatService', endpoint);
       const chatWindow = new ChatWindow(instance);
       await (instance.service as ChatService).sendMessage({role: ChatRole.User, content: 'message'});
       addFinalizer(chatWindow, () => collected = true);

@@ -63,6 +63,11 @@ export default class ChatListItem extends AppearanceAware {
     }
   }
 
+  destructor() {
+    super.destructor();
+    this.closeButton.destructor();
+  }
+
   setSelected(selected: boolean) {
     if (this.selected == selected)
       return;

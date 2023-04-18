@@ -42,7 +42,7 @@ export default class DashboardWindow extends BaseWindow {
   #addButton: IconButton;
 
   constructor() {
-    super({useClassicBackground: true});
+    super({showMenuBar: true, useClassicBackground: true});
 
     this.window.onFocus = () => this.selectedView?.mainView.onFocus();
     this.window.setContentSize({width: 600, height: 400});
@@ -111,6 +111,10 @@ export default class DashboardWindow extends BaseWindow {
       }
     }
     super.restoreState(state);
+  }
+
+  getMainView() {
+    return this.selectedView?.mainView;
   }
 
   switchTo(index: number) {

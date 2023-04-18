@@ -151,6 +151,10 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     this.#leftPane.destructor();
   }
 
+  getMainView() {
+    return this.chatView;
+  }
+
   initAsMainView() {
     if (this.service.chats.length == 0)
       this.service.createChat();

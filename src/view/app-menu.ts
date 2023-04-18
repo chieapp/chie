@@ -1,44 +1,29 @@
-import gui from 'gui';
-
-import BaseWindow from './base-window';
+import MenuBar, {getWindowManager} from './menu-bar';
 import MultiChatsView from './multi-chats-view';
 
-export default class AppMenu {
-  window?: BaseWindow;
-  menu: gui.MenuBar;
-
-  constructor(win?: BaseWindow) {
-    this.window = win;
-
+export default class AppMenu extends MenuBar {
+  constructor() {
     const template = [];
 
     // The main menu.
-    if (!win) {
-      template.push({
-        label: require('../../package.json').build.productName,
-        submenu: [
-          {
-            label: 'Quit',
-            accelerator: 'CmdOrCtrl+Q',
-            onClick: () => this.getWindowManager().quit(),
-          },
-        ],
-      });
-    }
-
-    // Edit menu.
     template.push({
-      label: 'Edit',
+      label: require('../../package.json').build.productName,
       submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
+        { role: 'about' },
         { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'select-all' },
+        { role: 'hide' },
+        { role: 'hide-others' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        MenuBar.quitMenuItem,
       ],
     });
+
+    // Edit menu.
+    template.push(MenuBar.editMenu);
+
+    // Assistants menu.
+    template.push(MenuBar.assistantsMenu);
 
     // Windows menu.
     template.push({
@@ -52,46 +37,37 @@ export default class AppMenu {
         {
           label: 'New Chat',
           accelerator: 'CmdOrCtrl+N',
-          validate: () => this.getCurrentMultiChatsView() != null,
-          onClick: () => this.getCurrentMultiChatsView()?.service.createChat(),
+          validate: () => getCurrentMultiChatsView() != null,
+          onClick: () => getCurrentMultiChatsView().service.createChat(),
         },
         {
           label: 'Show Previous Chat',
           accelerator: 'Ctrl+Shift+Tab',
-          validate: () => this.getCurrentMultiChatsView()?.hasMultiChats(),
-          onClick: () => this.getCurrentMultiChatsView()?.showPreviousChat(),
+          validate: () => getCurrentMultiChatsView()?.hasMultiChats(),
+          onClick: () => getCurrentMultiChatsView().showPreviousChat(),
         },
         {
           label: 'Show Next Chat',
           accelerator: 'Ctrl+Tab',
-          validate: () => this.getCurrentMultiChatsView()?.hasMultiChats(),
-          onClick: () => this.getCurrentMultiChatsView()?.showNextChat(),
+          validate: () => getCurrentMultiChatsView()?.hasMultiChats(),
+          onClick: () => getCurrentMultiChatsView().showNextChat(),
+        },
+        {
+          label: 'Clear Chats',
+          accelerator: 'Shift+Ctrl+C',
+          validate: () => getCurrentMultiChatsView() != null,
+          onClick: () => getCurrentMultiChatsView().service.clearChats(),
         },
       ],
     });
 
-    // Create the native menu.
-    this.menu = gui.MenuBar.create(template);
+    super(template);
   }
+}
 
-  getCurrentWindow(): BaseWindow | null {
-    return this.window ?? this.getWindowManager().getCurrentWindow();
-  }
-
-  getCurrentMultiChatsView(): MultiChatsView | null {
-    const win = this.getCurrentWindow();
-    // Lazy load ChatWindow to avoid circular reference.
-    const ChatWindow = require('./chat-window').default;
-    if (!(win instanceof ChatWindow))
-      return null;
-    const view = (win as typeof ChatWindow).chatView;
-    if (!(view instanceof MultiChatsView))
-      return null;
+function getCurrentMultiChatsView(): MultiChatsView | null {
+  const view = getWindowManager().getCurrentWindow()?.getMainView();
+  if (view instanceof MultiChatsView)
     return view;
-  }
-
-  getWindowManager() {
-    // Delay loaded to avoid circular reference.
-    return require('../controller/window-manager').default;
-  }
+  return null;
 }

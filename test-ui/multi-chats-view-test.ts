@@ -1,3 +1,5 @@
+import {assert} from 'chai';
+
 import MultiChatsService from '../src/model/multi-chats-service';
 import MultiChatsView from '../src/view/multi-chats-view';
 import {ChatRole} from '../src/model/chat-api';
@@ -10,7 +12,7 @@ describe('MultiChatsView', function() {
   it('can be garbage collected', async () => {
     let collected = false;
     (() => {
-      const chatView = new MultiChatsView(new MultiChatsService('FreeTibet', createChatCompletionAPI()));
+      const chatView = new MultiChatsView(new MultiChatsService('chat', createChatCompletionAPI()));
       chatView.initAsMainView();
       addFinalizer(chatView, () => collected = true);
       chatView.destructor();
@@ -21,7 +23,7 @@ describe('MultiChatsView', function() {
   it('can be garbage collected after sending message', async () => {
     let collected = false;
     await (async () => {
-      const service = new MultiChatsService('FreeTibet', createChatCompletionAPI());
+      const service = new MultiChatsService('chat', createChatCompletionAPI());
       const chatView = new MultiChatsView(service);
       chatView.initAsMainView();
       const chat = service.createChat();
@@ -35,7 +37,7 @@ describe('MultiChatsView', function() {
   it('can be garbage collected after adding and remove chats', async () => {
     let collected = false;
     (() => {
-      const service = new MultiChatsService('FreeTibet', createChatCompletionAPI());
+      const service = new MultiChatsService('chat', createChatCompletionAPI());
       const chatView = new MultiChatsView(service);
       chatView.initAsMainView();
       service.createChat();
@@ -45,6 +47,21 @@ describe('MultiChatsView', function() {
       service.createChat();
       service.createChat();
       addFinalizer(chatView, () => collected = true);
+      chatView.destructor();
+    })();
+    await gcUntil(() => collected);
+  });
+
+  it('chat can be garbage collected after removed', async () => {
+    let collected = false;
+    (() => {
+      const service = new MultiChatsService('chat', createChatCompletionAPI());
+      const chatView = new MultiChatsView(service);
+      chatView.initAsMainView();
+      const chat = service.createChat();
+      assert.equal(chat, service.chats[0]);
+      service.removeChatAt(0);
+      addFinalizer(chat, () => collected = true);
       chatView.destructor();
     })();
     await gcUntil(() => collected);

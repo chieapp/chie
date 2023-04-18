@@ -86,8 +86,13 @@
     } else if (delta.type == 'insert') {
       // Find the last child.
       var target = text;
-      for (var i = 0; i < delta.insertDepth; ++i)
-        target = target.lastElementChild;
+      try {
+        for (var i = 0; i < delta.insertDepth; ++i)
+          target = target.lastElementChild;
+      } catch (error) {
+        console.error('Error inserting', delta, text.innerHTML);
+        throw error;
+      }
       // Remove text from the target element.
       if (delta.deleteText) {
         var textNodes = target.childNodes;

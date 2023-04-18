@@ -40,6 +40,11 @@ export default abstract class BaseView<T extends WebService<WebAPI> = WebService
     return this.service.name;
   }
 
+  // Return the main view the user is working on.
+  getMainView(): BaseView {
+    return this;
+  }
+
   // Return the size of the main view inside view.
   getMainViewSize(): gui.SizeF {
     return this.view.getBounds();

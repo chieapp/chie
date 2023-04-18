@@ -1,6 +1,7 @@
 import gui from 'gui';
 
-import AppMenu from './app-menu';
+import BaseView from './base-view';
+import WindowMenu from './window-menu';
 import SignalsOwner from '../model/signals-owner';
 
 export interface WindowState {
@@ -8,16 +9,17 @@ export interface WindowState {
 }
 
 export interface BaseWindowOptions extends gui.WindowOptions {
+  showMenuBar?: boolean;
   pressEscToClose?: boolean;
   // On modern macOS apps the NSVisualEffectView is usually used as the content
   // view, this option provides a way to disable it.
   useClassicBackground?: boolean;
 }
 
-export default class BaseWindow extends SignalsOwner {
+export default abstract class BaseWindow extends SignalsOwner {
   window: gui.Window;
   contentView: gui.Container;
-  menuBar: AppMenu;
+  menuBar: WindowMenu;
 
   constructor(options: BaseWindowOptions = {}) {
     super();
@@ -26,9 +28,10 @@ export default class BaseWindow extends SignalsOwner {
     if (process.platform == 'win32')
       this.window.setBackgroundColor('#F5F5F5');
     if (process.platform != 'darwin') {
-      this.menuBar = new AppMenu(this);
+      this.menuBar = new WindowMenu(this);
       this.window.setMenuBar(this.menuBar.menu);
-      this.window.setMenuBarVisible(false);
+      if (!options.showMenuBar)
+        this.window.setMenuBarVisible(false);
     }
 
     if (options.pressEscToClose) {
@@ -61,5 +64,10 @@ export default class BaseWindow extends SignalsOwner {
 
   restoreState(state: WindowState) {
     this.window.setBounds(state.bounds);
+  }
+
+  // Return the main view of the window, on which user is working on.
+  getMainView(): BaseView | null {
+    return null;
   }
 }

@@ -8,9 +8,7 @@ export default class WindowMenuBar extends BaseMenuBar {
       // File menu.
       {
         label: 'File',
-        submenu: [
-          BaseMenuBar.quitMenuItem,
-        ],
+        submenu: BaseMenuBar.fileMenuItems,
       },
     ];
     super(template);

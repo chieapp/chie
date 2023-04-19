@@ -4,29 +4,27 @@ import AppTray from '../view/app-tray';
 import AppMenuBar from '../view/app-menu-bar';
 import BaseWindow, {WindowState} from '../view/base-window';
 import ChatWindow from '../view/chat-window';
-import DashboardWindow from '../view/dashboard-window';
 import Instance from '../model/instance';
-import NewAssistantWindow from '../view/new-assistant-window';
 import serviceManager from './service-manager';
 import {collectGarbage} from './gc-center';
 import {ConfigStoreItem} from './config-store';
+
+type NamedWindowType = new () => BaseWindow;
 
 export class WindowManager extends ConfigStoreItem {
   #appMenu?: AppMenuBar;
   #appTray?: AppTray;
   #windows: BaseWindow[] = [];
 
-  #newAssistantWindow?: NewAssistantWindow;
-  #dashboard?: DashboardWindow;
+  #registeredWindows: Record<string, NamedWindowType> = {};
+  #namedWindows: Record<string, BaseWindow> = {};
   #chatWindows: Record<string, ChatWindow> = {};
 
-  #dashboardState?: WindowState;
+  #namedWindowsStates: Record<string, WindowState> = {};
   #chatWindowStates: Record<string, WindowState> = {};
 
   constructor() {
     super();
-    if (process.platform == 'darwin')
-      gui.lifetime.onActivate = () => this.showDashboardWindow();
     serviceManager.onRemoveInstance.connect(this.#onRemoveInstance.bind(this));
   }
 
@@ -48,56 +46,61 @@ export class WindowManager extends ConfigStoreItem {
           this.showChatWindow(serviceManager.getInstanceById(id));
       }
     }
-    this.#dashboardState = null;
-    if (typeof data['dashboard'] == 'object') {
-      this.#dashboardState = data['dashboard']['state'];
-      if (data['dashboard']['opened'])
-        this.showDashboardWindow();
+    if (typeof data['windows'] == 'object') {
+      for (const name in data['windows']) {
+        const wd = data['windows'][name];
+        this.#namedWindowsStates[name] = wd['state'];
+        if (wd['opened'])
+          this.showNamedWindow(name);
+      }
     }
   }
 
   serialize() {
-    const chatWindows = {};
+    const data = {chatWindows: {}, windows: {}};
     for (const id in this.#chatWindowStates) {
-      chatWindows[id] = {
+      data.chatWindows[id] = {
         state: this.#chatWindowStates[id],
         opened: id in this.#chatWindows,
       };
     }
-    return {
-      chatWindows,
-      dashboard: {
-        state: this.#dashboardState,
-        opened: !!this.#dashboard,
-      },
-    };
-  }
-
-  showNewAssistantWindow() {
-    if (!this.#newAssistantWindow) {
-      this.#newAssistantWindow = new NewAssistantWindow();
-      this.#newAssistantWindow.window.onClose = () => this.#newAssistantWindow = null;
+    for (const name in this.#namedWindowsStates) {
+      data.windows[name] = {
+        state: this.#namedWindowsStates[name],
+        opened: !!this.#namedWindows[name],
+      };
     }
-    this.#newAssistantWindow.window.activate();
+    return data;
   }
 
-  showDashboardWindow() {
-    // Create dashboard window lazily.
-    if (!this.#dashboard) {
-      this.#dashboard = new DashboardWindow();
-      if (this.#dashboardState)
-        this.#dashboard.restoreState(this.#dashboardState);
+  registerNamedWindow(name: string, windowType: NamedWindowType) {
+    if (name in this.#registeredWindows)
+      throw new Error(`Window name "${name}" has already been registered.`);
+    this.#registeredWindows[name] = windowType;
+  }
+
+  // Create and show a registered window type with |name|. The window is created
+  // lazily and will be destroyed when closed.
+  showNamedWindow(name: string) {
+    let win = this.#namedWindows[name];
+    if (!win) {
+      const windowType = this.#registeredWindows[name];
+      if (!windowType)
+        throw new Error(`There is no window named "${name}".`);
+      win = this.#namedWindows[name] = new windowType();
+      if (name in this.#namedWindowsStates)
+        win.restoreState(this.#namedWindowsStates[name]);
       else
-        this.#dashboard.window.center();
-      // Destroy the dashboard on close, it is possible to just cache it but it
-      // can be recreated very fast so save some memory here.
-      this.#dashboard.window.onClose = () => {
-        this.#saveDashboardState();
-        this.#dashboard = null;
+        win.window.center();
+      win.window.onClose = () => {
+        this.#saveNamedWindowState(name);
+        // It is possible to cache, but windows are cheap to create in Chie so
+        // we just recreate the window every time.
+        delete this.#namedWindows[name];
         this.saveConfig();
       };
     }
-    this.#dashboard.window.activate();
+    win.window.activate();
   }
 
   showChatWindow(instance: Instance) {
@@ -124,7 +127,7 @@ export class WindowManager extends ConfigStoreItem {
   quit() {
     // Save states before quitting.
     this.#saveChatWindowStates();
-    this.#saveDashboardState();
+    this.#saveNamedWindowStates();
     this.saveConfigSync();
     // Quit.
     if (gui.MessageLoop.quit)
@@ -143,11 +146,6 @@ export class WindowManager extends ConfigStoreItem {
     collectGarbage();
   }
 
-  #saveDashboardState() {
-    if (this.#dashboard)
-      this.#dashboardState = this.#dashboard.saveState();
-  }
-
   #saveChatWindowState(win: ChatWindow) {
     this.#chatWindowStates[win.instance.id] = win.saveState();
   }
@@ -159,6 +157,22 @@ export class WindowManager extends ConfigStoreItem {
     }
   }
 
+  #saveNamedWindowState(name: string) {
+    const win = this.#namedWindows[name];
+    if (!win)  // not opened
+      return;
+    const state = win.saveState();
+    if (state)
+      this.#namedWindowsStates[name] = state;
+    else  // some windows explicitly do not keep states
+      delete this.#namedWindowsStates[name];
+  }
+
+  #saveNamedWindowStates() {
+    for (const name in this.#namedWindows)
+      this.#saveNamedWindowState(name);
+  }
+
   #onAllWindowsClosed() {
     if (!this.#appTray && process.platform != 'darwin')
       this.quit();
@@ -167,7 +181,7 @@ export class WindowManager extends ConfigStoreItem {
   #onRemoveInstance(instance: Instance) {
     this.#chatWindows[instance.id]?.window.close();
     delete this.#chatWindowStates[instance.id];
-    this.#saveDashboardState();
+    this.#saveNamedWindowState('dashboard');
     this.saveConfig();
   }
 }

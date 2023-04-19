@@ -58,7 +58,7 @@ export default class BaseWindow extends SignalsOwner {
     };
   }
 
-  saveState(): WindowState {
+  saveState(): WindowState | null {
     return {bounds: this.window.getBounds()};
   }
 
@@ -69,5 +69,11 @@ export default class BaseWindow extends SignalsOwner {
   // Return the main view of the window, on which user is working on.
   getMainView(): BaseView | null {
     return null;
+  }
+
+  // Set window's size automatically to the preferred size of content view.
+  resizeToFitContentView(override: {width?: number, height?: number} = {}) {
+    const contentSize = Object.assign(this.contentView.getPreferredSize(), override);
+    this.window.setContentSize(contentSize);
   }
 }

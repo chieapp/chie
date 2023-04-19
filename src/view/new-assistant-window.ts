@@ -59,11 +59,12 @@ export default class NewAssistantWindow extends BaseWindow {
     buttonsArea.addCloseButton();
 
     this.paramsView.requestAttention('name');
+    this.resizeToFitContentView({width: 400});
     this.window.setTitle('Create New Assistant');
-    const contentSize = this.contentView.getPreferredSize();
-    contentSize.width = 400;
-    this.window.setContentSize(contentSize);
-    this.window.center();
+  }
+
+  saveState() {
+    return null;  // do not remember state
   }
 
   #onClickCreateButton() {

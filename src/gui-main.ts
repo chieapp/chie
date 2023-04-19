@@ -1,5 +1,8 @@
 import gui from 'gui';
 
+import NewAssistantWindow from './view/new-assistant-window';
+import DashboardWindow from './view/dashboard-window';
+import SettingsWindow from './view/settings-window';
 import main from './main';
 import windowManager from './controller/window-manager';
 import * as singleInstance from './util/single-instance';
@@ -22,15 +25,21 @@ if (process.platform == 'darwin') {
 function guiMain() {
   main();
 
+  // Register named windows.
+  windowManager.registerNamedWindow('dashboard', DashboardWindow);
+  windowManager.registerNamedWindow('settings', SettingsWindow);
+  windowManager.registerNamedWindow('newAssistant', NewAssistantWindow);
+
+  // Restore window states from config.
   windowConfig.addItem('windows', windowManager);
   windowConfig.initFromFileSync();
 
-  if (process.platform != 'darwin')
-    windowManager.showDashboardWindow();
+  if (process.platform == 'darwin')
+    gui.lifetime.onActivate = () => windowManager.showNamedWindow('dashboard');
 
   setQuitOnException(false);
 
-  // After successful start, we want to write current state into file.
+  // After a successful start, we want to write current state into file.
   config.saveToFile();
 }
 

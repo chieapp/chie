@@ -14,7 +14,7 @@ export default class AppMenuBar extends BaseMenuBar {
           { role: 'hide-others' },
           { role: 'unhide' },
           { type: 'separator' },
-          BaseMenuBar.quitMenuItem,
+          ...BaseMenuBar.fileMenuItems,
         ],
       },
     ];

@@ -5,11 +5,18 @@ import SignalsOwner from '../model/signals-owner';
 import {BaseViewType} from './base-view';
 
 export default class BaseMenuBar extends SignalsOwner {
-  static quitMenuItem = {
-    label: 'Quit',
-    accelerator: 'CmdOrCtrl+Q',
-    onClick() { getWindowManager().quit(); },
-  };
+  static fileMenuItems = [
+    {
+      label: 'Settings...',
+      accelerator: 'CmdOrCtrl+,',
+      onClick() { getWindowManager().showNamedWindow('settings'); },
+    },
+    {
+      label: 'Quit',
+      accelerator: 'CmdOrCtrl+Q',
+      onClick() { getWindowManager().quit(); },
+    },
+  ];
   static editMenu = {
     label: 'Edit',
     submenu: [
@@ -68,20 +75,20 @@ export default class BaseMenuBar extends SignalsOwner {
       label: 'Assistants',
       submenu: [
         {
-          label: 'New Assistant',
+          label: 'Open Dashboard...',
+          accelerator: 'Shift+CmdOrCtrl+D',
+          onClick: () => getWindowManager().showNamedWindow('dashboard'),
+        },
+        {
+          label: 'New Assistant...',
           accelerator: 'Shift+CmdOrCtrl+N',
-          onClick: () => getWindowManager().showNewAssistantWindow(),
+          onClick: () => getWindowManager().showNamedWindow('newAssistant'),
         },
         { type: 'separator' },
-        {
-          label: 'Open Dashboard',
-          accelerator: 'Shift+CmdOrCtrl+D',
-          onClick: () => getWindowManager().showDashboardWindow(),
-        },
       ],
     });
     this.#assistantsMenu = new AssistantsMenu(menuItem.getSubmenu(), -1, (instance, index) => ({
-      label: `Open ${instance.service.name}`,
+      label: `Open ${instance.service.name}...`,
       accelerator: `Alt+CmdOrCtrl+${index + 1}`,
       onClick: () => getWindowManager().showChatWindow(instance),
     }));
@@ -96,7 +103,7 @@ export default class BaseMenuBar extends SignalsOwner {
     const DashboardWindow = require('./dashboard-window').default;
     this.#viewMenu.append(gui.MenuItem.create('separator'));
     this.#assistantsMenuInView = new AssistantsMenu(this.#viewMenu, -1, (instance, index) => ({
-      label: `Switch to ${instance.service.name}`,
+      label: `Switch to ${instance.service.name}...`,
       accelerator: `CmdOrCtrl+${index + 1}`,
       validate: () => getWindowManager().getCurrentWindow() instanceof DashboardWindow,
       onClick: () => {

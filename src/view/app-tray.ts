@@ -3,6 +3,7 @@ import gui from 'gui';
 import path from 'node:path';
 
 import AssistantsMenu from './assistants-menu';
+import BaseMenuBar from './base-menu-bar';
 import {getWindowManager} from './base-menu-bar';
 
 export default class AppTray {
@@ -19,18 +20,15 @@ export default class AppTray {
     this.menu = gui.Menu.create([
       {
         label: 'Open Dashboard...',
-        onClick() { getWindowManager().showDashboardWindow(); },
+        onClick() { getWindowManager().showNamedWindow('dashboard'); },
       },
       {
         label: 'New Assistant...',
-        onClick() { getWindowManager().showNewAssistantWindow(); },
+        onClick() { getWindowManager().showNamedWindow('newAssistant'); },
       },
       { type: 'separator' },
       { type: 'separator' },
-      {
-        label: 'Quit',
-        onClick() { getWindowManager().quit(); },
-      },
+      ...BaseMenuBar.fileMenuItems,
     ]);
     this.#assistantsMenu = new AssistantsMenu(this.menu, 3, (instance) => ({
       label: `Open ${instance.service.name}...`,

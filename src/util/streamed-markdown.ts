@@ -102,7 +102,7 @@ function computeHtmlDelta(before: string | null, after: string): MarkdownHtmlDel
     const tail = oldTail.slice(deleteText);
     if (newTail.endsWith(tail)) {
       // Count how many closing tags.
-      const depth = (oldTail.match(/\//g) || []).length;
+      const depth = (oldTail.match(/<\/\w+>/g) || []).length;
       return {type: 'insert', html: newTail.slice(0, -tail.length), insertDepth: depth, deleteText};
     }
   }

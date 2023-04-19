@@ -89,6 +89,8 @@
       try {
         for (var i = 0; i < delta.insertDepth; ++i)
           target = target.lastElementChild;
+        if (!target)
+          throw new Error('Unexpected null child');
       } catch (error) {
         console.error('Error inserting', delta, text.innerHTML);
         throw error;

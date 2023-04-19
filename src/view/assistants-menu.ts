@@ -9,13 +9,15 @@ type createAssistantMenuItemFunc = (instance: Instance, index: number) => MenuIt
 
 export default class AssistantsMenu extends SignalsOwner {
   menu: gui.Menu;
+  menuIndex: number;
   createAssistantMenuItem: createAssistantMenuItemFunc;
 
   #assistants: {instance: Instance, item: gui.MenuItem}[] = [];
 
-  constructor(menu: gui.Menu, createAssistantMenuItem: createAssistantMenuItemFunc) {
+  constructor(menu: gui.Menu, menuIndex: number, createAssistantMenuItem: createAssistantMenuItemFunc) {
     super();
     this.menu = menu;
+    this.menuIndex = menuIndex;
     this.createAssistantMenuItem = createAssistantMenuItem;
     // Insert menu items for existing instances.
     serviceManager.getInstances().forEach(this.#onNewInstance.bind(this));
@@ -28,7 +30,10 @@ export default class AssistantsMenu extends SignalsOwner {
 
   #onNewInstance(instance: Instance, index: number) {
     const item = gui.MenuItem.create(this.createAssistantMenuItem(instance, index));
-    this.menu.append(item);
+    if (this.menuIndex == -1)
+      this.menu.append(item);
+    else
+      this.menu.insert(item, this.menuIndex + index);
     this.#assistants.push({instance, item});
   }
 

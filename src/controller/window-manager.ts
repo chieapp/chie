@@ -1,5 +1,6 @@
 import gui from 'gui';
 
+import AppTray from '../view/app-tray';
 import AppMenuBar from '../view/app-menu-bar';
 import BaseWindow, {WindowState} from '../view/base-window';
 import ChatWindow from '../view/chat-window';
@@ -12,6 +13,7 @@ import {ConfigStoreItem} from './config-store';
 
 export class WindowManager extends ConfigStoreItem {
   #appMenu?: AppMenuBar;
+  #appTray?: AppTray;
   #windows: BaseWindow[] = [];
 
   #newAssistantWindow?: NewAssistantWindow;
@@ -33,6 +35,7 @@ export class WindowManager extends ConfigStoreItem {
       data = {};
     if (process.platform == 'darwin') {
       // Create menu bar after config is loaded.
+      this.#appTray = new AppTray();
       this.#appMenu = new AppMenuBar();
       gui.app.setApplicationMenu(this.#appMenu.menu);
     }
@@ -157,7 +160,7 @@ export class WindowManager extends ConfigStoreItem {
   }
 
   #onAllWindowsClosed() {
-    if (process.platform != 'darwin')
+    if (!this.#appTray && process.platform != 'darwin')
       this.quit();
   }
 

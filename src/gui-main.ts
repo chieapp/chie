@@ -1,5 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import gui from 'gui';
 
 import main from './main';
@@ -29,12 +27,6 @@ function guiMain() {
 
   if (process.platform != 'darwin')
     windowManager.showDashboardWindow();
-
-  const trayImage = gui.Image.createFromPath(fs.realpathSync(path.join(__dirname, '../assets/icons/tray@2x.png')));
-  if (process.platform == 'darwin')
-    trayImage.setTemplate(true);
-  const tray = gui.Tray.createWithImage(trayImage);
-  global.tray = tray;
 
   setQuitOnException(false);
 

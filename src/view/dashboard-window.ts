@@ -202,7 +202,7 @@ export default class DashboardWindow extends BaseWindow {
     const menu = gui.Menu.create([
       {
         label: 'Show in new window',
-        onClick: () => getWindowManager().getChatWindow(view.instance).window.activate(),
+        onClick: () => getWindowManager().showChatWindow(view.instance),
       },
       {
         label: 'Remove',

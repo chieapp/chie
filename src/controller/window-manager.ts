@@ -24,7 +24,7 @@ export class WindowManager extends ConfigStoreItem {
   constructor() {
     super();
     if (process.platform == 'darwin')
-      gui.lifetime.onActivate = () => this.getDashboard().window.activate();
+      gui.lifetime.onActivate = () => this.showDashboardWindow();
     serviceManager.onRemoveInstance.connect(this.#onRemoveInstance.bind(this));
   }
 
@@ -42,14 +42,14 @@ export class WindowManager extends ConfigStoreItem {
         const wd = data['chatWindows'][id];
         this.#chatWindowStates[id] = wd['state'];
         if (wd['opened'])
-          this.getChatWindow(serviceManager.getInstanceById(id)).window.activate();
+          this.showChatWindow(serviceManager.getInstanceById(id));
       }
     }
     this.#dashboardState = null;
     if (typeof data['dashboard'] == 'object') {
       this.#dashboardState = data['dashboard']['state'];
       if (data['dashboard']['opened'])
-        this.getDashboard().window.activate();
+        this.showDashboardWindow();
     }
   }
 
@@ -78,7 +78,7 @@ export class WindowManager extends ConfigStoreItem {
     this.#newAssistantWindow.window.activate();
   }
 
-  getDashboard() {
+  showDashboardWindow() {
     // Create dashboard window lazily.
     if (!this.#dashboard) {
       this.#dashboard = new DashboardWindow();
@@ -94,10 +94,10 @@ export class WindowManager extends ConfigStoreItem {
         this.saveConfig();
       };
     }
-    return this.#dashboard;
+    this.#dashboard.window.activate();
   }
 
-  getChatWindow(instance: Instance) {
+  showChatWindow(instance: Instance) {
     if (!(instance.id in this.#chatWindows)) {
       const win = new ChatWindow(instance);
       if (instance.id in this.#chatWindowStates)
@@ -111,7 +111,7 @@ export class WindowManager extends ConfigStoreItem {
       };
       this.#chatWindows[instance.id] = win;
     }
-    return this.#chatWindows[instance.id];
+    this.#chatWindows[instance.id].window.activate();
   }
 
   getCurrentWindow() {

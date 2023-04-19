@@ -31,6 +31,10 @@ export default class WindowMenuBar extends BaseMenuBar {
           ...this.getViewMenuItems(mainView.getMainView().constructor as BaseViewType));
       }
       this.createViewMenu(items);
+      // Create assistant switcher in dashboard.
+      const DashboardWindow = require('./dashboard-window').default;
+      if (win instanceof DashboardWindow)
+        this.createAssistantsItemsInViewMenu();
     }
   }
 }

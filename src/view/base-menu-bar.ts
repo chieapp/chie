@@ -34,8 +34,9 @@ export default class BaseMenuBar extends SignalsOwner {
 
   menu: gui.MenuBar;
 
-  #assistantsMenu?: AssistantsMenu;
   #viewMenu?: gui.Menu;
+  #assistantsMenu?: AssistantsMenu;
+  #assistantsMenuInView?: AssistantsMenu;
 
   constructor(template: object[]) {
     super();
@@ -51,18 +52,6 @@ export default class BaseMenuBar extends SignalsOwner {
     this.#assistantsMenu?.destructor();
   }
 
-  protected createAssistantsMenu() {
-    this.#assistantsMenu = new AssistantsMenu((instance, index) => ({
-      label: `Open ${instance.service.name}`,
-      accelerator: `Alt+CmdOrCtrl+${index + 1}`,
-      onClick: () => getWindowManager().getChatWindow(instance).window.activate(),
-    }));
-    this.menu.insert(gui.MenuItem.create({
-      label: 'Assistants',
-      submenu: this.#assistantsMenu.menu,
-    }), this.menu.itemCount() - 1);
-  }
-
   protected createViewMenu(items: object[]) {
     this.#viewMenu = gui.Menu.create(items);
     this.menu.insert(gui.MenuItem.create({
@@ -70,6 +59,52 @@ export default class BaseMenuBar extends SignalsOwner {
       submenu: this.#viewMenu,
     }), 2);
     return this.#viewMenu;
+  }
+
+  protected createAssistantsMenu() {
+    if (this.#assistantsMenu)
+      this.#assistantsMenu.destructor();
+    const menuItem = gui.MenuItem.create({
+      label: 'Assistants',
+      submenu: [
+        {
+          label: 'New Assistant',
+          accelerator: 'Shift+CmdOrCtrl+N',
+          onClick: () => getWindowManager().showNewAssistantWindow(),
+        },
+        { type: 'separator' },
+        {
+          label: 'Open Dashboard',
+          accelerator: 'Shift+CmdOrCtrl+D',
+          onClick: () => getWindowManager().showDashboardWindow(),
+        },
+      ],
+    });
+    this.#assistantsMenu = new AssistantsMenu(menuItem.getSubmenu(), (instance, index) => ({
+      label: `Open ${instance.service.name}`,
+      accelerator: `Alt+CmdOrCtrl+${index + 1}`,
+      onClick: () => getWindowManager().showChatWindow(instance),
+    }));
+    this.menu.insert(menuItem, this.menu.itemCount() - 1);
+  }
+
+  protected createAssistantsItemsInViewMenu() {
+    if (this.#assistantsMenuInView)
+      throw new Error('Assistant items already created');
+    if (!this.#viewMenu)
+      throw new Error('There is no View menu');
+    const DashboardWindow = require('./dashboard-window').default;
+    this.#viewMenu.append(gui.MenuItem.create('separator'));
+    this.#assistantsMenuInView = new AssistantsMenu(this.#viewMenu, (instance, index) => ({
+      label: `Switch to ${instance.service.name}`,
+      accelerator: `CmdOrCtrl+${index + 1}`,
+      validate: () => getWindowManager().getCurrentWindow() instanceof DashboardWindow,
+      onClick: () => {
+        const win = getWindowManager().getCurrentWindow();
+        if (win instanceof DashboardWindow)
+          (win as typeof DashboardWindow).switchTo(index);
+      }
+    }));
   }
 
   // Wrap the menu items of |viewType| by doing auto validation.

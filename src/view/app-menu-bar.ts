@@ -20,6 +20,7 @@ export default class AppMenuBar extends BaseMenuBar {
     ];
     super(template);
 
+    // Create "Assistants" menu.
     this.createAssistantsMenu();
     // Create items for all registered views.
     const items: object[] = [];
@@ -31,6 +32,8 @@ export default class AppMenuBar extends BaseMenuBar {
         items.push({type: 'separator'});
       items.push(...viewItems);
     }
+    // Create "View" menu.
     this.createViewMenu(items);
+    this.createAssistantsItemsInViewMenu();
   }
 }

@@ -28,7 +28,7 @@ function guiMain() {
   windowConfig.initFromFileSync();
 
   if (process.platform != 'darwin')
-    windowManager.getDashboard().window.activate();
+    windowManager.showDashboardWindow();
 
   const trayImage = gui.Image.createFromPath(fs.realpathSync(path.join(__dirname, '../assets/icons/tray@2x.png')));
   if (process.platform == 'darwin')

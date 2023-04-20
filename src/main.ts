@@ -28,6 +28,5 @@ export default function main() {
 
   // Read configurations.
   config.addItem('apis', apiManager);
-  config.addItem('chats', serviceManager);
-  config.initFromFileSync();
+  config.addItem('services', serviceManager);
 }

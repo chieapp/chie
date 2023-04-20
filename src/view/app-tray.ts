@@ -6,7 +6,7 @@ import AssistantsMenu from './assistants-menu';
 import BaseMenuBar from './base-menu-bar';
 import windowManager from '../controller/window-manager';
 
-export class AppTray {
+export default class AppTray {
   tray: gui.Tray;
   menu: gui.Menu;
 
@@ -41,15 +41,4 @@ export class AppTray {
     this.tray.remove();
     this.#assistantsMenu.destructor();
   }
-}
-
-let appTray: AppTray;
-export function createAppTray() {
-  if (appTray)
-    throw new Error('AppTray has already been created.');
-  appTray = new AppTray();
-}
-
-export function getAppTray() {
-  return appTray;
 }

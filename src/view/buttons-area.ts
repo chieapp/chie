@@ -6,16 +6,16 @@ export default class ButtonsArea {
   view = gui.Container.create();
   row = gui.Container.create();
 
-  constructor() {
-    this.view.setStyle({
-      justifyContent: 'flex-end',
-      paddingTop: style.padding,
-    });
+  constructor(options: {hideSeparator?: boolean} = {}) {
+    if (!options.hideSeparator) {
+      this.view.setStyle({paddingTop: style.padding});
+      this.view.addChildView(gui.Separator.create('horizontal'));
+    }
+    this.view.setStyle({justifyContent: 'flex-end'});
     this.row.setStyle({
       flexDirection: 'row-reverse',
       paddingTop: style.padding,
     });
-    this.view.addChildView(gui.Separator.create('horizontal'));
     this.view.addChildView(this.row);
   }
 

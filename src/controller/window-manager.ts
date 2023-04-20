@@ -5,7 +5,6 @@ import Instance from '../model/instance';
 import WindowStore, {WindowStoreDataFormat} from '../model/window-store';
 import serviceManager from './service-manager';
 import {collectGarbage} from './gc-center';
-import {getAppTray} from '../view/app-tray';
 import {ConfigStoreItem} from '../model/config-store';
 
 type WindowManagerDataFormat = {
@@ -97,7 +96,8 @@ export class WindowManager extends ConfigStoreItem {
   }
 
   #onAllWindowsClosed() {
-    if (!getAppTray() && process.platform != 'darwin')
+    const app = require('./app').default;
+    if (!app.tray && !app.isDockIconVisible())
       this.quit();
   }
 

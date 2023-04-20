@@ -13,6 +13,7 @@ cliMain();
 async function cliMain() {
   // The cli interface is stateless.
   config.inMemory = true;
+  config.initFromFileSync();
 
   const endpoint = process.argv.includes('--bingchat') ?
     createBingChat() : createChatGPT();

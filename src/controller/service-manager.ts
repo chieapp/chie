@@ -37,7 +37,7 @@ export class ServiceManager extends ConfigStoreItem {
     if (!data)  // accepts empty data
       data = {};
     if (typeof data != 'object')
-      throw new Error(`Unknown data for "chats": ${JSON.stringify(data)}.`);
+      throw new Error(`Unknown data for "services": ${JSON.stringify(data)}.`);
     this.#instances = {};
     for (const id in data) {
       const item = data[id];

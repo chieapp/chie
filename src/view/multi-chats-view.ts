@@ -5,7 +5,7 @@ import BaseView, {ViewState} from '../view/base-view';
 import ChatListItem from './chat-list-item';
 import ChatView from './chat-view';
 import MultiChatsService from '../model/multi-chats-service';
-import {config} from '../controller/config-store';
+import {config} from '../controller/configs';
 import {collectGarbage} from '../controller/gc-center';
 
 export const style = {

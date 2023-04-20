@@ -1,12 +1,14 @@
 import gui from 'gui';
 
-import NewAssistantWindow from './view/new-assistant-window';
 import DashboardWindow from './view/dashboard-window';
+import NewAssistantWindow from './view/new-assistant-window';
 import SettingsWindow from './view/settings-window';
 import main from './main';
 import windowManager from './controller/window-manager';
 import * as singleInstance from './util/single-instance';
-import {config, windowConfig} from './controller/config-store';
+import {config, windowConfig} from './controller/configs';
+import {createAppMenuBar} from './view/app-menu-bar';
+import {createAppTray} from './view/app-tray';
 import {setQuitOnException} from './controller/exception-handler';
 
 // Check if it is Yode.
@@ -34,9 +36,18 @@ function guiMain() {
   windowConfig.addItem('windows', windowManager);
   windowConfig.initFromFileSync();
 
-  if (process.platform == 'darwin')
+  if (process.platform == 'darwin') {
+    // When there is no window available, clicking on the dock icon should show
+    // the dashboard window.
     gui.lifetime.onActivate = () => windowManager.showNamedWindow('dashboard');
+    // Create menu bar after config is loaded.
+    createAppMenuBar();
+  }
+  // Create tray.
+  createAppTray();
 
+  // After windows are initialized, all errors happened later are usually not
+  // critical and we do not need to quit.
   setQuitOnException(false);
 
   // After a successful start, we want to write current state into file.

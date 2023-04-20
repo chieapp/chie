@@ -6,7 +6,7 @@ import apiManager from './controller/api-manager';
 import serviceManager from './controller/service-manager';
 import extensionManager from './controller/extension-manager';
 import {ChatConversationAPI, ChatCompletionAPI} from './model/chat-api';
-import {config} from './controller/config-store';
+import {config} from './controller/configs';
 
 export default function main() {
   // Register builtin APIs and services.

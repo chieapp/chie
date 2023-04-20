@@ -4,9 +4,9 @@ import path from 'node:path';
 
 import AssistantsMenu from './assistants-menu';
 import BaseMenuBar from './base-menu-bar';
-import {getWindowManager} from './base-menu-bar';
+import windowManager from '../controller/window-manager';
 
-export default class AppTray {
+export class AppTray {
   tray: gui.Tray;
   menu: gui.Menu;
 
@@ -20,11 +20,11 @@ export default class AppTray {
     this.menu = gui.Menu.create([
       {
         label: 'Open Dashboard...',
-        onClick() { getWindowManager().showNamedWindow('dashboard'); },
+        onClick() { windowManager.showNamedWindow('dashboard'); },
       },
       {
         label: 'New Assistant...',
-        onClick() { getWindowManager().showNamedWindow('newAssistant'); },
+        onClick() { windowManager.showNamedWindow('newAssistant'); },
       },
       { type: 'separator' },
       { type: 'separator' },
@@ -32,7 +32,7 @@ export default class AppTray {
     ]);
     this.#assistantsMenu = new AssistantsMenu(this.menu, 3, (instance) => ({
       label: `Open ${instance.service.name}...`,
-      onClick: () => getWindowManager().showChatWindow(instance),
+      onClick: () => windowManager.showChatWindow(instance.id),
     }));
     this.tray.setMenu(this.menu);
   }
@@ -41,4 +41,15 @@ export default class AppTray {
     this.tray.remove();
     this.#assistantsMenu.destructor();
   }
+}
+
+let appTray: AppTray;
+export function createAppTray() {
+  if (appTray)
+    throw new Error('AppTray has already been created.');
+  appTray = new AppTray();
+}
+
+export function getAppTray() {
+  return appTray;
 }

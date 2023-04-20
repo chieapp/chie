@@ -2,6 +2,7 @@ import gui from 'gui';
 
 import AssistantsMenu from './assistants-menu';
 import SignalsOwner from '../model/signals-owner';
+import windowManager from '../controller/window-manager';
 import {BaseViewType} from './base-view';
 
 export default class BaseMenuBar extends SignalsOwner {
@@ -9,12 +10,12 @@ export default class BaseMenuBar extends SignalsOwner {
     {
       label: 'Settings...',
       accelerator: 'CmdOrCtrl+,',
-      onClick() { getWindowManager().showNamedWindow('settings'); },
+      onClick() { windowManager.showNamedWindow('settings'); },
     },
     {
       label: 'Quit',
       accelerator: 'CmdOrCtrl+Q',
-      onClick() { getWindowManager().quit(); },
+      onClick() { windowManager.quit(); },
     },
   ];
   static editMenu = {
@@ -77,12 +78,12 @@ export default class BaseMenuBar extends SignalsOwner {
         {
           label: 'Open Dashboard...',
           accelerator: 'Shift+CmdOrCtrl+D',
-          onClick: () => getWindowManager().showNamedWindow('dashboard'),
+          onClick: () => windowManager.showNamedWindow('dashboard'),
         },
         {
           label: 'New Assistant...',
           accelerator: 'Shift+CmdOrCtrl+N',
-          onClick: () => getWindowManager().showNamedWindow('newAssistant'),
+          onClick: () => windowManager.showNamedWindow('newAssistant'),
         },
         { type: 'separator' },
       ],
@@ -90,7 +91,7 @@ export default class BaseMenuBar extends SignalsOwner {
     this.#assistantsMenu = new AssistantsMenu(menuItem.getSubmenu(), -1, (instance, index) => ({
       label: `Open ${instance.service.name}...`,
       accelerator: `Alt+CmdOrCtrl+${index + 1}`,
-      onClick: () => getWindowManager().showChatWindow(instance),
+      onClick: () => windowManager.showChatWindow(instance.id),
     }));
     this.menu.insert(menuItem, this.menu.itemCount() - 1);
   }
@@ -105,9 +106,9 @@ export default class BaseMenuBar extends SignalsOwner {
     this.#assistantsMenuInView = new AssistantsMenu(this.#viewMenu, -1, (instance, index) => ({
       label: `Switch to ${instance.service.name}...`,
       accelerator: `CmdOrCtrl+${index + 1}`,
-      validate: () => getWindowManager().getCurrentWindow() instanceof DashboardWindow,
+      validate: () => windowManager.getCurrentWindow() instanceof DashboardWindow,
       onClick: () => {
-        const win = getWindowManager().getCurrentWindow();
+        const win = windowManager.getCurrentWindow();
         if (win instanceof DashboardWindow)
           (win as typeof DashboardWindow).switchTo(index);
       }
@@ -122,7 +123,7 @@ export default class BaseMenuBar extends SignalsOwner {
     if (viewItems.length == 0)
       return null;
     const validateAndGetView = () => {
-      let view = getWindowManager().getCurrentWindow()?.getMainView();
+      let view = windowManager.getCurrentWindow()?.getMainView();
       if (!view)
         return null;
       // Some view (like MultiChatsView) may have a main view inside it.
@@ -152,9 +153,4 @@ export default class BaseMenuBar extends SignalsOwner {
       }
     }));
   }
-}
-
-export function getWindowManager() {
-  // Delay loaded to avoid circular reference.
-  return require('../controller/window-manager').default;
 }

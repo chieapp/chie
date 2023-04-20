@@ -1,6 +1,6 @@
-import AppTray from '../src/view/app-tray';
 import apiManager from '../src/controller/api-manager';
 import serviceManager from '../src/controller/service-manager';
+import {AppTray} from '../src/view/app-tray';
 import {addFinalizer, gcUntil} from './util';
 
 describe('AppTray', () => {

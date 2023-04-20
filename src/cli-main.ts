@@ -5,7 +5,7 @@ import apiManager from './controller/api-manager';
 import APIEndpoint from './model/api-endpoint';
 import ChatService from './model/chat-service';
 import {ChatConversationAPI} from './model/chat-api';
-import {config} from './controller/config-store';
+import {config} from './controller/configs';
 
 main();
 cliMain();

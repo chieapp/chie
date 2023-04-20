@@ -1,7 +1,9 @@
+import gui from 'gui';
+
 import BaseMenuBar from './base-menu-bar';
 import serviceManager from '../controller/service-manager';
 
-export default class AppMenuBar extends BaseMenuBar {
+export class AppMenuBar extends BaseMenuBar {
   constructor() {
     const template = [
       // The main menu.
@@ -36,4 +38,12 @@ export default class AppMenuBar extends BaseMenuBar {
     this.createViewMenu(items);
     this.createAssistantsItemsInViewMenu();
   }
+}
+
+let appMenuBar: AppMenuBar;
+export function createAppMenuBar() {
+  if (appMenuBar)
+    return new Error('AppMenuBar has already been created.');
+  appMenuBar = new AppMenuBar;
+  gui.app.setApplicationMenu(appMenuBar.menu);
 }

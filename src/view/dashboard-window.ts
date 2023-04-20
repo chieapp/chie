@@ -7,8 +7,8 @@ import IconButton from '../view/icon-button';
 import Instance from '../model/instance';
 import ToggleButton from './toggle-button';
 import serviceManager from '../controller/service-manager';
+import windowManager from '../controller/window-manager';
 import {createRoundedCornerPath} from '../util/draw-utils';
-import {getWindowManager} from './base-menu-bar';
 
 export const style = {
   buttonSize: 32,
@@ -61,7 +61,7 @@ export default class DashboardWindow extends BaseWindow {
     this.#addButton = new IconButton('add');
     this.#addButton.view.setTooltip('Add new assistant');
     this.#addButton.view.setStyle({marginTop: style.padding});
-    this.#addButton.onClick = () => getWindowManager().showNamedWindow('dashboard');
+    this.#addButton.onClick = () => windowManager.showNamedWindow('newAssistant');
     this.#sidebar.view.addChildView(this.#addButton.view);
 
     for (const instance of serviceManager.getInstances())
@@ -202,7 +202,7 @@ export default class DashboardWindow extends BaseWindow {
     const menu = gui.Menu.create([
       {
         label: 'Show in new window',
-        onClick: () => getWindowManager().showChatWindow(view.instance),
+        onClick: () => windowManager.showChatWindow(view.instance.id),
       },
       {
         label: 'Remove',
@@ -227,10 +227,5 @@ export default class DashboardWindow extends BaseWindow {
     const theme = this.#sidebar.darkMode ? style.dark : style.light;
     painter.setFillColor(theme.handleColor);
     painter.fill();
-  }
-
-  #getWindowManager() {
-    // Delay loaded to avoid circular reference.
-    return require('../controller/window-manager').default;
   }
 }

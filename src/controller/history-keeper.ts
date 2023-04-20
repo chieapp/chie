@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import fs from 'fs-extra';
 
-import {config} from './config-store';
+import {config} from './configs';
 
 export class HistoryKeeper {
   dir: string;

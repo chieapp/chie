@@ -20,7 +20,7 @@ export abstract class ConfigStoreItem {
   }
 }
 
-export class ConfigStore extends ConfigStoreItem {
+export default class ConfigStore extends ConfigStoreItem {
   inMemory = false;
   #items: Record<string, ConfigStoreItem> = {};
 
@@ -86,10 +86,6 @@ export class ConfigStore extends ConfigStoreItem {
     this.#items[key] = item;
   }
 }
-
-// The global config.
-export const config = new ConfigStore('config');
-export const windowConfig = new ConfigStore('windowStates');
 
 function getConfigDir(name) {
   switch (process.platform) {

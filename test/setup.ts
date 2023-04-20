@@ -41,7 +41,7 @@ class DummyConversationAPI extends ChatConversationAPI {
 export const mochaHooks = {
   beforeAll() {
     // Don't overwrite user's config when running tests.
-    const {config, windowConfig} = require('../src/controller/config-store');
+    const {config, windowConfig} = require('../src/controller/configs');
     config.inMemory = true;
     windowConfig.inMemory = true;
 

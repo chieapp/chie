@@ -6,7 +6,7 @@ import Instance from '../model/instance';
 import WebAPI from '../model/web-api';
 import WebService from '../model/web-service';
 import apiManager from './api-manager';
-import {ConfigStoreItem} from './config-store';
+import {ConfigStoreItem} from '../model/config-store';
 import {Selection} from '../model/param';
 import {collectGarbage} from './gc-center';
 import {getNextId} from '../util/id-generator';

@@ -1,8 +1,9 @@
 import gui from 'gui';
 
 import BaseView from './base-view';
-import WindowMenuBar from './window-menu-bar';
 import SignalsOwner from '../model/signals-owner';
+import WindowMenuBar from './window-menu-bar';
+import windowManager from '../controller/window-manager';
 
 export interface WindowState {
   bounds: gui.RectF;
@@ -50,7 +51,6 @@ export default class BaseWindow extends SignalsOwner {
     }
     this.window.setContentView(this.contentView);
 
-    const windowManager = require('../controller/window-manager').default;
     windowManager.addWindow(this);
     this.window.onClose = () => {
       this.destructor();

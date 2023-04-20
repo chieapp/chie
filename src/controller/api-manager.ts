@@ -1,6 +1,6 @@
 import APIEndpoint from '../model/api-endpoint';
 import WebAPI from '../model/web-api';
-import {ConfigStoreItem} from './config-store';
+import {ConfigStoreItem} from '../model/config-store';
 import {Selection} from '../model/param';
 import {getNextId} from '../util/id-generator';
 

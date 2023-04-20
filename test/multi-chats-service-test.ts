@@ -4,7 +4,7 @@ import MultiChatsService from '../src/model/multi-chats-service';
 import apiManager from '../src/controller/api-manager';
 import historyKeeper from '../src/controller/history-keeper';
 import {ChatMessage, ChatCompletionAPI} from '../src/model/chat-api';
-import {config} from '../src/controller/config-store';
+import {config} from '../src/controller/configs';
 
 describe('MultiChatsService', () => {
   let service: MultiChatsService;

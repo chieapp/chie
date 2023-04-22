@@ -1,9 +1,11 @@
 import APIEndpoint from '../model/api-endpoint';
 import BaseWindow from './base-window';
 import ButtonsArea from './buttons-area';
+import DashboardWindow from './dashboard-window';
 import ParamsView from './params-view';
 import apiManager from '../controller/api-manager';
 import serviceManager, {ServiceRecord} from '../controller/service-manager';
+import windowManager from '../controller/window-manager';
 import {style} from './browser-view';
 
 export default class NewAssistantWindow extends BaseWindow {
@@ -15,21 +17,25 @@ export default class NewAssistantWindow extends BaseWindow {
     this.contentView.setStyle({padding: style.padding});
 
     this.paramsView = new ParamsView([
-      {id: 'name', name: 'Name', type: 'string'},
       {
-        id: 'api',
-        name: 'API',
+        name: 'name',
+        type: 'string',
+        readableName: 'Name',
+      },
+      {
+        name: 'api',
         type: 'selection',
+        readableName: 'API',
         selections: apiManager.getEndpointSelections(),
       },
       {
-        id: 'service',
-        name: 'Service',
+        name: 'service',
         type: 'selection',
+        readableName: 'Service',
         selections: serviceManager.getServiceSelections(),
         constrainedBy: 'api',
         constrain: (endpoint: APIEndpoint, record: ServiceRecord) => {
-          const apiType = apiManager.getAPIType(endpoint.type);
+          const apiType = apiManager.getAPITypeFromName(endpoint.type);
           for (const A of record.apiTypes) {
             if (apiType == A || apiType.prototype instanceof A)
               return true;
@@ -38,9 +44,9 @@ export default class NewAssistantWindow extends BaseWindow {
         },
       },
       {
-        id: 'view',
-        name: 'View',
+        name: 'view',
         type: 'selection',
+        readableName: 'View',
         selections: serviceManager.getViewSelections(),
         constrainedBy: 'service',
         constrain: (record: ServiceRecord, viewType) => {
@@ -48,17 +54,18 @@ export default class NewAssistantWindow extends BaseWindow {
         },
       },
     ]);
+    this.paramsView.onActivate.connect(this.#onSubmit.bind(this));
     this.contentView.addChildView(this.paramsView.view);
 
     const buttonsArea = new ButtonsArea();
     buttonsArea.view.setStyle({flex: 1});
     this.contentView.addChildView(buttonsArea.view);
-    const create = buttonsArea.addButton('Create');
-    create.makeDefault();
-    create.onClick = this.#onClickCreateButton.bind(this);
+    const createButton = buttonsArea.addButton('Create');
+    createButton.makeDefault();
+    createButton.onClick = this.#onSubmit.bind(this);
     buttonsArea.addCloseButton();
 
-    this.paramsView.requestAttention('name');
+    this.paramsView.getView('name').view.focus();
     this.resizeToFitContentView({width: 400});
     this.window.setTitle('Create New Assistant');
   }
@@ -67,16 +74,20 @@ export default class NewAssistantWindow extends BaseWindow {
     return null;  // do not remember state
   }
 
-  #onClickCreateButton() {
-    const name = (this.paramsView.getValue('name') as string).trim();
+  #onSubmit() {
+    const name = this.paramsView.getValue('name') as string;
     if (name.length == 0) {
+      alert('Name can not be empty.');
       this.paramsView.requestAttention('name');
       return;
     }
     serviceManager.createInstance(
       name,
-      (this.paramsView.getValue('service') as ServiceRecord).serviceName,
+      (this.paramsView.getValue('service') as ServiceRecord).name,
       (this.paramsView.getValue('api') as APIEndpoint));
     this.window.close();
+    // Show the added assistant.
+    const dashboard = windowManager.showNamedWindow('dashboard') as DashboardWindow;
+    dashboard.switchToLast();
   }
 }

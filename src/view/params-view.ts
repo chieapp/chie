@@ -1,100 +1,197 @@
 import gui from 'gui';
+import {Signal} from 'typed-signals';
 
 import Param from '../model/param';
+import {style} from './browser-view';
+
+const labelWidth = 60;
+
+abstract class ParamRow<T extends gui.View = gui.View> {
+  param: Param;
+  view: T;
+
+  row = gui.Container.create();
+  affects: ParamRow[] = [];
+
+  constructor(param: Param, view: T) {
+    this.param = param;
+    this.view = view;
+    this.row.setStyle({flexDirection: 'row', marginBottom: style.padding / 2});
+    const label = gui.Label.create(`${param.readableName ?? param.name}:`);
+    label.setStyle({width: labelWidth, marginRight: 8});
+    label.setAlign('end');
+    this.row.addChildView(label);
+    view.setStyle({flex: 1});
+    this.row.addChildView(view);
+  }
+
+  addToView(container: gui.Container) {
+    container.addChildView(this.row);
+  }
+
+  update() {
+    // Nothing to update by default.
+  }
+
+  abstract getValue();
+  abstract setValue(value: string);
+  abstract subscribeOnChange(callback: () => void);
+}
+
+class PickerParamRow extends ParamRow<gui.Picker> {
+  constrainedBy?: ParamRow;
+  description?: gui.Label;
+
+  constructor(param: Param, constrainedBy?: ParamRow) {
+    if (!param.selections)
+      throw new Error('Property "selections" expected.');
+    super(param, gui.Picker.create());
+
+    // Listen to controlling param's change and update.
+    if (constrainedBy) {
+      this.constrainedBy = constrainedBy;
+      constrainedBy.affects.push(this);
+      constrainedBy.subscribeOnChange(() => {
+        this.update();
+        // Iterate all params constrained by this.
+        this.affects.forEach(p => p.update());
+      });
+    }
+    // There is a description for each selection.
+    if (param.selectionHasDescription) {
+      // Note that creating an empty Label will trigger a bug that draws the
+      // text always with black color.
+      this.description = gui.Label.create('(description)');
+      this.description.setAlign('start');
+      this.description.setStyle({marginLeft: labelWidth + 15});
+      this.subscribeOnChange(() => this.#updateDescription());
+    }
+    // Fill the picker with selections.
+    this.update();
+  }
+
+  addToView(container: gui.Container) {
+    super.addToView(container);
+    if (this.description)
+      container.addChildView(this.description);
+  }
+
+  update() {
+    let selections = this.param.selections;
+    if (this.param.constrain && this.constrainedBy) {
+      const controllingValue = this.constrainedBy.getValue();
+      selections = selections.filter(s => this.param.constrain(controllingValue, s.value));
+    }
+    this.view.clear();
+    for (const selection of selections)
+      this.view.addItem(selection.name);
+    if (this.param.value)
+      this.setValue(this.param.value);
+    if (this.description)
+      this.#updateDescription();
+  }
+
+  getValue() {
+    const name = this.view.getSelectedItem();
+    return this.param.selections.find(s => s.name == name)?.value;
+  }
+
+  setValue(value: string) {
+    const index = this.view.getItems().indexOf(value);
+    if (index == -1)
+      return;
+    this.view.selectItemAt(index);
+    this.affects.forEach(p => p.update());
+  }
+
+  subscribeOnChange(callback: () => void) {
+    this.view.onSelectionChange = callback;
+  }
+
+  #updateDescription() {
+    const text = this.getValue()['description'] ?? '';
+    this.description.setText(text);
+  }
+}
+
+class EntryParamRow extends ParamRow<gui.Entry> {
+  constructor(param: Param) {
+    super(param, gui.Entry.create());
+    if (param.value)
+      this.setValue(param.value);
+  }
+
+  getValue() {
+    return this.view.getText().trim();
+  }
+
+  setValue(value: string) {
+    this.view.setText(value ?? '');
+  }
+
+  subscribeOnChange(callback: () => void) {
+    this.view.onTextChange = callback;
+  }
+}
+
+class ComboBoxParamRow extends ParamRow<gui.ComboBox> {
+  constructor(param: Param) {
+    super(param, gui.ComboBox.create());
+    if (param.value)
+      this.setValue(param.value);
+    if (param.preset)
+      param.preset.forEach(p => this.view.addItem(p));
+  }
+
+  getValue() {
+    return this.view.getText().trim();
+  }
+
+  setValue(value: string) {
+    this.view.setText(value ?? '');
+  }
+
+  subscribeOnChange(callback: () => void) {
+    this.view.onTextChange = callback;
+  }
+}
 
 export default class ParamsView {
   view = gui.Container.create();
-  params: Record<string, Param> = {};
+  views: Record<string, ParamRow> = {};
 
-  #views: Record<string, gui.View> = {};
+  onActivate: Signal<() => void> = new Signal;
 
   constructor(params: Param[]) {
     for (const param of params) {
-      this.params[param.id] = param;
-      this.view.addChildView(this.#createLabelRow(param));
-    }
-  }
-
-  getValue(id: string) {
-    const param = this.params[id];
-    if (param.type == 'string' || param.type == 'number') {
-      return (this.#views[id] as gui.Entry).getText();
-    } else if (param.type == 'selection') {
-      const name = (this.#views[id] as gui.Picker).getSelectedItem();
-      return param.selections.find(s => s.name == name).value;
-    } else {
-      throw new Error(`Invalid param type: ${param.type}.`);
-    }
-  }
-
-  requestAttention(id: string) {
-    this.#views[id].focus();
-  }
-
-  #createLabelRow(param: Param) {
-    const row = gui.Container.create();
-    row.setStyle({flexDirection: 'row', marginBottom: 4});
-    const label = gui.Label.create(param.name);
-    label.setStyle({width: 60});
-    label.setAlign('start');
-    row.addChildView(label);
-    row.addChildView(this.#createViewForParam(param));
-    return row;
-  }
-
-  #createViewForParam(param: Param) {
-    // Create view by param type.
-    let view: gui.View;
-    if (param.type == 'selection') {
-      const picker = gui.Picker.create();
-      this.#updatePickerItems(picker, param);
-      // Listen to controlling param's change and update.
-      if (param.constrainedBy) {
-        this.#subscribeOnChange(param.constrainedBy, () => {
-          this.#updatePickerItems(picker, param);
-          // Iterate all params constrained by this.
-          for (const p of Object.values(this.params)) {
-            if (p.constrainedBy == param.id)
-              this.#updatePickerItems(this.#views[p.id] as gui.Picker, p);
-          }
-        });
-      }
-      view = picker;
-    } else {
-      view = gui.Entry.create();
+      let view: ParamRow;
+      let constrainedBy: ParamRow;
       if (param.constrainedBy)
-        throw new Error('Can not constrain the value of non-selection pram.');
+        constrainedBy = this.views[param.constrainedBy];
+      if (param.type == 'string' || param.type == 'number') {
+        if (param.preset) {
+          view = new ComboBoxParamRow(param);
+        } else {
+          view = new EntryParamRow(param);
+          (view as EntryParamRow).view.onActivate = () => this.onActivate.emit();
+        }
+      } else if (param.type == 'selection') {
+        view = new PickerParamRow(param, constrainedBy);
+      }
+      view.addToView(this.view);
+      this.views[param.name] = view;
     }
-    // Save it.
-    this.#views[param.id] = view;
-    view.setStyle({flex: 1});
-    return view;
   }
 
-  // Update the values in a picker according to its constrains.
-  #updatePickerItems(picker: gui.Picker, param: Param) {
-    let selections = param.selections;
-    if (param.constrainedBy) {
-      selections = selections.filter(s => {
-        const controllingValue = this.getValue(param.constrainedBy);
-        return param.constrain(controllingValue, s.value);
-      });
-    }
-    picker.clear();
-    for (const selection of selections)
-      picker.addItem(selection.name);
+  getView(name: string) {
+    return this.views[name];
   }
 
-  // Subscribe to changes happened in the view of param with |id|.
-  #subscribeOnChange(id: string, callback: () => void) {
-    const param = this.params[id];
-    if (!param)
-      throw new Error(`Can not find param with id "${id}".`);
-    if (param.type == 'string' || param.type == 'number')
-      (this.#views[id] as gui.Entry).onTextChange = callback;
-    else if (param.type == 'selection')
-      (this.#views[id] as gui.Picker).onSelectionChange = callback;
-    else
-      throw new Error(`Invalid param type: ${param.type}.`);
+  getValue(name: string) {
+    return this.getView(name)?.getValue();
+  }
+
+  requestAttention(name: string) {
+    return this.getView(name)?.view.focus();
   }
 }

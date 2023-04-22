@@ -12,12 +12,14 @@ export default function main() {
   // Register builtin APIs and services.
   serviceManager.registerView(ChatView);
   serviceManager.registerView(MultiChatsView);
-  serviceManager.registerService('ChatService', {
+  serviceManager.registerService({
+    name: 'ChatService',
     serviceType: ChatService,
     viewType: ChatView,
     apiTypes: [ChatConversationAPI, ChatCompletionAPI],
   });
-  serviceManager.registerService('MultiChatsService', {
+  serviceManager.registerService({
+    name: 'MultiChatsService',
     serviceType: MultiChatsService,
     viewType: MultiChatsView,
     apiTypes: [ChatCompletionAPI],

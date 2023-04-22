@@ -1,4 +1,7 @@
+import {Signal} from 'typed-signals';
+
 import APIEndpoint from '../model/api-endpoint';
+import Param from '../model/param';
 import WebAPI from '../model/web-api';
 import {ConfigStoreItem} from '../model/config-store';
 import {Selection} from '../model/param';
@@ -6,8 +9,22 @@ import {getNextId} from '../util/id-generator';
 
 type WebAPIType = new (endpoint: APIEndpoint) => WebAPI;
 
+type APIRecord = {
+  name: string,
+  apiType: WebAPIType,
+  auth: 'none' | 'key' | 'login',
+  url?: string,
+  description?: string,
+  priority?: number,
+  params?: Param[],
+};
+
 export class APIManager extends ConfigStoreItem {
-  #apis: Record<string, WebAPIType> = {};
+  onAddEndpoint: Signal<(endpoint: APIEndpoint) => void> = new Signal();
+  onUpdateEndpoint: Signal<(endpoint: APIEndpoint) => void> = new Signal();
+  onRemoveEndpoint: Signal<(endpoint: APIEndpoint) => void> = new Signal();
+
+  #apis: Record<string, APIRecord> = {};
   #endpoints: Record<string, APIEndpoint> = {};
 
   deserialize(data: object) {
@@ -30,22 +47,38 @@ export class APIManager extends ConfigStoreItem {
     return data;
   }
 
-  registerAPI(name: string, type: WebAPIType) {
-    if (name in this.#apis)
-      throw new Error(`API with name "${name}" has already been registered.`);
-    this.#apis[name] = type;
+  registerAPI(record: APIRecord) {
+    if (record.name in this.#apis)
+      throw new Error(`API with name "${record.name}" has already been registered.`);
+    this.#apis[record.name] = record;
   }
 
-  getAPIType(name: string) {
+  getAPISelections(): Selection<APIRecord>[] {
+    return Object.keys(this.#apis)
+      .map(k => ({name: k, value: this.#apis[k]}))
+      .sort((a, b) => {
+        // Sort by priority, if no priority defined then sort by name.
+        if (a.value.priority && b.value.priority)
+          return b.value.priority - a.value.priority;
+        else if (!a.value.priority && !b.value.priority)
+          return a.name.localeCompare(b.name);
+        else if (a.value.priority)
+          return -1;
+        else
+          return 1;
+      });
+  }
+
+  getAPITypeFromName(name: string) {
     if (!(name in this.#apis))
       throw new Error(`API with name "${name}" does not exist.`);
-    return this.#apis[name];
+    return this.#apis[name].apiType;
   }
 
   createAPIForEndpoint(endpoint: APIEndpoint) {
     if (!(endpoint.type in this.#apis))
       throw new Error(`Unable to find API implementation for endpoint ${endpoint.type}.`);
-    return new this.#apis[endpoint.type](endpoint);
+    return new (this.#apis[endpoint.type].apiType)(endpoint);
   }
 
   addEndpoint(endpoint: APIEndpoint) {
@@ -53,14 +86,23 @@ export class APIManager extends ConfigStoreItem {
       throw new Error('Re-adding a managed APIEndpoint.');
     endpoint.id = getNextId(endpoint.name, Object.keys(this.#endpoints));
     this.#endpoints[endpoint.id] = endpoint;
+    this.onAddEndpoint.emit(endpoint);
+    this.saveConfig();
     return endpoint.id;
   }
 
-  removeEndpoint(id: string) {
+  removeEndpointById(id: string) {
     if (!(id in this.#endpoints))
       throw new Error(`Removing unknown API id: ${id}.`);
-    this.#endpoints[id].id = null;
+    const endpoint = this.#endpoints[id];
     delete this.#endpoints[id];
+    this.onRemoveEndpoint.emit(endpoint);
+    this.saveConfig();
+    endpoint.id = null;
+  }
+
+  getEndpoints() {
+    return Object.values(this.#endpoints);
   }
 
   getEndpointById(id: string) {

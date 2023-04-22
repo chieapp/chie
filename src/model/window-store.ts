@@ -36,9 +36,14 @@ export default class WindowStore {
     return data;
   }
 
-  // Create and show a window with |id|. The window is created lazily and will
+  // Try get window with |id|.
+  getWindow(id: string) {
+    return this.#windows[id];
+  }
+
+  // Get or create window with |id|. The window is created lazily and will
   // be destroyed when closed.
-  showWindow(id: string) {
+  getOrCreateWindow(id: string) {
     let win = this.#windows[id];
     if (!win) {
       win = this.#windows[id] = this.#windowCreator(id);
@@ -53,7 +58,14 @@ export default class WindowStore {
         delete this.#windows[id];
       };
     }
+    return win;
+  }
+
+  // Call getWindow and show, it is used most commonly so add a method for it.
+  showWindow(id: string) {
+    const win = this.getOrCreateWindow(id);
     win.window.activate();
+    return win;
   }
 
   closeWindow(id: string) {

@@ -20,8 +20,8 @@ describe('APIManager', () => {
     assert.equal(id2, 'tiananmen-2');
     const id3 = apiManager.addEndpoint(APIEndpoint.deserialize(apiConfig));
     assert.equal(id3, 'tiananmen-3');
-    apiManager.removeEndpoint(id1);
-    apiManager.removeEndpoint(id2);
+    apiManager.removeEndpointById(id1);
+    apiManager.removeEndpointById(id2);
     const id4 = apiManager.addEndpoint(APIEndpoint.deserialize(apiConfig));
     assert.equal(id4, 'tiananmen-4');
   });

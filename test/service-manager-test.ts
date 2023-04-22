@@ -13,7 +13,8 @@ describe('ServiceManager', () => {
   beforeEach(() => {
     serviceManager = new ServiceManager();
     serviceManager.registerView(ChatView);
-    serviceManager.registerService('Chat', {
+    serviceManager.registerService({
+      name: 'Chat',
       serviceType: ChatService,
       apiTypes: [ChatConversationAPI],
       viewType: ChatView,

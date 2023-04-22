@@ -46,16 +46,26 @@ export const mochaHooks = {
     windowConfig.inMemory = true;
 
     // Register some APIs for testing.
-    apiManager.registerAPI('DummyCompletionAPI', DummyCompletionAPI);
-    apiManager.registerAPI('DummyConversationAPI', DummyConversationAPI);
+    apiManager.registerAPI({
+      name: 'DummyCompletionAPI',
+      apiType: DummyCompletionAPI,
+      auth: 'none',
+    });
+    apiManager.registerAPI({
+      name: 'DummyConversationAPI',
+      apiType: DummyConversationAPI,
+      auth: 'none',
+    });
     serviceManager.registerView(ChatView);
     serviceManager.registerView(MultiChatsView);
-    serviceManager.registerService('DummyCompletionChatService', {
+    serviceManager.registerService({
+      name: 'DummyCompletionChatService',
       serviceType: MultiChatsService,
       apiTypes: [ChatCompletionAPI],
       viewType: MultiChatsView,
     });
-    serviceManager.registerService('DummyConversationChatService', {
+    serviceManager.registerService({
+      name: 'DummyConversationChatService',
       serviceType: ChatService,
       apiTypes: [ChatCompletionAPI, ChatConversationAPI],
       viewType: ChatView,

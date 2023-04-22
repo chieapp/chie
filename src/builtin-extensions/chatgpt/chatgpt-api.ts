@@ -13,7 +13,7 @@ import {
 
 export default class ChatGPTAPI extends ChatCompletionAPI {
   constructor(endpoint: APIEndpoint) {
-    if (endpoint.type != 'ChatGPT')
+    if (endpoint.type != 'ChatGPT API')
       throw new Error('Expect ChatGPT API endpoint in ChatGPTAPI.');
     super(endpoint);
     this.icon = new Icon({name: 'chatgpt'});

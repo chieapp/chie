@@ -1,7 +1,8 @@
 import gui from 'gui';
 
-import DashboardWindow from './view/dashboard-window';
+import NewAPIWindow from './view/new-api-window';
 import NewAssistantWindow from './view/new-assistant-window';
+import DashboardWindow from './view/dashboard-window';
 import SettingsWindow from './view/settings-window';
 import app from './controller/app';
 import main from './main';
@@ -34,6 +35,7 @@ function guiMain() {
   windowManager.registerNamedWindow('dashboard', DashboardWindow);
   windowManager.registerNamedWindow('settings', SettingsWindow);
   windowManager.registerNamedWindow('newAssistant', NewAssistantWindow);
+  windowManager.registerNamedWindow('newAPI', NewAPIWindow);
 
   // Restore window states from config.
   windowConfig.addItem('windows', windowManager);

@@ -124,6 +124,10 @@ export default class DashboardWindow extends BaseWindow {
     this.#onSelect(this.views[index]);
   }
 
+  switchToLast() {
+    this.switchTo(this.views.length - 1);
+  }
+
   #createViewForInstance(instance: Instance) {
     // Create a button in sidebar.
     const button = new ToggleButton(instance.service.api.icon.getImage());

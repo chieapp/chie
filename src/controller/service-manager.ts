@@ -19,7 +19,7 @@ interface WebServiceType {
 }
 
 export type ServiceRecord = {
-  serviceName?: string,
+  name?: string,
   serviceType: WebServiceType,
   apiTypes: WebAPIType[],
   viewType: BaseViewType,
@@ -89,13 +89,12 @@ export class ServiceManager extends ConfigStoreItem {
     return this.#views.map(v => ({name: v.name, value: v}));
   }
 
-  registerService(name: string, record: ServiceRecord) {
-    if (name in this.#services)
-      throw new Error(`Service "${name}" has already been registered.`);
+  registerService(record: ServiceRecord) {
+    if (record.name in this.#services)
+      throw new Error(`Service "${record.name}" has already been registered.`);
     if (!this.#views.includes(record.viewType))
       throw new Error(`View "${record.viewType.name}" is not registered`);
-    record.serviceName = name;
-    this.#services[name] = record;
+    this.#services[record.name] = record;
   }
 
   getServiceSelections(): Selection<ServiceRecord>[] {

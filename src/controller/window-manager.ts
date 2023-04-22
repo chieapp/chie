@@ -52,7 +52,7 @@ export class WindowManager extends ConfigStoreItem {
   }
 
   showChatWindow(id: string) {
-    this.#chatWindows.showWindow(id);
+    return this.#chatWindows.showWindow(id);
   }
 
   registerNamedWindow(name: string, windowType: NamedWindowType) {
@@ -61,8 +61,16 @@ export class WindowManager extends ConfigStoreItem {
     this.#registeredWindows[name] = windowType;
   }
 
+  getNamedWindow(name: string) {
+    return this.#namedWindows.getWindow(name);
+  }
+
+  getOrCreateNamedWindow(name: string) {
+    return this.#namedWindows.getOrCreateWindow(name);
+  }
+
   showNamedWindow(name: string) {
-    this.#namedWindows.showWindow(name);
+    return this.#namedWindows.showWindow(name);
   }
 
   getCurrentWindow() {

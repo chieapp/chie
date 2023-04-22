@@ -6,11 +6,24 @@ export interface Selection<T = object> {
 }
 
 export default class Param {
-  id: string;
   name: string;
   type: ParamType;
+
+  readableName?: string;
+
+  // Default value.
+  value?: string;
+
+  // Some preset values that users can choose from.
+  preset?: string[];
+
+  // The range of number.
   range?: [number, number];
+
+  // The param has a set of values to select.
   selections?: Selection[];
+  // Each preset value has a |description| to show.
+  selectionHasDescription? = false;
 
   // The id of param that will constrain whether a selection is usable.
   constrainedBy?: string;
@@ -18,6 +31,8 @@ export default class Param {
   constrain?: (controllingValue, value) => boolean;
 
   constructor(init: Partial<Param>) {
+    if (!init.name || !init.type)
+      throw new Error('The "name" and "type" are required in Param.');
     Object.assign(this, init);
   }
 }

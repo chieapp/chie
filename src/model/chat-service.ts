@@ -160,9 +160,7 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
       }
     } catch (error) {
       // AbortError is not treated as error.
-      if (error.name == 'AbortError') {
-        this.#responseEnded();
-      } else {
+      if (error.name != 'AbortError') {
         this.onMessageError.emit(error);
         throw error;
       }

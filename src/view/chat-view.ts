@@ -78,7 +78,7 @@ export default class ChatView extends BaseView<ChatService> {
       ChatView.entryHeights = {min, max};
     }
     this.input.setAutoResize(ChatView.entryHeights);
-    this.input.entry.onTextChange = this.#onTextChange.bind(this);
+    this.input.entry.onTextChange = this.#resetUIState.bind(this);
     this.input.entry.shouldInsertNewLine = this.#onEnter.bind(this);
     this.view.addChildView(this.input.view);
 
@@ -86,6 +86,10 @@ export default class ChatView extends BaseView<ChatService> {
     this.replyButton.view.setTooltip(getTooltipForMode('send'));
     this.replyButton.onClick = this.#onButtonClick.bind(this);
     this.input.addButton(this.replyButton);
+
+    // Disable button and entry until loaded.
+    this.input.setEntryEnabled(false);
+    this.replyButton.setEnabled(false);
 
     this.menuButton = new IconButton('menu');
     this.menuButton.onClick = this.#onMenuButton.bind(this);
@@ -157,17 +161,6 @@ export default class ChatView extends BaseView<ChatService> {
     if (content.trim().length == 0)
       return null;
     return content;
-  }
-
-  // User editing in the entry.
-  #onTextChange() {
-    const text = this.input.entry.getText();
-    if (text.length > 0 ||
-        this.service.history.length == 0 ||
-        this.service.api instanceof ChatConversationAPI)
-      this.#setButtonMode('send');
-    else
-      this.#setButtonMode('refresh');
   }
 
   // User presses Enter in the reply entry.
@@ -255,16 +248,24 @@ export default class ChatView extends BaseView<ChatService> {
   #onMessageError(error: Error) {
     this.#lastError = error;
     this.messagesView.appendError(error.message);
+    this.#resetUIState();
   }
 
   // Set the input and button to ready to send state.
   #resetUIState() {
-    if (this.service.api instanceof ChatConversationAPI ||
-        this.service.history.length == 0) {
+    if (this.service.api instanceof ChatConversationAPI) {
+      // There is no refresh in ChatConversationAPI.
       this.#setButtonMode('send');
     } else {
-      this.#setButtonMode('refresh');
+      if (this.service.history.length == 0 ||
+          (this.service.history[this.service.history.length - 1].role == ChatRole.Assistant &&
+           this.input.entry.getText().length > 0)) {
+        this.#setButtonMode('send');
+      } else {
+        this.#setButtonMode('refresh');
+      }
     }
+    // Enable entry only when there is no error.
     if (!this.#lastError) {
       this.input.setEntryEnabled(true);
       this.onFocus();
@@ -276,6 +277,8 @@ export default class ChatView extends BaseView<ChatService> {
     this.replyButton.setImage(mode);
     this.replyButton.setEnabled(true);
     this.replyButton.view.setTooltip(getTooltipForMode(mode));
+    if (mode == 'send' && this.#lastError)
+      this.replyButton.setEnabled(false);
     this.menuButton.setEnabled(mode != 'stop');
     this.#buttonMode = mode;
   }

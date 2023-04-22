@@ -8,19 +8,19 @@ export default class APIEndpoint implements Serializable {
   key?: string;
   params?: Record<string, string>;
 
-  static deserialize(data: object): APIEndpoint {
+  static deserialize(data: Partial<APIEndpoint>): APIEndpoint {
     if (!data ||
         typeof data != 'object' ||
-        typeof data['type'] != 'string' ||
-        typeof data['name'] != 'string' ||
-        typeof data['url'] != 'string') {
+        typeof data.type != 'string' ||
+        typeof data.name != 'string' ||
+        typeof data.url != 'string') {
       throw new Error(`Unknown APIEndpoint : ${JSON.stringify(data)}`);
     }
     if ('params' in data) {
-      if (typeof data['params'] != 'object')
+      if (typeof data.params != 'object')
         throw new Error('The params of APIEndpoint must be Record');
     }
-    return new APIEndpoint(data as APIEndpoint);
+    return new APIEndpoint(data);
   }
 
   constructor(init: Partial<APIEndpoint>) {

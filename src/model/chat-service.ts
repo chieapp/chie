@@ -38,6 +38,9 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
   // Whether the title is automatically generated.
   autoTitle = true;
 
+  // Error is set if last message failed to send.
+  lastError?: Error;
+
   // Saves concatenated content of all the received partial messages.
   pendingMessage?: Partial<ChatMessage>;
 
@@ -113,7 +116,7 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
   async regenerateResponse(options: object = {}) {
     if (this.history.length == 0)
       throw new Error('Unable to regenerate response when there is no message.');
-    if (this.pendingMessage)
+    if (this.pendingMessage && !this.lastError)
       throw new Error('Can not regenerate when there is pending message being received.');
     if (!(this.api instanceof ChatCompletionAPI))
       throw new Error('Can only regenerate for ChatCompletionAPI.');
@@ -143,6 +146,9 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
 
   // Call the API.
   async #generateResponse(options: object) {
+    // Clear error and pending message when sending new message.
+    this.lastError = null;
+    this.pendingMessage = null;
     // Send a partial message to indicate the start.
     this.#handleMessageDelta(new ChatMessage({role: ChatRole.Assistant}), new ChatResponse({pending: true}));
     // Call API.
@@ -162,6 +168,7 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
       // AbortError is not treated as error.
       if (error.name != 'AbortError') {
         this.onMessageError.emit(error);
+        this.lastError = error;
         throw error;
       }
     }
@@ -178,7 +185,7 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
     if (this.autoTitle &&
         this.api instanceof ChatCompletionAPI &&
         !this.#titlePromise &&
-        this.history.length > 3 &&
+        this.history.length > 1 &&
         this.history.length < 10)
       this.#titlePromise = this.#generateName();
 

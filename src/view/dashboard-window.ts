@@ -5,6 +5,7 @@ import BaseView, {ViewState} from './base-view';
 import BaseWindow, {WindowState} from './base-window';
 import IconButton from '../view/icon-button';
 import Instance from '../model/instance';
+import NewAPIWindow from './new-api-window';
 import ToggleButton from './toggle-button';
 import serviceManager from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
@@ -205,8 +206,16 @@ export default class DashboardWindow extends BaseWindow {
   #onContextMenu(view: InstanceView) {
     const menu = gui.Menu.create([
       {
-        label: 'Show in new window',
+        label: 'Show in new window...',
         onClick: () => windowManager.showChatWindow(view.instance.id),
+      },
+      {
+        label: 'Edit API endpoint...',
+        onClick: () => {
+          const win = new NewAPIWindow(view.instance.service.api.endpoint);
+          win.window.center();
+          win.window.activate();
+        }
       },
       {
         label: 'Remove',

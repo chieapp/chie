@@ -41,7 +41,6 @@ export default class ChatView extends BaseView<ChatService> {
 
   #serviceConnections: SignalConnections = new SignalConnections();
   #markdown?: StreamedMarkdown;
-  #lastError?: Error;
 
   #buttonMode: ButtonMode = 'send';
   #textWindows: Record<number, TextWindow> = {};
@@ -193,7 +192,11 @@ export default class ChatView extends BaseView<ChatService> {
     } else if (this.#buttonMode == 'stop') {
       this.service.aborter.abort();
     } else if (this.#buttonMode == 'refresh') {
-      this.service.regenerateResponse();
+      if (this.service.lastError)
+        this.messagesView.removeMessage(this.service.history.length);
+      this.service.regenerateResponse().catch(() => {
+        // Error handled elsewhere.
+      });
     }
   }
 
@@ -215,14 +218,12 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   // Message being received.
-  #onMessageDelta(delta: Partial<ChatMessage>, info: ChatMessageInfo) {
+  async #onMessageDelta(delta: Partial<ChatMessage>, info: ChatMessageInfo) {
     if (info.first) {
       // Show the message if we are receiving it for the first time.
-      this.messagesView.appendMessage(delta, info);
+      await this.messagesView.appendMessage(delta, info);
       if (info.pending) {
-        // Prevent editing until message is received.
         this.#setButtonMode('stop');
-        this.input.setEntryEnabled(false);
         this.input.setText('');
       }
     } else if (delta.content) {
@@ -246,7 +247,6 @@ export default class ChatView extends BaseView<ChatService> {
 
   // There is error thrown when sending message.
   #onMessageError(error: Error) {
-    this.#lastError = error;
     this.messagesView.appendError(error.message);
     this.#resetUIState();
   }
@@ -265,11 +265,7 @@ export default class ChatView extends BaseView<ChatService> {
         this.#setButtonMode('refresh');
       }
     }
-    // Enable entry only when there is no error.
-    if (!this.#lastError) {
-      this.input.setEntryEnabled(true);
-      this.onFocus();
-    }
+    this.onFocus();
   }
 
   // Change button mode.
@@ -277,18 +273,23 @@ export default class ChatView extends BaseView<ChatService> {
     this.replyButton.setImage(mode);
     this.replyButton.setEnabled(true);
     this.replyButton.view.setTooltip(getTooltipForMode(mode));
-    if (mode == 'send' && this.#lastError)
-      this.replyButton.setEnabled(false);
     this.menuButton.setEnabled(mode != 'stop');
     this.#buttonMode = mode;
+    // Disable send button when there is error happened.
+    if (mode == 'send' && this.service.lastError)
+      this.replyButton.setEnabled(false);
   }
 
   async #onDomReady() {
-    // There might be pending message when the service is loaded.
-    if (this.service.pendingMessage)
-      this.#onMessageDelta(this.service.pendingMessage, {first: true, pending: true});
-    else
+    this.input.setEntryEnabled(true);
+    // Recover current state of chat.
+    if (this.service.pendingMessage) {
+      await this.#onMessageDelta(this.service.pendingMessage, {first: true, pending: true});
+      if (this.service.lastError)
+        this.#onMessageError(this.service.lastError);
+    } else {
       this.#resetUIState();
+    }
   }
 
   // Browser bindings.

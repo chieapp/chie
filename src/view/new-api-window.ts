@@ -94,6 +94,11 @@ export default class NewAPIWindow extends BaseWindow {
     this.apiParams = new ParamsView(params);
     this.apiParams.view.setStyle({marginTop: style.padding});
     this.contentView.addChildViewAt(this.apiParams.view, 1);
+    // Fill current params.
+    if (endpoint?.params) {
+      for (const name in endpoint.params)
+        this.apiParams.getView(name)?.setValue(endpoint.params[name]);
+    }
     // Show a login button.
     if (apiRecord.auth == 'login') {
       this.loginButton = gui.Button.create('Login');

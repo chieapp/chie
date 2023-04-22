@@ -22,10 +22,6 @@ export default class AppTray {
         label: 'Open Dashboard...',
         onClick() { windowManager.showNamedWindow('dashboard'); },
       },
-      {
-        label: 'New Assistant...',
-        onClick() { windowManager.showNamedWindow('newAssistant'); },
-      },
       { type: 'separator' },
       { type: 'separator' },
       ...BaseMenuBar.fileMenuItems,

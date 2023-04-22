@@ -75,6 +75,7 @@ export default class ChatListItem extends AppearanceAware {
     if (selected)
       this.onSelect.emit(this);
     this.closeButton.colorMode = selected ? 'dark' : null;
+    this.closeButton.view.schedulePaint();
     this.setTitle(this.title);  // update title color
     this.view.schedulePaint();
   }

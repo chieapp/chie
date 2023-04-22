@@ -23,6 +23,7 @@ describe('ChatService', () => {
     service.title = 'Test Conversation';
     await service.sendMessage(new ChatMessage({content: 'Message'}));
     assert.isString(service.moment);
+    await historyKeeper.flush();
     assert.deepEqual(await historyKeeper.remember(service.moment), {
       title: service.title,
       history: [
@@ -42,6 +43,7 @@ describe('ChatService', () => {
     };
     const moment = historyKeeper.newMoment();
     await historyKeeper.save(moment, record);
+    await historyKeeper.flush();
     assert.deepEqual(record, await historyKeeper.remember(moment));
     service = new ChatService('Test', service.api, {moment});
     await new Promise<void>((resolve) => service.onLoad.connect(resolve));

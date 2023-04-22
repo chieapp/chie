@@ -21,6 +21,7 @@ export default class BaseWindow extends SignalsOwner {
   window: gui.Window;
   contentView: gui.Container;
   menuBar: WindowMenuBar;
+  isClosed = false;
 
   constructor(options: BaseWindowOptions = {}) {
     super();
@@ -53,6 +54,7 @@ export default class BaseWindow extends SignalsOwner {
 
     windowManager.addWindow(this);
     this.window.onClose = () => {
+      this.isClosed = true;
       this.destructor();
       windowManager.removeWindow(this);
     };
@@ -64,6 +66,12 @@ export default class BaseWindow extends SignalsOwner {
 
   restoreState(state: WindowState) {
     this.window.setBounds(state.bounds);
+  }
+
+  // Helper for cases that need to guard against double close.
+  close() {
+    if (!this.isClosed)
+      this.window.close();
   }
 
   // Return the main view of the window, on which user is working on.

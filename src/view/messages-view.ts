@@ -22,7 +22,7 @@ export default class MessagesView extends BrowserView {
   messagesCount = 0;
 
   constructor() {
-    super();
+    super({hideUntilLoaded: true});
     // Add bindings to the browser.
     this.browser.addBinding('highlightCode', this.#highlightCode.bind(this));
     this.browser.addBinding('copyText', this.#copyText.bind(this));
@@ -36,7 +36,7 @@ export default class MessagesView extends BrowserView {
       messages: messages.map(this.#messageToData.bind(this)),
     };
     await initTemplates();
-    this.loadHtml(await pageTemplate(data), 'https://chie.app');
+    this.loadHTML(await pageTemplate(data), 'https://chie.app');
     this.messagesCount = messages.length;
   }
 

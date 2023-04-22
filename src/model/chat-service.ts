@@ -107,7 +107,7 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
       content: message.content ?? '',
     });
     this.#handleMessageDelta(senderMessage, new ChatResponse({pending: false}));
-    await this.#saveMoment();
+    this.#saveMoment();
     // Start sending.
     await (this.pendingPromise = this.#generateResponse(options));
   }
@@ -189,7 +189,7 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
         this.history.length < 10)
       this.#titlePromise = this.#generateName();
 
-    await this.#saveMoment();
+    this.#saveMoment();
   }
 
   // Called by sub-classes when there is message delta available.
@@ -257,14 +257,14 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
     this.title = title;
     this.onNewTitle.emit(title);
     this.#titlePromise = null;
-    await this.#saveMoment();
+    this.#saveMoment();
   }
 
   // Write history to disk.
-  async #saveMoment() {
+  #saveMoment() {
     if (!this.moment)
       return;
-    await historyKeeper.save(this.moment, {
+    historyKeeper.save(this.moment, {
       history: this.history,
       title: this.title,
     });

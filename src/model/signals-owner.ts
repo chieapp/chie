@@ -1,7 +1,7 @@
 import gui from 'gui';
 import {SignalConnection, SignalConnections} from 'typed-signals';
 
-class YueSignal<T> implements SignalConnection {
+class YueConnection<T> implements SignalConnection {
   id: number;
   signal: gui.Signal<T>;
   enabled: true;
@@ -26,6 +26,8 @@ export default abstract class SignalsOwner {
 
   // Convert yue signal to SignalConnection.
   connectYueSignal<T>(signal: gui.Signal<T>, callback: T) {
-    this.connections.add(new YueSignal<T>(signal, callback));
+    const connection = new YueConnection<T>(signal, callback);
+    this.connections.add(connection);
+    return connection;
   }
 }

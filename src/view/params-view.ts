@@ -5,6 +5,9 @@ import Param from '../model/param';
 import {style} from './browser-view';
 
 const labelWidth = 60;
+const labelPadding = 8;
+
+export const valueMarginLeft = labelWidth + labelPadding;
 
 abstract class ParamRow<T extends gui.View = gui.View> {
   param: Param;
@@ -18,7 +21,7 @@ abstract class ParamRow<T extends gui.View = gui.View> {
     this.view = view;
     this.row.setStyle({flexDirection: 'row', marginBottom: style.padding / 2});
     const label = gui.Label.create(`${param.readableName ?? param.name}:`);
-    label.setStyle({width: labelWidth, marginRight: 8});
+    label.setStyle({width: labelWidth, marginRight: labelPadding});
     label.setAlign('end');
     this.row.addChildView(label);
     view.setStyle({flex: 1});
@@ -63,7 +66,7 @@ class PickerParamRow extends ParamRow<gui.Picker> {
       // text always with black color.
       this.description = gui.Label.create('(description)');
       this.description.setAlign('start');
-      this.description.setStyle({marginLeft: labelWidth + 15});
+      this.description.setStyle({marginLeft: valueMarginLeft + 2});
       this.subscribeOnChange(() => this.#updateDescription());
     }
     // Fill the picker with selections.

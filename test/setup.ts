@@ -73,12 +73,10 @@ export const mochaHooks = {
     apiManager.addEndpoint(new APIEndpoint({
       name: 'API 1',
       type: 'DummyCompletionAPI',
-      url: '',
     }));
     apiManager.addEndpoint(new APIEndpoint({
       name: 'API 2',
       type: 'DummyConversationAPI',
-      url: '',
     }));
   },
 };

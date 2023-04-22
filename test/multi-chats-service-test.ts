@@ -39,6 +39,7 @@ describe('MultiChatsService', () => {
     };
     const moment = historyKeeper.newMoment();
     await historyKeeper.save(moment, record);
+    await historyKeeper.flush();
     const data = {
       name: 'Test',
       api: service.api.endpoint.id,

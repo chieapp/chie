@@ -17,6 +17,7 @@ type APIRecord = {
   description?: string,
   priority?: number,
   params?: Param[],
+  login?: () => Promise<Partial<APIEndpoint>>;
 };
 
 export class APIManager extends ConfigStoreItem {

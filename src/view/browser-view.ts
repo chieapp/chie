@@ -23,7 +23,7 @@ export default class BrowserView extends AppearanceAware {
 
   #queue: Queue;
 
-  constructor() {
+  constructor(options: {hideUntilLoaded?: boolean} = {}) {
     super();
     // The background color of this view should be the same with the browser,
     // so there would be no flashing when browser is loaded later.
@@ -37,7 +37,8 @@ export default class BrowserView extends AppearanceAware {
     this.browser.setStyle({flex: 1});
     if (this.darkMode)
       this.browser.setBackgroundColor(style.dark.bgColor);
-    this.browser.setVisible(false);  // hidden util loaded
+    if (options.hideUntilLoaded)
+      this.browser.setVisible(false);
     this.view.addChildView(this.browser);
 
     // Add bindings to the browser.
@@ -50,7 +51,13 @@ export default class BrowserView extends AppearanceAware {
     this.#queue = new Queue({concurrency: 1, autostart: false});
   }
 
-  loadHtml(html: string, baseUrl: string) {
+  loadURL(url: string) {
+    this.#queue.end();
+    this.isDomReady = false;
+    this.browser.loadURL(url);
+  }
+
+  loadHTML(html: string, baseUrl: string) {
     this.#queue.end();
     this.isDomReady = false;
     this.browser.loadHTML(html, baseUrl);

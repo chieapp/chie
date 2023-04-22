@@ -1,3 +1,4 @@
+import WebSocket from 'ws';
 import crypto from 'node:crypto';
 import {
   APIEndpoint,
@@ -11,8 +12,13 @@ import {
   Icon,
   NetworkError,
 } from 'chie';
-import WebSocket from 'ws';
-import {sydneyWebSocketUrl, chatArgument, edgeBrowserHeaders} from './bing-env';
+
+import {
+  bingChatUrl,
+  sydneyWebSocketUrl,
+  chatArgument,
+  edgeBrowserHeaders,
+} from './bing-env';
 
 const nullChar = '';
 
@@ -64,11 +70,11 @@ export default class BingChatAPI extends ChatConversationAPI {
   }
 
   async #createConversation(options) {
-    const response = await fetch(this.endpoint.url, {
+    const response = await fetch(bingChatUrl, {
       signal: options.signal,
       headers: {
         ...edgeBrowserHeaders,
-        cookie: `_U=${this.endpoint.key}`,
+        cookie: this.endpoint.cookie,
       },
     });
     const body = await response.json();

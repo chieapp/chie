@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 
+export const bingChatUrl = 'https://www.bing.com/turing/conversation/create';
 export const sydneyWebSocketUrl = 'wss://sydney.bing.com/sydney/ChatHub';
 
 // Arguments used for sending messages.

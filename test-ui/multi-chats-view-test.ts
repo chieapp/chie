@@ -13,7 +13,7 @@ describe('MultiChatsView', function() {
   it('can be garbage collected', async () => {
     let collected = false;
     (() => {
-      const chatView = new MultiChatsView(new MultiChatsService('chat', createChatCompletionAPI()));
+      const chatView = new MultiChatsView(new MultiChatsService({name: 'chat', api: createChatCompletionAPI()}));
       chatView.initAsMainView();
       addFinalizer(chatView, () => collected = true);
       chatView.destructor();
@@ -24,7 +24,7 @@ describe('MultiChatsView', function() {
   it('can be garbage collected after sending message', async () => {
     let collected = false;
     await (async () => {
-      const service = new MultiChatsService('chat', createChatCompletionAPI());
+      const service = new MultiChatsService({name: 'chat', api: createChatCompletionAPI()});
       const chatView = new MultiChatsView(service);
       chatView.initAsMainView();
       const chat = service.createChat();
@@ -38,7 +38,7 @@ describe('MultiChatsView', function() {
   it('can be garbage collected after adding and remove chats', async () => {
     let collected = false;
     (() => {
-      const service = new MultiChatsService('chat', createChatCompletionAPI());
+      const service = new MultiChatsService({name: 'chat', api: createChatCompletionAPI()});
       const chatView = new MultiChatsView(service);
       chatView.initAsMainView();
       service.createChat();
@@ -56,7 +56,7 @@ describe('MultiChatsView', function() {
   it('item can be garbage collected', async () => {
     let collected = false;
     (() => {
-      const service = new MultiChatsService('chat', createChatCompletionAPI());
+      const service = new MultiChatsService({name: 'chat', api: createChatCompletionAPI()});
       const chat = service.createChat();
       const item = new ChatListItem(chat);
       service.removeChatAt(0);
@@ -69,7 +69,7 @@ describe('MultiChatsView', function() {
   it('does not reference removed chat', async () => {
     let collected = false;
     (() => {
-      const service = new MultiChatsService('chat', createChatCompletionAPI());
+      const service = new MultiChatsService({name: 'chat', api: createChatCompletionAPI()});
       const chatView = new MultiChatsView(service);
       chatView.initAsMainView();
       const chat = service.createChat();

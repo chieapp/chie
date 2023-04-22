@@ -1,6 +1,9 @@
 import {Signal} from 'typed-signals';
 
-import WebService, {WebServiceOptions} from './web-service';
+import WebService, {
+  WebServiceData,
+  WebServiceOptions,
+} from './web-service';
 import {
   ChatRole,
   ChatMessage,
@@ -10,7 +13,13 @@ import {
 } from './chat-api';
 import historyKeeper from '../controller/history-keeper';
 
-export interface ChatServiceOptions extends WebServiceOptions {
+type ChatServiceSupportedAPIs = ChatConversationAPI | ChatCompletionAPI;
+
+export interface ChatServiceData extends WebServiceData {
+  moment?: string;
+}
+
+export interface ChatServiceOptions extends WebServiceOptions<ChatServiceSupportedAPIs> {
   moment?: string;
 }
 
@@ -19,7 +28,7 @@ export interface ChatMessageInfo {
   pending: boolean;
 }
 
-export default class ChatService extends WebService<ChatConversationAPI | ChatCompletionAPI> {
+export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   history: ChatMessage[] = [];
   isLoaded = false;
   moment: string;
@@ -53,19 +62,18 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
   // Track generation of name.
   #titlePromise?: Promise<void>;
 
-  static deserialize(data: object): ChatService {
-    const service = WebService.deserialize(data);
-    const options: ChatServiceOptions = service.options;
-    if (typeof data['moment'] == 'string')
-      options.moment = data['moment'];
-    return new ChatService(service.name, service.api as ChatConversationAPI | ChatCompletionAPI, options);
+  static deserialize(data: ChatServiceData): ChatServiceOptions {
+    const options = WebService.deserialize(data) as ChatServiceOptions;
+    if (typeof data.moment == 'string')
+      options.moment = data.moment;
+    return options;
   }
 
-  constructor(name: string, api: ChatConversationAPI | ChatCompletionAPI, options: ChatServiceOptions = {}) {
-    if (!(api instanceof ChatCompletionAPI) &&
-        !(api instanceof ChatConversationAPI))
+  constructor(options: ChatServiceOptions) {
+    if (!(options.api instanceof ChatCompletionAPI) &&
+        !(options.api instanceof ChatConversationAPI))
       throw new Error('Unsupported API type');
-    super(name, api, options);
+    super(options);
     if (options.moment) {
       this.moment = options.moment;
       historyKeeper.remember(this.moment).then(value => {
@@ -76,16 +84,16 @@ export default class ChatService extends WebService<ChatConversationAPI | ChatCo
         this.onLoad.emit();
       });
     } else {
-      if (api instanceof ChatCompletionAPI)
+      if (options.api instanceof ChatCompletionAPI)
         this.moment = historyKeeper.newMoment();
       this.isLoaded = true;
     }
   }
 
   serialize() {
-    const data = super.serialize();
+    const data: ChatServiceData = super.serialize();
     if (this.moment)
-      data['moment'] = this.moment;
+      data.moment = this.moment;
     return data;
   }
 

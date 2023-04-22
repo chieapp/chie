@@ -4,23 +4,24 @@ import APIEndpoint from '../model/api-endpoint';
 import BaseView, {BaseViewType} from '../view/base-view';
 import Instance from '../model/instance';
 import WebAPI from '../model/web-api';
-import WebService from '../model/web-service';
 import apiManager from './api-manager';
 import {ConfigStoreItem} from '../model/config-store';
 import {Selection} from '../model/param';
+import {WebServiceData, WebServiceType} from '../model/web-service';
 import {collectGarbage} from './gc-center';
 import {getNextId} from '../util/id-generator';
 
+type ServiceManagerData = Record<string, {
+  serviceName: string,
+  service: WebServiceData,
+  view: string,
+}>;
+
 type WebAPIType = (new (endpoint) => WebAPI) | (abstract new (endpoint) => WebAPI);
 
-interface WebServiceType {
-  new (name, api): WebService<WebAPI>;
-  deserialize(config: object): WebService<WebAPI>;
-}
-
 export type ServiceRecord = {
-  name?: string,
-  serviceType: WebServiceType,
+  name: string,
+  serviceType: WebServiceType<WebAPI>,
   apiTypes: WebAPIType[],
   viewType: BaseViewType,
 };
@@ -33,7 +34,7 @@ export class ServiceManager extends ConfigStoreItem {
   #views: BaseViewType[] = [];
   #instances: Record<string, Instance> = {};
 
-  deserialize(data: object) {
+  deserialize(data: ServiceManagerData) {
     if (!data)  // accepts empty data
       data = {};
     if (typeof data != 'object')
@@ -41,27 +42,28 @@ export class ServiceManager extends ConfigStoreItem {
     this.#instances = {};
     for (const id in data) {
       const item = data[id];
-      if (typeof item['serviceName'] != 'string' ||
-          typeof item['service'] != 'object' ||
-          typeof item['view'] != 'string')
+      if (typeof item.serviceName != 'string' ||
+          typeof item.service != 'object' ||
+          typeof item.view != 'string')
         throw new Error(`Unknown data for Instance: ${JSON.stringify(item)}.`);
       // Get the service type first.
-      const serviceName = item['serviceName'];
+      const serviceName = item.serviceName;
       if (!(serviceName in this.#services))
         throw new Error(`Unknown service "${serviceName}".`);
       const record = this.#services[serviceName];
       // Check view type.
-      const viewType = this.#views.find(v => v.name == item['view']);
+      const viewType = this.#views.find(v => v.name == item.view);
       if (!viewType)
-        throw new Error(`Unknown View "${item['view']}".`);
+        throw new Error(`Unknown View "${item.view}".`);
       // Deserialize using the service type's method.
-      const service = record.serviceType.deserialize(item['service']);
+      const options = record.serviceType.deserialize(item.service);
+      const service = new record.serviceType(options);
       this.#instances[id] = {id, serviceName, service, viewType};
     }
   }
 
   serialize() {
-    const data = {};
+    const data: ServiceManagerData = {};
     for (const id in this.#instances) {
       const ins = this.#instances[id];
       data[id] = {
@@ -115,7 +117,7 @@ export class ServiceManager extends ConfigStoreItem {
     const instance = {
       id,
       serviceName,
-      service: new record.serviceType(name, api),
+      service: new record.serviceType({name, api}),
       viewType: record.viewType,
     };
     this.#instances[id] = instance;

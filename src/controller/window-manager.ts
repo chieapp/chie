@@ -2,15 +2,16 @@ import gui from 'gui';
 
 import BaseWindow from '../view/base-window';
 import Instance from '../model/instance';
-import WindowStore, {WindowStoreDataFormat} from '../model/window-store';
+import WindowStore, {WindowStoreData} from '../model/window-store';
 import serviceManager from './service-manager';
 import {collectGarbage} from './gc-center';
 import {ConfigStoreItem} from '../model/config-store';
 
-type WindowManagerDataFormat = {
-  windows?: WindowStoreDataFormat,
-  chatWindows?: WindowStoreDataFormat,
+type WindowManagerData = {
+  windows?: WindowStoreData,
+  chatWindows?: WindowStoreData,
 };
+
 type NamedWindowType = new () => BaseWindow;
 
 export class WindowManager extends ConfigStoreItem {
@@ -37,14 +38,14 @@ export class WindowManager extends ConfigStoreItem {
     serviceManager.onRemoveInstance.connect(this.#onRemoveInstance.bind(this));
   }
 
-  deserialize(data: WindowManagerDataFormat) {
+  deserialize(data: WindowManagerData) {
     if (typeof data != 'object')  // accepts empty data
       data = {};
     this.#chatWindows.deserialize(data.chatWindows);
     this.#namedWindows.deserialize(data.windows);
   }
 
-  serialize(): WindowManagerDataFormat {
+  serialize(): WindowManagerData {
     return {
       chatWindows: this.#chatWindows.serialize(),
       windows: this.#namedWindows.serialize(),

@@ -2,7 +2,7 @@ import BaseWindow, {WindowState} from '../view/base-window';
 
 type WindowCreator = (id: string) => BaseWindow;
 
-export type WindowStoreDataFormat = Record<string, {state: WindowState, opened?: boolean}>;
+export type WindowStoreData = Record<string, {state: WindowState, opened?: boolean}>;
 
 export default class WindowStore {
   #windowCreator: WindowCreator;
@@ -13,7 +13,7 @@ export default class WindowStore {
     this.#windowCreator = windowCreator;
   }
 
-  deserialize(data: WindowStoreDataFormat) {
+  deserialize(data: WindowStoreData) {
     if (typeof data != 'object')  // accepts empty data
       data = {};
     this.#windowStates = {};
@@ -26,7 +26,7 @@ export default class WindowStore {
   }
 
   serialize() {
-    const data: WindowStoreDataFormat = {};
+    const data: WindowStoreData = {};
     for (const id in this.#windowStates) {
       data[id] = {
         state: this.#windowStates[id],

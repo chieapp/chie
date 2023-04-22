@@ -12,7 +12,7 @@ describe('MultiChatsService', () => {
     config.inMemory = false;
     const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
     const api = apiManager.createAPIForEndpoint(endpoint) as ChatCompletionAPI;
-    service = new MultiChatsService('Test', api);
+    service = new MultiChatsService({name: 'Test', api});
   });
   afterEach(() => {
     service.clearChats();
@@ -25,7 +25,7 @@ describe('MultiChatsService', () => {
     assert.deepEqual(service.serialize(), {
       name: 'Test',
       api: service.api.endpoint.id,
-      chats: [ {moment: chat.moment} ],
+      chats: [ chat.moment ],
     });
   });
 
@@ -43,9 +43,9 @@ describe('MultiChatsService', () => {
     const data = {
       name: 'Test',
       api: service.api.endpoint.id,
-      chats: [ {moment} ],
+      chats: [ moment ],
     };
-    service = MultiChatsService.deserialize(data);
+    service = new MultiChatsService(MultiChatsService.deserialize(data));
     await new Promise<void>((resolve) => service.chats[0].onLoad.connect(resolve));
     assert.equal(service.chats[0].title, record.title);
     assert.deepEqual(service.chats[0].history, record.history);

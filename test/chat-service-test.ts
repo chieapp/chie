@@ -12,7 +12,7 @@ describe('ChatService', () => {
     config.inMemory = false;
     const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
     const api = apiManager.createAPIForEndpoint(endpoint) as ChatCompletionAPI;
-    service = new ChatService('Test', api);
+    service = new ChatService({name: 'Test', api});
   });
   afterEach(() => {
     service.destructor();
@@ -45,7 +45,7 @@ describe('ChatService', () => {
     await historyKeeper.save(moment, record);
     await historyKeeper.flush();
     assert.deepEqual(record, await historyKeeper.remember(moment));
-    service = new ChatService('Test', service.api, {moment});
+    service = new ChatService({name: 'Test', api: service.api, moment});
     await new Promise<void>((resolve) => service.onLoad.connect(resolve));
     assert.equal(record.title, service.title);
     assert.deepEqual(record.history, service.history);

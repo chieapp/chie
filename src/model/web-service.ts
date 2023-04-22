@@ -2,49 +2,60 @@ import Serializable from '../model/serializable';
 import WebAPI from './web-api';
 import apiManager from '../controller/api-manager';
 
-export interface WebServiceOptions {
+export interface WebServiceData {
+  name: string;
+  api: string;
+  params?: Record<string, string>;
+}
+
+export interface WebServiceOptions<T extends WebAPI> {
+  name: string;
+  api: T;
   params?: Record<string, string>;
 }
 
 export default class WebService<T extends WebAPI> implements Serializable {
   name: string;
   api: T;
-  options: WebServiceOptions;
+  params?: Record<string, string>;
 
-  static deserialize(data: object): WebService<WebAPI> {
+  static deserialize(data: WebServiceData): WebServiceOptions<WebAPI> {
     if (!data ||
         typeof data != 'object' ||
-        typeof data['name'] != 'string' ||
-        typeof data['api'] != 'string') {
+        typeof data.name != 'string' ||
+        typeof data.api != 'string') {
       throw new Error(`Unknown WebService : ${JSON.stringify(data)}`);
     }
     const endpoint = apiManager.getEndpointById(data['api']);
     const api = apiManager.createAPIForEndpoint(endpoint);
-    const options = {};
-    if (typeof data['params'] == 'object')
-      options['params'] = data['params'];
-    return new WebService(data['name'], api, options);
+    const options: WebServiceOptions<WebAPI> = {name: data.name, api};
+    if (typeof data.params == 'object')
+      options.params = data.params;
+    return new WebService(options);
   }
 
-  constructor(name: string, api: T, options: WebServiceOptions = {}) {
-    if (!name || !api)
+  constructor(options: WebServiceOptions<T>) {
+    if (!options.name || !options.api)
       throw new Error('Must pass name and api to WebService');
-    this.name = name;
-    this.api = api;
-    this.options = options;
+    Object.assign(this, options);
   }
 
   serialize() {
-    const data = {
+    const data: WebServiceData = {
       name: this.name,
       api: this.api.endpoint.id,
     };
-    if (this.options.params)
-      data['params'] = this.options.params;
+    if (this.params)
+      data.params = this.params;
     return data;
   }
 
   destructor() {
     // Nothing to destructor by default.
   }
+}
+
+export interface WebServiceType<T extends WebAPI> {
+  new (options: WebServiceOptions<T>): WebService<T>;
+  deserialize(config: object): WebServiceOptions<T>;
 }

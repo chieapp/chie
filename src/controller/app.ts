@@ -5,7 +5,7 @@ import AppTray from '../view/app-tray';
 import {ConfigStoreItem} from '../model/config-store';
 import {collectGarbage} from './gc-center';
 
-type AppDataFormat = {hideTrayIcon?: boolean, hideDockIcon?: boolean};
+type AppData = {hideTrayIcon?: boolean, hideDockIcon?: boolean};
 
 export class App extends ConfigStoreItem {
   menuBar?: AppMenuBar;
@@ -15,7 +15,7 @@ export class App extends ConfigStoreItem {
     super();
   }
 
-  deserialize(data: AppDataFormat) {
+  deserialize(data: AppData) {
     if (typeof data != 'object')  // accepts empty data
       data = {};
     if (!data.hideTrayIcon)
@@ -29,7 +29,7 @@ export class App extends ConfigStoreItem {
   }
 
   serialize() {
-    const data: AppDataFormat = {};
+    const data: AppData = {};
     if (!this.tray)
       data.hideTrayIcon = true;
     if (process.platform == 'darwin' && !this.isDockIconVisible())

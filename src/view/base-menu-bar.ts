@@ -88,9 +88,8 @@ export default class BaseMenuBar extends SignalsOwner {
         { type: 'separator' },
       ],
     });
-    this.#assistantsMenu = new AssistantsMenu(menuItem.getSubmenu(), -1, (instance, index) => ({
+    this.#assistantsMenu = new AssistantsMenu(menuItem.getSubmenu(), -1, 'Alt+CmdOrCtrl', (instance) => ({
       label: `Open ${instance.service.name}...`,
-      accelerator: `Alt+CmdOrCtrl+${index + 1}`,
       onClick: () => windowManager.showChatWindow(instance.id),
     }));
     this.menu.insert(menuItem, this.menu.itemCount() - 1);
@@ -103,14 +102,13 @@ export default class BaseMenuBar extends SignalsOwner {
       throw new Error('There is no View menu');
     const DashboardWindow = require('./dashboard-window').default;
     this.#viewMenu.append(gui.MenuItem.create('separator'));
-    this.#assistantsMenuInView = new AssistantsMenu(this.#viewMenu, -1, (instance, index) => ({
+    this.#assistantsMenuInView = new AssistantsMenu(this.#viewMenu, -1, 'CmdOrCtrl', (instance) => ({
       label: `Switch to ${instance.service.name}...`,
-      accelerator: `CmdOrCtrl+${index + 1}`,
       validate: () => windowManager.getCurrentWindow() instanceof DashboardWindow,
       onClick: () => {
-        const win = windowManager.getCurrentWindow();
+        const win = windowManager.getCurrentWindow() as typeof DashboardWindow;
         if (win instanceof DashboardWindow)
-          (win as typeof DashboardWindow).switchTo(index);
+          win.switchTo(win.views.findIndex(v => v.instance == instance));
       }
     }));
   }

@@ -149,8 +149,7 @@ export default class ChatView extends BaseView<ChatService> {
     this.#serviceConnections.add(service.onClearMessages.connect(
       this.messagesView.clearMessages.bind(this.messagesView)));
     this.messagesView.assistantName = service.name;
-    if (service.api.icon)
-      this.messagesView.assistantAvatar = service.api.icon.getChieUrl();
+    this.messagesView.assistantAvatar = service.icon.getChieUrl();
     if (service.isLoaded) {
       await this.messagesView.loadMessages(service.history);
     } else {

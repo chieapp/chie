@@ -1,6 +1,7 @@
 import ejs from 'ejs';
 import fs from 'node:fs/promises';
 import gui from 'gui';
+import open from 'open';
 import path from 'node:path';
 
 import BrowserView, {style} from './browser-view';

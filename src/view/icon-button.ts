@@ -1,7 +1,7 @@
 import gui from 'gui';
-import path from 'node:path';
-import {realpathSync} from 'node:fs';
+
 import Clickable from './clickable';
+import stockIcons from '../controller/stock-icons';
 
 const buttonRadius = 8;
 
@@ -16,42 +16,27 @@ const style = {
   },
 };
 
-const assetsDir = path.join(__dirname, '../../assets');
-
 export default class IconButton extends Clickable {
-  // Stock images.
-  static stockImage: Record<string, gui.Image> = {};
-
-  image: gui.Image;
+  name: string;
   imageSize: gui.SizeF;
 
   // Force using specified color mode.
   colorMode?: 'dark' | 'light';
 
-  // Alternative images.
-  imageDisabled?: gui.Image;
-  imageDarkMode?: gui.Image;
-  imageDarkModeDisabled?: gui.Image;
-
-  constructor(image: gui.Image | string) {
+  constructor(name: string) {
     super();
-    this.setImage(image);
-  }
-
-  setImage(image: gui.Image | string) {
-    if (image instanceof gui.Image) {
-      this.image = image;
-    } else {
-      if (!IconButton.stockImage[image])
-        IconButton.stockImage[image] = gui.Image.createFromPath(realpathSync(path.join(assetsDir, 'icons', `${image}@2x.png`)));
-      this.image = IconButton.stockImage[image];
-    }
-    this.imageSize = this.image.getSize();
+    this.setImage(name);
     this.view.setStyle({
       width: this.imageSize.width + buttonRadius,
       height: this.imageSize.height + buttonRadius,
     });
-    this.imageDisabled = this.imageDarkMode = this.imageDarkModeDisabled = null;
+  }
+
+  setImage(name: string) {
+    if (this.name == name)
+      return;
+    this.name = name;
+    this.imageSize = stockIcons.getImage(name).getSize();
     this.view.schedulePaint();
   }
 
@@ -77,28 +62,6 @@ export default class IconButton extends Clickable {
     bounds.y = (bounds.height - this.imageSize.height) / 2;
     bounds.width = this.imageSize.width;
     bounds.height = this.imageSize.height;
-    painter.drawImage(this.#getImageToDraw(colorMode), bounds);
-  }
-
-  #getImageToDraw(colorMode: 'dark' | 'light') {
-    if (colorMode == 'dark') {
-      if (!this.imageDarkMode)
-        this.imageDarkMode = this.image.tint('#FFF');
-      if (this.enabled) {
-        return this.imageDarkMode;
-      } else {
-        if (!this.imageDarkModeDisabled)
-          this.imageDarkModeDisabled = this.imageDarkMode.tint('#666');
-        return this.imageDarkModeDisabled;
-      }
-    } else {
-      if (this.enabled) {
-        return this.image;
-      } else {
-        if (!this.imageDisabled)
-          this.imageDisabled = this.image.tint('#AAA');
-        return this.imageDisabled;
-      }
-    }
+    painter.drawImage(stockIcons.getTintedImage(this.name, colorMode, this.enabled), bounds);
   }
 }

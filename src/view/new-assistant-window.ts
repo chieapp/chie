@@ -35,7 +35,7 @@ export default class NewAssistantWindow extends BaseWindow {
         selections: serviceManager.getServiceSelections(),
         constrainedBy: 'api',
         constrain: (endpoint: APIEndpoint, record: ServiceRecord) => {
-          const apiType = apiManager.getAPITypeFromName(endpoint.type);
+          const apiType = apiManager.getAPIRecord(endpoint.type).apiType;
           for (const A of record.apiTypes) {
             if (apiType == A || apiType.prototype instanceof A)
               return true;
@@ -88,6 +88,6 @@ export default class NewAssistantWindow extends BaseWindow {
     this.window.close();
     // Show the added assistant.
     const dashboard = windowManager.showNamedWindow('dashboard') as DashboardWindow;
-    dashboard.switchToLast();
+    dashboard.switchTo(-1);
   }
 }

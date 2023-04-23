@@ -1,5 +1,4 @@
 import APIEndpoint from './api-endpoint';
-import Icon from './icon';
 import WebAPI from './web-api';
 
 export enum ChatRole {
@@ -29,14 +28,7 @@ export type ChatAPIOptions = {
   onMessageDelta: onMessageDeltaCallback,
 };
 
-abstract class ChatAPI extends WebAPI {
-  constructor(endpoint: APIEndpoint) {
-    super(endpoint);
-    this.icon = new Icon({name: 'bot'});
-  }
-}
-
-export abstract class ChatCompletionAPI extends ChatAPI {
+export abstract class ChatCompletionAPI extends WebAPI {
   constructor(endpoint: APIEndpoint) {
     super(endpoint);
   }
@@ -45,7 +37,7 @@ export abstract class ChatCompletionAPI extends ChatAPI {
   abstract sendConversation(history: ChatMessage[], options: ChatAPIOptions): Promise<void>;
 }
 
-export abstract class ChatConversationAPI<T = object> extends ChatAPI {
+export abstract class ChatConversationAPI<T = object> extends WebAPI {
   session?: T;
 
   constructor(endpoint: APIEndpoint) {

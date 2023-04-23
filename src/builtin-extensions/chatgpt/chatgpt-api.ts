@@ -7,7 +7,6 @@ import {
   ChatMessage,
   ChatResponse,
   ChatRole,
-  Icon,
   NetworkError,
 } from 'chie';
 
@@ -16,7 +15,6 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
     if (endpoint.type != 'ChatGPT API')
       throw new Error('Expect ChatGPT API endpoint in ChatGPTAPI.');
     super(endpoint);
-    this.icon = new Icon({name: 'chatgpt'});
   }
 
   async sendConversation(history: ChatMessage[], options?: ChatAPIOptions) {

@@ -11,6 +11,7 @@ import {
   ChatCompletionAPI,
   ChatConversationAPI,
 } from './chat-api';
+import serviceManager from '../controller/service-manager';
 import historyKeeper from '../controller/history-keeper';
 
 export type ChatServiceSupportedAPIs = ChatConversationAPI | ChatCompletionAPI;
@@ -32,7 +33,7 @@ interface ChatHistoryData {
 export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   history: ChatMessage[] = [];
   isLoaded = false;
-  moment: string;
+  moment?: string;
 
   onLoad: Signal<() => void> = new Signal;
   onNewTitle: Signal<(title: string | null) => void> = new Signal;
@@ -275,8 +276,10 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
 
   // Write history to disk.
   #saveMoment() {
-    if (!this.moment)
+    if (!this.moment) {
       this.moment = historyKeeper.newMoment();
+      serviceManager.saveConfig();
+    }
     const data: ChatHistoryData = {history: this.history};
     if (this.title)
       data.title = this.title;

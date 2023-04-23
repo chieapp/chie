@@ -1,4 +1,4 @@
-import {LoginWindow, apiManager} from 'chie';
+import {Icon, LoginWindow, apiManager} from 'chie';
 import BingChatAPI from './bingchat-api';
 
 export function activate() {
@@ -6,6 +6,7 @@ export function activate() {
     name: 'BingChat',
     apiType: BingChatAPI,
     auth: 'login',
+    icon: new Icon({name: 'bingchat'}),
     description: 'Chat with new Bing, requires Microsoft account.',
     priority: 9,
     login: async () => {

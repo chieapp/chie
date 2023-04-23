@@ -8,7 +8,6 @@ import {
   ChatConversationAPI,
   ChatMessage,
   ChatRole,
-  Icon,
   NetworkError,
 } from 'chie';
 
@@ -36,7 +35,6 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
     if (endpoint.type != 'BingChat')
       throw new Error('Expect BingChat API endpoint in BingChatAPI.');
     super(endpoint);
-    this.icon = new Icon({name: 'bingchat'});
   }
 
   async sendMessage(text: string, options: ChatAPIOptions) {

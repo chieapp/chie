@@ -25,7 +25,7 @@ export default class MultiChatsService extends WebService<ChatCompletionAPI> {
   static deserialize(data: MultiChatsServiceData): MultiChatsServiceOptions {
     const options = WebService.deserialize(data) as MultiChatsServiceOptions;
     if (Array.isArray(data.chats))
-      options.chats = data.chats.map(moment => new ChatService({name: options.name, api: options.api, moment}));
+      options.chats = data.chats.map(moment => new ChatService(Object.assign({moment}, options)));
     return options;
   }
 
@@ -50,7 +50,7 @@ export default class MultiChatsService extends WebService<ChatCompletionAPI> {
   }
 
   createChat() {
-    const chat = new ChatService({name: this.name, api: this.api});
+    const chat = new ChatService({name: this.name, api: this.api, icon: this.icon});
     this.chats.unshift(chat);
     this.onNewChat.emit(chat);
     return chat;

@@ -5,19 +5,21 @@ import Instance from '../model/instance';
 import SignalsOwner from '../model/signals-owner';
 import serviceManager from '../controller/service-manager';
 
-type createAssistantMenuItemFunc = (instance: Instance, index: number) => MenuItemOptions<BaseView>;
+type createAssistantMenuItemFunc = (instance: Instance) => MenuItemOptions<BaseView>;
 
 export default class AssistantsMenu extends SignalsOwner {
   menu: gui.Menu;
   menuIndex: number;
+  acceleratorPrefix?: string;
   createAssistantMenuItem: createAssistantMenuItemFunc;
 
   #assistants: {instance: Instance, item: gui.MenuItem}[] = [];
 
-  constructor(menu: gui.Menu, menuIndex: number, createAssistantMenuItem: createAssistantMenuItemFunc) {
+  constructor(menu: gui.Menu, menuIndex: number, acceleratorPrefix: string | null, createAssistantMenuItem: createAssistantMenuItemFunc) {
     super();
     this.menu = menu;
     this.menuIndex = menuIndex;
+    this.acceleratorPrefix = acceleratorPrefix;
     this.createAssistantMenuItem = createAssistantMenuItem;
     // Insert menu items for existing instances.
     serviceManager.getInstances().forEach(this.#onNewInstance.bind(this));
@@ -29,7 +31,10 @@ export default class AssistantsMenu extends SignalsOwner {
   }
 
   #onNewInstance(instance: Instance, index: number) {
-    const item = gui.MenuItem.create(this.createAssistantMenuItem(instance, index));
+    const options = this.createAssistantMenuItem(instance);
+    if (this.acceleratorPrefix)
+      options.accelerator = `${this.acceleratorPrefix}+${index + 1}`;
+    const item = gui.MenuItem.create(options);
     if (this.menuIndex == -1)
       this.menu.append(item);
     else
@@ -48,7 +53,9 @@ export default class AssistantsMenu extends SignalsOwner {
   }
 
   #updateAssistantsMenuAccelerators() {
+    if (!this.acceleratorPrefix)
+      return;
     for (let i = 0; i < this.#assistants.length; ++i)
-      this.#assistants[i].item.setAccelerator(`CmdOrCtrl+${i + 1}`);
+      this.#assistants[i].item.setAccelerator(`${this.acceleratorPrefix}+${i + 1}`);
   }
 }

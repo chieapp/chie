@@ -1,4 +1,4 @@
-import {apiManager} from 'chie';
+import {Icon, apiManager} from 'chie';
 import ChatGPTAPI from './chatgpt-api';
 
 export function activate() {
@@ -6,6 +6,7 @@ export function activate() {
     name: 'ChatGPT API',
     apiType: ChatGPTAPI,
     auth: 'key',
+    icon: new Icon({name: 'chatgpt'}),
     description: 'OpenAI Chat API, requires an API key.',
     url: 'https://api.openai.com/v1/chat/completions',
     priority: 10,

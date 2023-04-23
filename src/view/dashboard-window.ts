@@ -120,18 +120,16 @@ export default class DashboardWindow extends BaseWindow {
   }
 
   switchTo(index: number) {
+    if (index < 0)  // pass -1 to select last
+      index += this.views.length;
     if (!(index in this.views))
       throw new Error(`Invalid index: ${index}.`);
     this.#onSelect(this.views[index]);
   }
 
-  switchToLast() {
-    this.switchTo(this.views.length - 1);
-  }
-
   #createViewForInstance(instance: Instance) {
     // Create a button in sidebar.
-    const button = new ToggleButton(instance.service.api.icon.getImage());
+    const button = new ToggleButton(instance.service.icon.getImage());
     button.view.setStyle({
       marginTop: style.padding,
       width: style.buttonSize,

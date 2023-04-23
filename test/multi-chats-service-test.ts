@@ -25,6 +25,7 @@ describe('MultiChatsService', () => {
     assert.deepEqual(service.serialize(), {
       name: 'Test',
       api: service.api.endpoint.id,
+      icon: 'chie://app-file/assets/icons/bot.png',
       chats: [ chat.moment ],
     });
   });
@@ -43,6 +44,7 @@ describe('MultiChatsService', () => {
     const data = {
       name: 'Test',
       api: service.api.endpoint.id,
+      icon: 'chie://app-file/assets/icons/bot.png',
       chats: [ moment ],
     };
     service = new MultiChatsService(MultiChatsService.deserialize(data));

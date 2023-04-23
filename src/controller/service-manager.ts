@@ -107,9 +107,9 @@ export class ServiceManager extends ConfigStoreItem {
     if (!(serviceName in this.#services))
       throw new Error(`Service with name "${serviceName}" does not exist.`);
     // Do runtime check of API type compatibility.
-    const api = apiManager.createAPIForEndpoint(endpoint);
-    const record = this.#services[serviceName];
-    if (!record.apiTypes.find(A => api instanceof A))
+    const {icon, apiType} = apiManager.getAPIRecord(endpoint.type);
+    const {apiTypes, serviceType, viewType} = this.#services[serviceName];
+    if (!apiTypes.find(A => apiType == A || apiType.prototype instanceof A))
       throw new Error(`Service "${serviceName}" does not support API type "${endpoint.type}".`);
     // Create a new instance of service.
     const ids = Object.keys(this.#instances);
@@ -117,8 +117,8 @@ export class ServiceManager extends ConfigStoreItem {
     const instance = {
       id,
       serviceName,
-      service: new record.serviceType({name, api}),
-      viewType: record.viewType,
+      service: new serviceType({name, api: new apiType(endpoint), icon}),
+      viewType,
     };
     this.#instances[id] = instance;
     this.onNewInstance.emit(instance, ids.length);

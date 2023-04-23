@@ -1,6 +1,7 @@
 import {Signal} from 'typed-signals';
 
 import APIEndpoint from '../model/api-endpoint';
+import Icon from '../model/icon';
 import Param from '../model/param';
 import WebAPI from '../model/web-api';
 import {ConfigStoreItem} from '../model/config-store';
@@ -13,6 +14,7 @@ type APIRecord = {
   name: string,
   apiType: WebAPIType,
   auth: 'none' | 'key' | 'login',
+  icon?: Icon,
   url?: string,
   description?: string,
   priority?: number,
@@ -70,10 +72,10 @@ export class APIManager extends ConfigStoreItem {
       });
   }
 
-  getAPITypeFromName(name: string) {
+  getAPIRecord(name: string) {
     if (!(name in this.#apis))
       throw new Error(`API with name "${name}" does not exist.`);
-    return this.#apis[name].apiType;
+    return this.#apis[name];
   }
 
   createAPIForEndpoint(endpoint: APIEndpoint) {

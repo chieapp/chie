@@ -74,7 +74,7 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
       throw new APIError(`Unexpected data from ChatGPT API: ${message.data}`);
     const choice = data.choices[0];
     // Parse the finish_reason.
-    const response = new ChatResponse({id: data.id});
+    const response: ChatResponse = {pending: false, id: data.id};
     switch (choice.finish_reason) {
       case 'stop':  // all delta received, no more action
       case 'length':  // ignored for now

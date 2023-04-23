@@ -126,7 +126,7 @@
     if (wasAtBottom)
       scrollToBottom();
   };
-  window.removePendingMark = function() {
+  window.endPending = function() {
     var wasAtBottom = isPageBottom();
     var pending = findPending();
     if (pending)
@@ -147,7 +147,7 @@
   window.clearMessages = function() {
     document.getElementById('messages').innerHTML = '';
   };
-  window.addAbortedLabelToPendingMessage = function() {
+  window.abortPending = function() {
     var text = findPending('text');
     if (text) {
       var inlineText = text;
@@ -157,14 +157,14 @@
           text.lastElementChild.tagName.toLowerCase() == 'p')
         inlineText = text.lastElementChild;
       inlineText.insertAdjacentHTML('beforeend', ' <span class="error label">(aborted)</span>');
-      scrollToBottom();
     }
+    endPending();
   };
   window.appendError = function(error) {
     var text = findPending('text');
     if (text)
       text.innerHTML += '<div class="error">' + error + '</div>';
-    removePendingMark();
+    endPending();
   };
 
   // DOM event handlers ====================================================

@@ -13,7 +13,7 @@ import {
 } from './chat-api';
 import historyKeeper from '../controller/history-keeper';
 
-type ChatServiceSupportedAPIs = ChatConversationAPI | ChatCompletionAPI;
+export type ChatServiceSupportedAPIs = ChatConversationAPI | ChatCompletionAPI;
 
 export interface ChatServiceData extends WebServiceData {
   moment?: string;
@@ -23,9 +23,10 @@ export interface ChatServiceOptions extends WebServiceOptions<ChatServiceSupport
   moment?: string;
 }
 
-export interface ChatMessageInfo {
-  first: boolean;
-  pending: boolean;
+interface ChatHistoryData {
+  title?: string;
+  session?: object;
+  history?: ChatMessage[];
 }
 
 export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
@@ -35,17 +36,17 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
 
   onLoad: Signal<() => void> = new Signal;
   onNewTitle: Signal<(title: string | null) => void> = new Signal;
-  onMessage: Signal<(message: ChatMessage) => void> = new Signal;
-  onMessageDelta: Signal<(delta: Partial<ChatMessage>, info: ChatMessageInfo) => void> = new Signal;
+  onUserMessage: Signal<(message: ChatMessage) => void> = new Signal;
+  onClearError: Signal<() => void> = new Signal;
+  onMessageBegin: Signal<() => void> = new Signal;
+  onMessageDelta: Signal<(delta: Partial<ChatMessage>, response: ChatResponse) => void> = new Signal;
   onMessageError: Signal<(error: Error) => void> = new Signal;
+  onMessage: Signal<(message: ChatMessage) => void> = new Signal;
   onRemoveMessage: Signal<((index: number) => void)> = new Signal;
   onClearMessages: Signal<() => void> = new Signal;
 
   // Title of the chat.
   title?: string;
-
-  // Whether the title is automatically generated.
-  autoTitle = true;
 
   // Error is set if last message failed to send.
   lastError?: Error;
@@ -75,17 +76,21 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
       throw new Error('Unsupported API type');
     super(options);
     if (options.moment) {
+      // Load from saved history.
       this.moment = options.moment;
-      historyKeeper.remember(this.moment).then(value => {
-        if (value.history)
-          this.history = value.history.slice();
-        this.title = value.title;
+      historyKeeper.remember(this.moment).then((value?: ChatHistoryData) => {
+        if (value) {
+          if (value.history)
+            this.history = value.history.slice();
+          if (value.title)
+            this.title = value.title;
+          if (options.api instanceof ChatConversationAPI && value.session)
+            options.api.session = value.session;
+        }
         this.isLoaded = true;
         this.onLoad.emit();
       });
     } else {
-      if (options.api instanceof ChatCompletionAPI)
-        this.moment = historyKeeper.newMoment();
       this.isLoaded = true;
     }
   }
@@ -98,35 +103,35 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   }
 
   // Remove this chat and delete its information on disk.
-  async destructor() {
+  destructor() {
     super.destructor();
     this.aborter?.abort();
     if (this.moment)
-      await historyKeeper.forget(this.moment);
+      historyKeeper.forget(this.moment);
   }
 
   // Send a message and wait for response.
   async sendMessage(message: Partial<ChatMessage>, options: object = {}) {
     if (this.pendingMessage)
       throw new Error('There is pending message being received.');
-    // The message being sent is also notified.
-    const senderMessage = new ChatMessage({
+    const senderMessage = {
       role: message.role ?? ChatRole.User,
       content: message.content ?? '',
-    });
-    this.#handleMessageDelta(senderMessage, new ChatResponse({pending: false}));
+    };
+    this.history.push(senderMessage);
+    this.onUserMessage.emit(senderMessage);
     this.#saveMoment();
     // Start sending.
     await (this.pendingPromise = this.#generateResponse(options));
   }
 
-  // Generate a new response for the last user message.
+  // Generate a new response for the last user message, or resend on error.
   async regenerateResponse(options: object = {}) {
     if (this.history.length == 0)
       throw new Error('Unable to regenerate response when there is no message.');
     if (this.pendingMessage && !this.lastError)
       throw new Error('Can not regenerate when there is pending message being received.');
-    if (!(this.api instanceof ChatCompletionAPI))
+    if (this.api instanceof ChatConversationAPI && !this.lastError)
       throw new Error('Can only regenerate for ChatCompletionAPI.');
     // When last message is from assistant, do regenerate, otherwise it would
     // be the same with sending message.
@@ -155,12 +160,13 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   // Call the API.
   async #generateResponse(options: object) {
     // Clear error and pending message when sending new message.
+    if (this.lastError)
+      this.onClearError.emit();
     this.lastError = null;
     this.pendingMessage = null;
-    // Send a partial message to indicate the start.
-    this.#handleMessageDelta(new ChatMessage({role: ChatRole.Assistant}), new ChatResponse({pending: true}));
     // Call API.
     this.aborter = new AbortController();
+    this.onMessageBegin.emit();
     try {
       const apiOptions = {
         ...options,
@@ -173,25 +179,22 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
         await this.api.sendMessage(this.history[this.history.length - 1].content, apiOptions);
       }
     } catch (error) {
-      // AbortError is not treated as error.
-      if (error.name != 'AbortError') {
-        this.onMessageError.emit(error);
+      // Interrupting a pending message is not treated as error.
+      if (!(this.pendingMessage && error.name == 'AbortError')) {
         this.lastError = error;
-        throw error;
+        this.onMessageError.emit(error);
+        return;
       }
     }
 
     // The pendingMessage should be cleared when end of message has been
     // received, if there is no such signal and the partial message has been
-    // left after API call ends, send an end signal here.
-    if (this.pendingMessage) {
-      this.onMessageDelta.emit({}, {first: false, pending: false});
-      this.#responseEnded();
-    }
+    // left after API call ends (for example aborted), send an end signal here.
+    if (this.pendingMessage)
+      this.#handleMessageDelta({}, {pending: false});
 
     // Generate a name for the conversation.
-    if (this.autoTitle &&
-        this.api instanceof ChatCompletionAPI &&
+    if (this.api instanceof ChatCompletionAPI &&
         !this.#titlePromise &&
         this.history.length > 1 &&
         this.history.length < 10)
@@ -202,7 +205,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
 
   // Called by sub-classes when there is message delta available.
   #handleMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
-    this.onMessageDelta.emit(delta, {first: !this.pendingMessage, pending: response.pending});
+    this.onMessageDelta.emit(delta, response);
 
     // Concatenate to the pendingMessage.
     if (!this.pendingMessage) {
@@ -217,22 +220,24 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
         this.pendingMessage.content = delta.content;
     }
 
-    // Send onMessage when all pending messags have been received.
+    // Send onMessage when all pending messages have been received.
     if (!response.pending) {
       if (!this.pendingMessage.role || !this.pendingMessage.content)
         throw new Error('Incomplete delta received from ChatGPT');
-      this.onMessage.emit({
+      const message = {
         role: this.pendingMessage.role,
         content: this.pendingMessage.content.trim(),
-      });
+      };
+      // Should clear pendingMessage before emitting onMessage.
       this.#responseEnded();
+      this.onMessage.emit(message);
     }
   }
 
   // End of response.
   #responseEnded() {
     if (this.pendingMessage)
-      this.history.push(new ChatMessage(this.pendingMessage));
+      this.history.push(this.pendingMessage as ChatMessage);
     this.pendingMessage = null;
     this.pendingPromise = null;
   }
@@ -241,7 +246,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   async #generateName() {
     if (!(this.api instanceof ChatCompletionAPI))
       return;
-    const message = new ChatMessage({
+    const message = {
       role: ChatRole.System,
       content:
       `
@@ -253,7 +258,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
         use the speak language used in the conversation.
         The conversation is named:
       `
-    });
+    };
     let title = '';
     await this.api.sendConversation([message], {
       onMessageDelta(delta) { title += delta.content ?? ''; }
@@ -271,10 +276,12 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   // Write history to disk.
   #saveMoment() {
     if (!this.moment)
-      return;
-    historyKeeper.save(this.moment, {
-      history: this.history,
-      title: this.title,
-    });
+      this.moment = historyKeeper.newMoment();
+    const data: ChatHistoryData = {history: this.history};
+    if (this.title)
+      data.title = this.title;
+    if (this.api instanceof ChatConversationAPI && this.api.session)
+      data.session = this.api.session;
+    historyKeeper.save(this.moment, data);
   }
 }

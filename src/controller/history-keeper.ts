@@ -28,7 +28,7 @@ export class HistoryKeeper {
     } catch (error) {
       if (error.code != 'ENOENT')  // ignore file not exist error
         throw error;
-      return {};
+      return null;
     }
   }
 
@@ -44,13 +44,15 @@ export class HistoryKeeper {
     return new Promise<void>(resolve => this.#queue.once('end', resolve));
   }
 
-  async forget(moment: string) {
-    try {
-      await fs.remove(this.getFilePath(moment));
-    } catch (error) {
-      if (error.code != 'ENOENT')  // ignore file not exist error
-        throw error;
-    }
+  forget(moment: string) {
+    this.#queue.push(async () => {
+      try {
+        await fs.remove(this.getFilePath(moment));
+      } catch (error) {
+        if (error.code != 'ENOENT')  // ignore file not exist error
+          throw error;
+      }
+    });
   }
 
   getFilePath(moment: string) {

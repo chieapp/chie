@@ -7,8 +7,6 @@ import apiManager from '../src/controller/api-manager';
 import serviceManager from '../src/controller/service-manager';
 import {
   ChatRole,
-  ChatMessage,
-  ChatResponse,
   ChatCompletionAPI,
   ChatConversationAPI,
 } from '../src/model/chat-api';
@@ -18,9 +16,7 @@ class DummyCompletionAPI extends ChatCompletionAPI {
     super(endpoint);
   }
   async sendConversation(history, {onMessageDelta}) {
-    onMessageDelta(
-      new ChatMessage({role: ChatRole.Assistant, content: 'Reply'}),
-      new ChatResponse({pending: false}));
+    onMessageDelta({role: ChatRole.Assistant, content: 'Reply'}, {pending: false});
   }
 }
 
@@ -29,9 +25,7 @@ class DummyConversationAPI extends ChatConversationAPI {
     super(endpoint);
   }
   async sendMessage(text, {onMessageDelta}) {
-    onMessageDelta(
-      new ChatMessage({role: ChatRole.Assistant, content: 'Reply'}),
-      new ChatResponse({pending: false}));
+    onMessageDelta({role: ChatRole.Assistant, content: 'Reply'}, {pending: false});
   }
   clear() {
     // Do nothing.

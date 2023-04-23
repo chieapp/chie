@@ -19,7 +19,8 @@ initTemplates();
 export default class MessagesView extends BrowserView {
   assistantName = 'Bot';
   assistantAvatar = 'chie://app-file/assets/icons/bot.png';
-  messagesCount = 0;
+
+  hasPendingMessage = false;
 
   constructor() {
     super({hideUntilLoaded: true});
@@ -37,48 +38,64 @@ export default class MessagesView extends BrowserView {
     };
     await initTemplates();
     this.loadHTML(await pageTemplate(data), 'https://chie.app');
-    this.messagesCount = messages.length;
   }
 
-  // Append a message.
-  async appendMessage(message: Partial<ChatMessage>, response: {pending: boolean} = {pending: false}) {
+  // Add a pending message.
+  async appendPendingMessage(message: Partial<ChatMessage>, index: number) {
+    if (this.hasPendingMessage)
+      throw new Error('Can not append message while there is pending message.');
     const html = await messageTemplate({
-      message: this.#messageToData(message, this.messagesCount++),
-      response,
+      message: this.#messageToData(message, index),
+      response: {pending: true},
     });
+    this.hasPendingMessage = true;
     this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
   }
 
   // Append html to the pending message.
   appendHtmlToPendingMessage(delta) {
+    if (!this.hasPendingMessage)
+      throw new Error('There is no pending message.');
     this.executeJavaScript(`window.appendHtmlToPendingMessage(${JSON.stringify(delta)})`);
   }
 
-  // Mark the pending message as not pending.
-  removePendingMark() {
-    this.executeJavaScript('window.removePendingMark()');
+  // Mark the end of pending message.
+  endPending() {
+    this.hasPendingMessage = false;
+    this.executeJavaScript('window.endPending()');
+  }
+
+  // Show error.
+  appendError(error: string) {
+    this.hasPendingMessage = false;
+    this.executeJavaScript(`window.appendError(${JSON.stringify(error)})`);
+  }
+
+  // Add (aborted) label to the pending message.
+  abortPending() {
+    this.hasPendingMessage = false;
+    this.executeJavaScript('window.abortPending()');
+  }
+
+  // Append a message.
+  async appendMessage(message: Partial<ChatMessage>, index: number) {
+    if (this.hasPendingMessage)
+      throw new Error('Can not append message while there is pending message.');
+    const html = await messageTemplate({
+      message: this.#messageToData(message, index),
+      response: {pending: false},
+    });
+    this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
   }
 
   // Remove a message.
   removeMessage(index: number) {
-    this.messagesCount--;
     this.executeJavaScript(`window.removeMessage(${index})`);
   }
 
   // Remove all messages.
   clearMessages() {
-    this.messagesCount = 0;
     this.executeJavaScript('window.clearMessages()');
-  }
-
-  // Add (aborted) label to the pending message.
-  addAbortedLabelToPendingMessage() {
-    this.executeJavaScript('window.addAbortedLabelToPendingMessage()');
-  }
-
-  // Show error.
-  appendError(error: string) {
-    this.executeJavaScript(`window.appendError(${JSON.stringify(error)})`);
   }
 
   // Translate the message into data to be parsed by EJS template.

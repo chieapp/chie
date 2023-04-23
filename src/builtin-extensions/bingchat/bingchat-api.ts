@@ -7,7 +7,6 @@ import {
   ChatAPIOptions,
   ChatConversationAPI,
   ChatMessage,
-  ChatResponse,
   ChatRole,
   Icon,
   NetworkError,
@@ -22,14 +21,16 @@ import {
 
 const nullChar = '';
 
-export default class BingChatAPI extends ChatConversationAPI {
+type SessionData = {
+  conversationId: string,
+  clientId: string,
+  conversationSignature: string,
+  invocationId: number,
+};
+
+export default class BingChatAPI extends ChatConversationAPI<SessionData> {
   #invocationId = 1;
   #lastContent: string = '';
-  #session?: {
-    conversationId: string,
-    clientId: string,
-    conversationSignature: string,
-  };
 
   constructor(endpoint: APIEndpoint) {
     if (endpoint.type != 'BingChat')
@@ -39,7 +40,7 @@ export default class BingChatAPI extends ChatConversationAPI {
   }
 
   async sendMessage(text: string, options: ChatAPIOptions) {
-    if (!this.#session)
+    if (!this.session)
       await this.#createConversation(options);
 
     const ws = new WebSocket(sydneyWebSocketUrl);
@@ -64,9 +65,8 @@ export default class BingChatAPI extends ChatConversationAPI {
   }
 
   async clear() {
-    this.#invocationId = 1;
     this.#lastContent = '';
-    this.#session = null;
+    this.session = null;
   }
 
   async #createConversation(options) {
@@ -82,7 +82,8 @@ export default class BingChatAPI extends ChatConversationAPI {
       throw new APIError(`Invalid response when creating conversation: ${body}`);
     if (body.result.value != 'Success')
       throw new APIError(`Unable to create conversation: ${body.result.value} - ${body.result.message}`);
-    this.#session = body;
+    this.session = body as SessionData;
+    this.session.invocationId = 0;
   }
 
   #createWebSocketConnection(ws: WebSocket, options): Promise<void> {
@@ -122,24 +123,24 @@ export default class BingChatAPI extends ChatConversationAPI {
       const params = {
         type: 4,
         target: 'chat',
-        invocationId: String(this.#invocationId),
+        invocationId: String(this.session.invocationId),
         arguments: [
           {
             ...chatArgument,
             traceId: crypto.randomBytes(16).toString('hex'),
-            isStartOfSession: this.#invocationId == 1,
+            isStartOfSession: this.session.invocationId == 0,
             message: {
               messageType: 'Chat',
               author: 'user',
               text,
             },
-            conversationSignature: this.#session.conversationSignature,
-            participant: {id: this.#session.clientId},
-            conversationId: this.#session.conversationId,
+            conversationSignature: this.session.conversationSignature,
+            participant: {id: this.session.clientId},
+            conversationId: this.session.conversationId,
           },
         ],
       };
-      this.#invocationId += 2;
+      this.session.invocationId += 1;
       ws.send(`${JSON.stringify(params)}${nullChar}`);
     })).finally(() => {
       ws.removeAllListeners();
@@ -163,11 +164,11 @@ export default class BingChatAPI extends ChatConversationAPI {
     }
     if (!delta.content)  // empty delta
       return;
-    options.onMessageDelta(delta, new ChatResponse({
+    options.onMessageDelta(delta, {
+      pending: true,
       id: payload['messageId'],
       filtered: payload['offense'] == 'OffenseTrigger',
-      pending: true,
-    }));
+    });
   }
 }
 

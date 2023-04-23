@@ -3,7 +3,7 @@ import {assert} from 'chai';
 import MultiChatsService from '../src/model/multi-chats-service';
 import apiManager from '../src/controller/api-manager';
 import historyKeeper from '../src/controller/history-keeper';
-import {ChatMessage, ChatCompletionAPI} from '../src/model/chat-api';
+import {ChatCompletionAPI} from '../src/model/chat-api';
 import {config} from '../src/controller/configs';
 
 describe('MultiChatsService', () => {
@@ -21,7 +21,7 @@ describe('MultiChatsService', () => {
 
   it('Serialize the moment of sub chat', async () => {
     const chat = service.createChat();
-    await chat.sendMessage(new ChatMessage({content: 'Message'}));
+    await chat.sendMessage({content: 'Message'});
     assert.deepEqual(service.serialize(), {
       name: 'Test',
       api: service.api.endpoint.id,

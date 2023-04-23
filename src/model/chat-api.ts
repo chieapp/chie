@@ -8,26 +8,18 @@ export enum ChatRole {
   System = 'System',
 }
 
-export class ChatMessage {
-  role: ChatRole = ChatRole.User;
-  content: string = '';
-
-  constructor(init?: Partial<ChatMessage>) {
-    Object.assign(this, init);
-  }
+export interface ChatMessage {
+  role: ChatRole;
+  content: string;
 }
 
-export class ChatResponse {
+export interface ChatResponse {
+  // This message is in progress, and waiting for more.
+  pending: boolean;
   // Unique ID for each message.
   id?: string;
   // The content is omitted because of content filter.
-  filtered: boolean = false;
-  // This message is in progress, and waiting for more.
-  pending: boolean = false;
-
-  constructor(init?: Partial<ChatResponse>) {
-    Object.assign(this, init);
-  }
+  filtered?: boolean;
 }
 
 export type onMessageDeltaCallback = (delta: Partial<ChatMessage>, response: ChatResponse) => void;
@@ -53,7 +45,9 @@ export abstract class ChatCompletionAPI extends ChatAPI {
   abstract sendConversation(history: ChatMessage[], options: ChatAPIOptions): Promise<void>;
 }
 
-export abstract class ChatConversationAPI extends ChatAPI {
+export abstract class ChatConversationAPI<T = object> extends ChatAPI {
+  session?: T;
+
   constructor(endpoint: APIEndpoint) {
     super(endpoint);
   }

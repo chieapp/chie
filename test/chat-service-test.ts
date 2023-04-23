@@ -3,7 +3,7 @@ import {assert} from 'chai';
 import ChatService from '../src/model/chat-service';
 import apiManager from '../src/controller/api-manager';
 import historyKeeper from '../src/controller/history-keeper';
-import {ChatMessage, ChatCompletionAPI} from '../src/model/chat-api';
+import {ChatCompletionAPI} from '../src/model/chat-api';
 import {config} from '../src/controller/configs';
 
 describe('ChatService', () => {
@@ -21,7 +21,7 @@ describe('ChatService', () => {
 
   it('Write history to disk', async () => {
     service.title = 'Test Conversation';
-    await service.sendMessage(new ChatMessage({content: 'Message'}));
+    await service.sendMessage({content: 'Message'});
     assert.isString(service.moment);
     await historyKeeper.flush();
     assert.deepEqual(await historyKeeper.remember(service.moment), {

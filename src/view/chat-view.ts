@@ -2,13 +2,18 @@ import gui from 'gui';
 import {SignalConnections} from 'typed-signals';
 
 import BaseView from './base-view';
-import ChatService, {ChatMessageInfo} from '../model/chat-service';
+import ChatService from '../model/chat-service';
 import IconButton from './icon-button';
 import InputView from './input-view';
 import MessagesView from './messages-view';
 import StreamedMarkdown from '../util/streamed-markdown';
 import TextWindow from './text-window';
-import {ChatRole, ChatMessage, ChatConversationAPI} from '../model/chat-api';
+import {
+  ChatRole,
+  ChatMessage,
+  ChatResponse,
+  ChatCompletionAPI,
+} from '../model/chat-api';
 import {style} from './browser-view';
 
 type ButtonMode = 'refresh' | 'send' | 'stop';
@@ -127,10 +132,18 @@ export default class ChatView extends BaseView<ChatService> {
     this.service = service;
     this.#serviceConnections.add(service.onNewTitle.connect(
       this.onNewTitle.emit.bind(this.onNewTitle)));
+    this.#serviceConnections.add(service.onUserMessage.connect(
+      this.#onUserMessage.bind(this)));
+    this.#serviceConnections.add(service.onClearError.connect(
+      this.#onClearError.bind(this)));
+    this.#serviceConnections.add(service.onMessageBegin.connect(
+      this.#onMessageBegin.bind(this)));
     this.#serviceConnections.add(service.onMessageDelta.connect(
       this.#onMessageDelta.bind(this)));
     this.#serviceConnections.add(service.onMessageError.connect(
       this.#onMessageError.bind(this)));
+    this.#serviceConnections.add(service.onMessage.connect(
+      this.#resetUIState.bind(this)));
     this.#serviceConnections.add(service.onRemoveMessage.connect(
       this.messagesView.removeMessage.bind(this.messagesView)));
     this.#serviceConnections.add(service.onClearMessages.connect(
@@ -162,19 +175,54 @@ export default class ChatView extends BaseView<ChatService> {
     return content;
   }
 
+  // Change button mode.
+  #setButtonMode(mode: ButtonMode) {
+    this.replyButton.setImage(mode);
+    this.replyButton.setEnabled(true);
+    this.replyButton.view.setTooltip(getTooltipForMode(mode));
+    this.menuButton.setEnabled(mode != 'stop');
+    this.#buttonMode = mode;
+    // Disable send button when there is error happened.
+    if (mode == 'send' && this.service.lastError)
+      this.replyButton.setEnabled(false);
+  }
+
+  // Set the input and button to ready to send state.
+  #resetUIState() {
+    // Can only refresh if there was error.
+    if (this.service.lastError) {
+      this.#setButtonMode('refresh');
+      return;
+    }
+    // Can only stop if there is pending message.
+    if (this.service.pendingMessage) {
+      this.#setButtonMode('stop');
+      return;
+    }
+    // Show refresh button if last message is from bot and there is no input.
+    if (this.service.api instanceof ChatCompletionAPI &&
+        this.service.history.length > 0 &&
+        this.service.history[this.service.history.length - 1].role == ChatRole.Assistant &&
+        this.input.entry.getText().length == 0) {
+      this.#setButtonMode('refresh');
+      return;
+    }
+    // Otherwise ready to send.
+    this.#setButtonMode('send');
+    this.onFocus();
+  }
+
   // User presses Enter in the reply entry.
   #onEnter() {
     if (gui.Event.isShiftPressed())  // user wants new line
       return true;
-    if (this.service.pendingMessage)  // should never happen
-      throw new Error('Sending message while a message is being received');
+    if (this.#buttonMode != 'send')
+      return false;
     const content = this.getDraft();
     if (!content)
       return false;
     // Send message.
-    this.service.sendMessage({role: ChatRole.User, content}).catch(() => {
-      // Error handled elsewhere.
-    });
+    this.service.sendMessage({role: ChatRole.User, content});
     return false;
   }
 
@@ -192,22 +240,13 @@ export default class ChatView extends BaseView<ChatService> {
     } else if (this.#buttonMode == 'stop') {
       this.service.aborter.abort();
     } else if (this.#buttonMode == 'refresh') {
-      if (this.service.lastError)
-        this.messagesView.removeMessage(this.service.history.length);
-      this.service.regenerateResponse().catch(() => {
-        // Error handled elsewhere.
-      });
+      this.service.regenerateResponse();
     }
   }
 
   // User clicks on the menu button.
   #onMenuButton() {
     const menu = gui.Menu.create([
-      {
-        label: 'Regenerate response',
-        enabled: this.service.history.length > 0,
-        onClick: () => this.service.regenerateResponse(),
-      },
       {
         label: 'Clear',
         enabled: this.service.history.length > 0,
@@ -217,79 +256,65 @@ export default class ChatView extends BaseView<ChatService> {
     menu.popup();
   }
 
+  // Recover current state of chat.
+  async #onDomReady() {
+    this.input.setEntryEnabled(true);
+    if (this.service.pendingPromise) {
+      await this.#onMessageBegin();
+      if (this.service.pendingMessage)
+        await this.#onMessageDelta(this.service.pendingMessage, {pending: true});
+      if (this.service.lastError)
+        this.#onMessageError(this.service.lastError);
+    } else {
+      this.#resetUIState();
+    }
+  }
+
+  // User has sent a message.
+  async #onUserMessage(message: ChatMessage) {
+    await this.messagesView.appendMessage(message, this.service.history.length - 1);
+  }
+
+  // Last error has been cleared for renegeration.
+  #onClearError() {
+    this.messagesView.removeMessage(this.service.history.length);
+  }
+
+  // Begin receving response.
+  async #onMessageBegin() {
+    // Add a bot message to indicate we are loading.
+    await this.messagesView.appendPendingMessage({role: ChatRole.Assistant}, this.service.history.length);
+    // Mark state as sending.
+    this.#setButtonMode('stop');
+    this.input.setText('');
+  }
+
   // Message being received.
-  async #onMessageDelta(delta: Partial<ChatMessage>, info: ChatMessageInfo) {
-    if (info.first) {
-      // Show the message if we are receiving it for the first time.
-      await this.messagesView.appendMessage(delta, info);
-      if (info.pending) {
-        this.#setButtonMode('stop');
-        this.input.setText('');
-      }
-    } else if (delta.content) {
+  async #onMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
+    if (delta.content) {
       // Update the message when receiving deltas.
       if (!this.#markdown)
         this.#markdown = new StreamedMarkdown();
       const change = this.#markdown.appendText(delta.content);
       this.messagesView.appendHtmlToPendingMessage(change);
     }
-    if (info.pending)
+    if (response.pending)
       return;
     // Reset after message is received.
     this.#markdown = null;
-    if (!info.first) {
-      this.#resetUIState();
-      if (this.service.aborter?.signal.aborted)
-        this.messagesView.addAbortedLabelToPendingMessage();
-      this.messagesView.removePendingMark();
-    }
+    this.#resetUIState();
+    if (this.service.aborter?.signal.aborted)
+      this.messagesView.abortPending();
+    this.messagesView.endPending();
   }
 
   // There is error thrown when sending message.
   #onMessageError(error: Error) {
-    this.messagesView.appendError(error.message);
+    if (error.name == 'AbortError')
+      this.messagesView.abortPending();
+    else
+      this.messagesView.appendError(error.message);
     this.#resetUIState();
-  }
-
-  // Set the input and button to ready to send state.
-  #resetUIState() {
-    if (this.service.api instanceof ChatConversationAPI) {
-      // There is no refresh in ChatConversationAPI.
-      this.#setButtonMode('send');
-    } else {
-      if (this.service.history.length == 0 ||
-          (this.service.history[this.service.history.length - 1].role == ChatRole.Assistant &&
-           this.input.entry.getText().length > 0)) {
-        this.#setButtonMode('send');
-      } else {
-        this.#setButtonMode('refresh');
-      }
-    }
-    this.onFocus();
-  }
-
-  // Change button mode.
-  #setButtonMode(mode: ButtonMode) {
-    this.replyButton.setImage(mode);
-    this.replyButton.setEnabled(true);
-    this.replyButton.view.setTooltip(getTooltipForMode(mode));
-    this.menuButton.setEnabled(mode != 'stop');
-    this.#buttonMode = mode;
-    // Disable send button when there is error happened.
-    if (mode == 'send' && this.service.lastError)
-      this.replyButton.setEnabled(false);
-  }
-
-  async #onDomReady() {
-    this.input.setEntryEnabled(true);
-    // Recover current state of chat.
-    if (this.service.pendingMessage) {
-      await this.#onMessageDelta(this.service.pendingMessage, {first: true, pending: true});
-      if (this.service.lastError)
-        this.#onMessageError(this.service.lastError);
-    } else {
-      this.#resetUIState();
-    }
   }
 
   // Browser bindings.

@@ -16,6 +16,13 @@
     <div class="sender">
       <div class="name"><%= message.sender %></div>
     </div>
+    <div class="steps">
+    <% if (message.steps) { %>
+    <% for (const step of message.steps) { %>
+      <p><%= step %></p>
+    <% } %>
+    <% } %>
+    </div>
     <% if (response.pending) { %>
       <img id="loader" src="chie://app-file/assets/icons/typing.gif"/>
     <% } %>

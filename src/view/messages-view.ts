@@ -6,12 +6,13 @@ import path from 'node:path';
 
 import BrowserView, {style} from './browser-view';
 import StreamedMarkdown, {escapeText, highlightCode} from '../util/streamed-markdown';
-import {ChatRole, ChatMessage} from '../model/chat-api';
+import {ChatRole, ChatMessage, Link} from '../model/chat-api';
 
 // EJS templates.
 let pageTemplate: ejs.AsyncTemplateFunction;
 let messageTemplate: ejs.AsyncTemplateFunction;
-let initPromise: Promise<[void, void]>;
+let repliesTemplate: ejs.AsyncTemplateFunction;
+let initPromise: Promise<[void, void, void]>;
 
 // Init templates immediately, since it is asynchronous it won't affect UI
 // loading and will speed up chat loading later.
@@ -60,6 +61,22 @@ export default class MessagesView extends BrowserView {
     this.executeJavaScript(`window.appendHtmlToPendingMessage(${JSON.stringify(delta)})`);
   }
 
+  // Append internal steps.
+  appendSteps(steps: string[]) {
+    this.executeJavaScript(`window.appendSteps(${JSON.stringify(steps)})`);
+  }
+
+  // Add links to references.
+  appendLinks(index: number, links: Link[]) {
+    this.executeJavaScript(`window.appendLinks(${index}, ${JSON.stringify(links)})`);
+  }
+
+  // Add some suggested replies.
+  async setSuggestdReplies(replies: string[]) {
+    const html = await repliesTemplate({replies});
+    this.executeJavaScript(`window.setSuggestdReplies(${JSON.stringify(html)})`);
+  }
+
   // Mark the end of pending message.
   endPending() {
     this.hasPendingMessage = false;
@@ -105,7 +122,7 @@ export default class MessagesView extends BrowserView {
       throw new Error('Role of message expected for serialization.');
     let content = message.content;
     if (content && message.role == ChatRole.Assistant)
-      content = (new StreamedMarkdown({highlight: true})).appendText(content).html;
+      content = (new StreamedMarkdown({highlight: true, links: message.links})).appendText(content).html;
     else
       content = escapeText(content);
     const sender = {
@@ -116,7 +133,7 @@ export default class MessagesView extends BrowserView {
     let avatar = null;
     if (message.role == ChatRole.Assistant)
       avatar = this.assistantAvatar;
-    return {role: message.role, sender, avatar, content, index};
+    return {role: message.role, sender, avatar, content, index, steps: message.steps, links: message.links};
   }
 
   // Browser bindings.
@@ -137,7 +154,7 @@ export default class MessagesView extends BrowserView {
 // Initialize EJS templates, and when there are multiple calls to init, they
 // will all wait for the same initialization work.
 async function initTemplates() {
-  if (pageTemplate && messageTemplate)
+  if (pageTemplate && messageTemplate && repliesTemplate)
     return;
   if (initPromise)
     return initPromise;
@@ -152,6 +169,11 @@ async function initTemplates() {
       const filename = path.join(assetsDir, 'view', 'message.html');
       const html = await fs.readFile(filename);
       messageTemplate = await ejs.compile(html.toString(), {filename, async: true});
+    })(),
+    (async () => {
+      const filename = path.join(assetsDir, 'view', 'replies.html');
+      const html = await fs.readFile(filename);
+      repliesTemplate = await ejs.compile(html.toString(), {filename, async: true});
     })(),
   ]);
   await initPromise;

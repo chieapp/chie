@@ -62,6 +62,7 @@ export default class ChatView extends BaseView<ChatService> {
     this.messagesView.browser.addBinding('focusEntry', this.onFocus.bind(this));
     this.messagesView.browser.addBinding('showTextAt', this.#showTextAt.bind(this));
     this.messagesView.browser.addBinding('copyTextAt', this.#copyTextAt.bind(this));
+    this.messagesView.browser.addBinding('sendReply', this.#sendReply.bind(this));
     this.messagesView.onDomReady.connect(this.#onDomReady.bind(this));
     this.view.addChildView(this.messagesView.view);
 
@@ -166,8 +167,6 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   getDraft(): string | null {
-    if (this.service.pendingMessage)
-      return null;
     const content = this.input.entry.getText();
     if (content.trim().length == 0)
       return null;
@@ -194,7 +193,7 @@ export default class ChatView extends BaseView<ChatService> {
       return;
     }
     // Can only stop if there is pending message.
-    if (this.service.pendingMessage) {
+    if (this.service.pendingPromise) {
       this.#setButtonMode('stop');
       return;
     }
@@ -221,24 +220,21 @@ export default class ChatView extends BaseView<ChatService> {
     if (!content)
       return false;
     // Send message.
+    this.replyButton.setEnabled(false);
     this.service.sendMessage({role: ChatRole.User, content});
     return false;
   }
 
   // User clicks on the send button.
   #onButtonClick() {
-    // Success of action always change button mode, so disable button here and
-    // when the action finishes it will be enabled again.
-    this.replyButton.setEnabled(false);
     // Do the action depending on button mode.
     if (this.#buttonMode == 'send') {
-      if (this.getDraft())
-        this.#onEnter();
-      else
-        this.replyButton.setEnabled(true);
+      this.#onEnter();
     } else if (this.#buttonMode == 'stop') {
+      this.replyButton.setEnabled(false);
       this.service.aborter.abort();
     } else if (this.#buttonMode == 'refresh') {
+      this.replyButton.setEnabled(false);
       this.service.regenerateResponse();
     }
   }
@@ -290,13 +286,21 @@ export default class ChatView extends BaseView<ChatService> {
 
   // Message being received.
   async #onMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
+    if (delta.steps)
+      this.messagesView.appendSteps(delta.steps);
+    if (!this.#markdown && (delta.links || delta.content))
+      this.#markdown = new StreamedMarkdown();
+    if (delta.links) {
+      this.#markdown.appendLinks(delta.links);
+      this.messagesView.appendLinks(this.service.pendingMessage?.links?.length ?? 0, delta.links);
+    }
     if (delta.content) {
       // Update the message when receiving deltas.
-      if (!this.#markdown)
-        this.#markdown = new StreamedMarkdown();
       const change = this.#markdown.appendText(delta.content);
       this.messagesView.appendHtmlToPendingMessage(change);
     }
+    if (response.suggestedReplies)
+      await this.messagesView.setSuggestdReplies(response.suggestedReplies);
     if (response.pending)
       return;
     // Reset after message is received.
@@ -331,6 +335,10 @@ export default class ChatView extends BaseView<ChatService> {
 
   #copyTextAt(index: number) {
     gui.Clipboard.get().setText(this.service.history[index].content);
+  }
+
+  #sendReply(content: string) {
+    this.service.sendMessage({role: ChatRole.User, content});
   }
 }
 

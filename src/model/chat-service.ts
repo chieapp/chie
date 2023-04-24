@@ -121,7 +121,6 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     };
     this.history.push(senderMessage);
     this.onUserMessage.emit(senderMessage);
-    this.#saveMoment();
     // Start sending.
     await (this.pendingPromise = this.#generateResponse(options));
   }
@@ -181,7 +180,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
       }
     } catch (error) {
       // Interrupting a pending message is not treated as error.
-      if (!(this.pendingMessage && error.name == 'AbortError')) {
+      if (!(this.pendingMessage?.content && error.name == 'AbortError')) {
         this.lastError = error;
         this.onMessageError.emit(error);
         return;
@@ -214,17 +213,29 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
         throw new Error('First message delta should include role');
       this.pendingMessage = {role: delta.role ?? ChatRole.Assistant};
     }
+    if (delta.steps) {
+      if (this.pendingMessage.steps)
+        this.pendingMessage.steps.push(...delta.steps);
+      else
+        this.pendingMessage.steps = delta.steps;
+    }
     if (delta.content) {
       if (this.pendingMessage.content)
         this.pendingMessage.content += delta.content;
       else
         this.pendingMessage.content = delta.content;
     }
+    if (delta.links) {
+      if (this.pendingMessage.links)
+        this.pendingMessage.links.push(...delta.links);
+      else
+        this.pendingMessage.links = delta.links;
+    }
 
     // Send onMessage when all pending messages have been received.
     if (!response.pending) {
       if (!this.pendingMessage.role || !this.pendingMessage.content)
-        throw new Error('Incomplete delta received from ChatGPT');
+        throw new Error('Incomplete delta received from API');
       const message = {
         role: this.pendingMessage.role,
         content: this.pendingMessage.content.trim(),

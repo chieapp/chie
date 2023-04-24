@@ -68,6 +68,7 @@
   // External API to add a new message.
   var messages = document.getElementById('messages');
   window.appendMessage = function(html) {
+    removeSuggestedReplies();
     var children = HTMLToDOM(html);
     for (var i = 0; i < children.length; i++)
       messages.appendChild(children[i]);
@@ -149,6 +150,7 @@
   };
   window.abortPending = function() {
     var text = findPending('text');
+    var wasAtBottom = isPageBottom();
     if (text) {
       var inlineText = text;
       // If the last child of text is an element, append into it.
@@ -159,20 +161,65 @@
       inlineText.insertAdjacentHTML('beforeend', ' <span class="error label">(aborted)</span>');
     }
     endPending();
+    if (wasAtBottom)
+      scrollToBottom();
   };
   window.appendError = function(error) {
     var text = findPending('text');
-    if (text)
-      text.innerHTML += '<div class="error">' + error + '</div>';
+    if (!text)
+      throw new Error('Can not append error when there is no pending message.');
+    var wasAtBottom = isPageBottom();
+    text.innerHTML += '<div class="error">' + error + '</div>';
     endPending();
+    if (wasAtBottom)
+      scrollToBottom();
   };
+  window.appendSteps = function(steps) {
+    var element = findPending('steps');
+    if (!element)
+      throw new Error('Can not append steps when there is no pending message.');
+    var wasAtBottom = isPageBottom();
+    for (var i in steps) {
+      var p = document.createElement('p');
+      p.appendChild(document.createTextNode(steps[i]));
+      element.appendChild(p);
+    }
+    if (wasAtBottom)
+      scrollToBottom();
+  }
+  window.appendLinks = function(index, links) {
+    var text = findPending('text');
+    if (!text)
+      throw new Error('Can not append links when there is no pending message.');
+    var as = [].slice.call(text.getElementsByClassName('pending-ref'));
+    for (var i = 0; i < as.length; ++i) {
+      var a = as[i];
+      var aIndex = a.firstElementChild.textContent - 1;
+      if (aIndex >= index && aIndex < index + links.length) {
+        var link = links[aIndex - index];
+        a.classList.remove('pending-ref');
+        a.title = link.name;
+        a.href = link.url;
+      }
+    }
+  }
+  window.setSuggestdReplies = function(replies) {
+    var content = findPending('content');
+    if (!content)
+      throw new Error('Can not set replies when there is no pending message.');
+    var wasAtBottom = isPageBottom();
+    removeSuggestedReplies();
+    content.insertAdjacentHTML('beforeend', replies);
+    if (wasAtBottom)
+      scrollToBottom();
+  }
 
   // DOM event handlers ====================================================
 
   // Capture clicks on <a>.
   window.onclick = function(event) {
     var target = findParent('a', event.target);
-    if (!target)
+    if (!target || !target.href)
       return false;
     // Open links in actual browsers.
     if (target.href.indexOf('#') == -1 && !target.onclick) {
@@ -289,6 +336,12 @@
     var loader = document.getElementById('loader');
     if (loader)
       loader.parentNode.removeChild(loader);
+  }
+  // Remove suggested replies.
+  function removeSuggestedReplies() {
+    var replies = document.getElementById('replies');
+    if (replies)
+      replies.parentNode.removeChild(replies);
   }
   // Helper to convert HTML to DOM.
   function HTMLToDOM(html) {

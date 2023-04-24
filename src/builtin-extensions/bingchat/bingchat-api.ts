@@ -7,6 +7,7 @@ import {
   ChatAPIOptions,
   ChatConversationAPI,
   ChatMessage,
+  ChatResponse,
   ChatRole,
   NetworkError,
 } from 'chie';
@@ -28,8 +29,8 @@ type SessionData = {
 };
 
 export default class BingChatAPI extends ChatConversationAPI<SessionData> {
-  #invocationId = 1;
   #lastContent: string = '';
+  #lastLinks: {name: string, url: string}[];
 
   constructor(endpoint: APIEndpoint) {
     if (endpoint.type != 'BingChat')
@@ -59,11 +60,13 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
       if (options.signal)
         options.signal.removeEventListener('abort', handler);
       this.#lastContent = '';
+      this.#lastLinks = null;
     }
   }
 
   async clear() {
     this.#lastContent = '';
+    this.#lastLinks = null;
     this.session = null;
   }
 
@@ -111,6 +114,17 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
             if (!event.arguments[0].messages)
               continue;
             this.#handlePayload(event.arguments[0].messages[0], options);
+          } else if (event.type == 2) {
+            // Possible denied service.
+            if (event.item.result.value != 'Success') {
+              reject(new APIError(event.item.result.message));
+              return;
+            }
+            const message = event.item.messages[event.item.messages.length - 1];
+            if (message['hiddenText']?.includes('Conversation disengaged.'))
+              reject(new APIError('Conversation disengaged.'));
+            else if (event.item.messages.find(m => m.contentOrigin == 'TurnLimiter'))
+              reject(new APIError('Chat turn limit has been reached.'));
           } else if (event.type == 3) {
             // Finished.
             resolve();
@@ -146,27 +160,55 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
   }
 
   #handlePayload(payload: object, options) {
-    // We don't support special messages.
-    if (payload['messageType'])
-      return;
-
     // We assume all messages are from bot.
     if (payload['author'] != 'bot')
       throw new APIError(`Unrecognized author in chat: ${payload['author']}`);
-
     const delta: Partial<ChatMessage> = {role: ChatRole.Assistant};
-    if (payload['text']) {
-      // BingChat always return full text, while we want only deltas.
-      delta.content = payload['text'].substr(this.#lastContent.length);
-      this.#lastContent = payload['text'];
+
+    const messageType = payload['messageType'];
+    if (messageType) {
+      // Parse internal text.
+      if (messageType == 'InternalSearchQuery')
+        delta.steps = [ payload['text'] ];
+      else  // ignore other internal message for now
+        return;
+    } else {
+      // Parse normal message.
+      if (payload['text']) {
+        // BingChat always return full text, while we want only deltas.
+        delta.content = payload['text'].substr(this.#lastContent.length);
+        this.#lastContent = payload['text'];
+      }
+      // Parse the links attached to the message.
+      const sourceAttributions = payload['sourceAttributions'];
+      if (Array.isArray(sourceAttributions) && sourceAttributions.length > 0) {
+        if (!this.#lastLinks || sourceAttributions.length > this.#lastLinks.length) {
+          delta.links = sourceAttributions
+            .slice(this.#lastLinks ? this.#lastLinks.length : 0)
+            .map(a => ({name: a.providerDisplayName, url: a.seeMoreUrl}));
+          this.#lastLinks = sourceAttributions;
+        }
+      }
     }
-    if (!delta.content)  // empty delta
+
+    // Skipt empty delta.
+    if (!delta.steps && !delta.content && !delta.links && !payload['suggestedResponses'])
       return;
-    options.onMessageDelta(delta, {
+
+    const response: ChatResponse = {
       pending: true,
       id: payload['messageId'],
       filtered: payload['offense'] == 'OffenseTrigger',
-    });
+    };
+
+    // We consider suggested replies as resposne instead of message itself,
+    // because we don't want to save them in history, and we always remove them
+    // after receiving a new message.
+    const suggestedResponses = payload['suggestedResponses'];
+    if (suggestedResponses && suggestedResponses.length > 0)
+      response.suggestedReplies = suggestedResponses.map(s => s.text.trim()).filter(s => s.length > 0);
+
+    options.onMessageDelta(delta, response);
   }
 }
 

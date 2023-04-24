@@ -1,6 +1,35 @@
 import hljs from 'highlight.js';
-import {escape} from 'html-escaper';
+import {escape, unescape} from 'html-escaper';
 import {marked} from 'marked';
+
+import {Link} from '../model/chat-api';
+
+// Custom extension to support Bing links like [^1^].
+const bingReference = {
+  name: 'bingReference',
+  level: 'inline',
+  start: (src) => src.match(/\[\^\d\^\]/)?.index,
+  tokenizer(src) {
+    const match = src.match(/^\[\^(\d)\^\]([^[(]*)/);
+    if (match) {
+      return {
+        type: 'bingReference',
+        raw: `[^${match[1]}^]`,
+        tokens: [],
+        num: match[1],
+        link: null,
+      };
+    }
+  },
+  renderer(token) {
+    if (token.link)
+      return `<a title="${escape(token.link.name)}" href="${token.link.url}"><sup>${token.num}</sup></a>`;
+    else
+      return `<a class="pending-ref"><sup>${token.num}</sup></a>`;
+  }
+};
+
+marked.use({extensions: [ bingReference ]});
 
 export interface MarkdownHtmlDelta {
   type: 'append' | 'insert' | 'reset';
@@ -17,10 +46,13 @@ export default class StreamedMarkdown {
   text: string = '';
   isMarkdown: boolean = false;
   html: string;
+  links: Link[];
 
   renderer: marked.Renderer;
 
-  constructor(options: {highlight?: boolean} = {}) {
+  constructor(options: {highlight?: boolean, links?: Link[]} = {}) {
+    if (options.links)
+      this.links = options.links;
     this.renderer = new marked.Renderer();
     // Add toolbar and code highlight for code blocks.
     this.renderer.code = (text, lang) => {
@@ -41,17 +73,32 @@ export default class StreamedMarkdown {
     this.renderer.html = escape;
   }
 
+  appendLinks(links: Link[]) {
+    if (!this.links)
+      this.links = [];
+    this.links.push(...links);
+  }
+
   appendText(text: string): MarkdownHtmlDelta {
     this.isMarkdown = this.isMarkdown || veryLikelyMarkdown(text);
     this.text += text;
-    const html = this.isMarkdown ?
-      marked.parse(this.text, {renderer: this.renderer, breaks: true, silent: true}) :
-      escapeText(this.text);
+    const options: marked.MarkedOptions = {
+      walkTokens: this.links ? this.#walkTokens.bind(this) : undefined,
+      renderer: this.renderer,
+      breaks: true,
+      silent: true,
+    };
+    const html = this.isMarkdown ? marked.parse(this.text, options) : escapeText(this.text);
     const result = computeHtmlDelta(this.html, html);
     if (!result)  // essentially no change
       return {type: 'append', html: ''};
     this.html = html;
     return result;
+  }
+
+  #walkTokens(token) {
+    if (token.type == 'bingReference' && token.num - 1 < this.links.length)
+      token.link = this.links[token.num - 1];
   }
 }
 
@@ -98,8 +145,10 @@ function computeHtmlDelta(before: string | null, after: string): MarkdownHtmlDel
   // into last child instead of updating whole html.
   const match = oldTail.match(/^([^<>]*)(<\/\w+>[\s]*)+$/);
   if (match) {
-    const deleteText = match[1].length;
-    const tail = oldTail.slice(deleteText);
+    const tail = oldTail.slice(match[1].length);
+    // When deleting text in the html, note that characters are counted by
+    // decoded, while the html here are encoded strings.
+    const deleteText = unescape(match[1]).length;
     if (newTail.endsWith(tail)) {
       // Count how many closing tags.
       const depth = (oldTail.match(/<\/\w+>/g) || []).length;

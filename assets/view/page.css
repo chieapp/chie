@@ -112,6 +112,11 @@ a.icon i.icon-ok {
   font-size: 12px;
 }
 
+.steps p {
+  font-size: 13px;
+  margin: 2px 0;
+}
+
 .text .label {
   font-size: 13px;
   white-space: nowrap;
@@ -121,6 +126,10 @@ a.icon i.icon-ok {
 }
 .text > p:last-child {
   margin-bottom: 0;
+}
+
+.text sup {
+  padding-left: 2px;
 }
 
 .text .code-block pre, .text code {
@@ -190,4 +199,20 @@ a.icon i.icon-ok {
   text-align: left;
   padding: 0.5em;
   border: 1px solid;
+}
+
+#replies button {
+  float: left;
+  height: 20px;
+  font-size: 12px;
+  margin: <%= style.padding / 2 %>px <%= style.padding / 2 %>px 0 0;
+  padding: 0 10px;
+  border: 1px solid;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 80ms linear;
+}
+#replies button:hover {
+  background: #EEE;
+  box-shadow: 0 1px 3px 0 #00000014;
 }

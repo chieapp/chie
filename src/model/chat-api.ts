@@ -7,9 +7,16 @@ export enum ChatRole {
   System = 'System',
 }
 
+export interface Link {
+  name: string;
+  url: string;
+}
+
 export interface ChatMessage {
   role: ChatRole;
   content: string;
+  steps?: string[];
+  links?: Link[];
 }
 
 export interface ChatResponse {
@@ -19,6 +26,8 @@ export interface ChatResponse {
   id?: string;
   // The content is omitted because of content filter.
   filtered?: boolean;
+  // Replies suggested.
+  suggestedReplies?: string[];
 }
 
 export type onMessageDeltaCallback = (delta: Partial<ChatMessage>, response: ChatResponse) => void;

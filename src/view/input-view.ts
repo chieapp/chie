@@ -4,15 +4,17 @@ import IconButton from './icon-button';
 import {createRoundedCornerPath} from '../util/draw-utils';
 
 export default class InputView extends AppearanceAware {
-  // Color of TextEdit.
-  static bgColor?: number;
-  static disabledBgColor?: number;
-
   autoResize?: {min: number, max: number};
 
   entry: gui.TextEdit;
   buttons: IconButton[] = [];
   buttonsArea?: gui.Container;
+
+  // Color of TextEdit.
+  // Note that while it is tempting to do a global cache of the colors, it would
+  // be hard to update the cache when window is not opened.
+  bgColor?: number;
+  disabledBgColor?: number;
 
   constructor() {
     super();
@@ -54,8 +56,8 @@ export default class InputView extends AppearanceAware {
 
   onColorSchemeChange() {
     super.onColorSchemeChange();
-    InputView.bgColor = null;
-    InputView.disabledBgColor = null;
+    this.bgColor = null;
+    this.disabledBgColor = null;
   }
 
   setAutoResize(autoResize: {min: number, max: number}) {
@@ -95,13 +97,13 @@ export default class InputView extends AppearanceAware {
     const bounds = Object.assign(view.getBounds(), {x: 0, y: 0});
     createRoundedCornerPath(painter, bounds, 5);
     if (this.entry.isEnabled()) {
-      if (!InputView.bgColor)
-        InputView.bgColor = gui.Color.get('text-edit-background');
-      painter.setFillColor(InputView.bgColor);
+      if (!this.bgColor)
+        this.bgColor = gui.Color.get('text-edit-background');
+      painter.setFillColor(this.bgColor);
     } else {
-      if (!InputView.disabledBgColor)
-        InputView.disabledBgColor = gui.Color.get('disabled-text-edit-background');
-      painter.setFillColor(InputView.disabledBgColor);
+      if (!this.disabledBgColor)
+        this.disabledBgColor = gui.Color.get('disabled-text-edit-background');
+      painter.setFillColor(this.disabledBgColor);
     }
     painter.fill();
   }

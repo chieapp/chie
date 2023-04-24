@@ -24,6 +24,9 @@ a.icon:hover {
 .msg .sender .time {
   color: #717274;
 }
+.steps {
+  color: #616061;
+}
 .text .error {
   color: #FF4444;
 }
@@ -48,4 +51,12 @@ a.icon:hover {
 }
 .text table, .text th, .text td {
   border-color: #888;
+}
+#replies button {
+  color: #1D1C1D;
+  border-color: #1D1C1D4D;
+  background: #FFF;
+}
+#replies button:hover {
+  background: #EEE;
 }

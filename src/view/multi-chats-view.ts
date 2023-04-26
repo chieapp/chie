@@ -237,11 +237,11 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     return item;
   }
 
-  #onSelectItem(item: ChatListItem) {
+  async #onSelectItem(item: ChatListItem) {
     if (this.#selectedItem && this.#selectedItem != item)
       this.#selectedItem.setSelected(false);
     this.#selectedItem = item;
-    this.chatView.loadChatService(this.#selectedItem.service);
+    await this.chatView.loadChatService(this.#selectedItem.service);
     this.onNewTitle.emit();
   }
 

@@ -17,6 +17,8 @@ interface SessionData {
 }
 
 export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
+  static canRemoveFromServer = true;
+
   #lastContent: string;
 
   constructor(endpoint: APIEndpoint) {
@@ -65,6 +67,17 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
     for await (const chunk of bodyToIterator(response.body)) {
       parser.feed(decoder.decode(chunk));
     }
+  }
+
+  async removeFromServer() {
+    if (!this.session?.conversationId)
+      return;
+    const response = await fetch(`${this.endpoint.url}/${this.session.conversationId}`, {
+      body: JSON.stringify({is_visible: false}),
+      method: 'PATCH',
+      headers: this.#getHeaders(),
+    });
+    await response.json();
   }
 
   #getHeaders(): HeadersInit {

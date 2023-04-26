@@ -10,6 +10,7 @@ import {
   ChatResponse,
   ChatCompletionAPI,
   ChatConversationAPI,
+  ChatConversationAPIType,
 } from './chat-api';
 import apiManager from '../controller/api-manager';
 import serviceManager from '../controller/service-manager';
@@ -108,8 +109,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   destructor() {
     super.destructor();
     this.aborter?.abort();
-    if (this.moment)
-      historyKeeper.forget(this.moment);
+    this.#clearResources();
   }
 
   // Send a message and wait for response.
@@ -160,11 +160,8 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     this.history = [];
     this.title = null;
     this.onNewTitle.emit(null);
-    if (this.api instanceof ChatConversationAPI)
-      this.api.session = null;
+    this.#clearResources();
     this.onClearMessages.emit();
-    if (this.moment)
-      historyKeeper.forget(this.moment);
   }
 
   // Call the API.
@@ -290,12 +287,15 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
       await this.api.sendConversation([message], {
         onMessageDelta(delta) { title += delta.content ?? ''; }
       });
-    } else if (this.api instanceof ChatConversationAPI) {
+    } else if (this.api instanceof ChatConversationAPI &&
+               (this.api.constructor as ChatConversationAPIType<ChatServiceSupportedAPIs>).canRemoveFromServer) {
       // Spawn a new conversation to ask for title generation.
       const api = apiManager.createAPIForEndpoint(this.api.endpoint) as ChatConversationAPI;
       await api.sendMessage(prompt, {
         onMessageDelta(delta) { title += delta.content ?? ''; }
       });
+      // Clear the temporary conversation.
+      await api.removeFromServer().catch(() => { /* Ignore error */ });
     } else {
       // Return the first words of last message.
       const words = this.history[this.history.length - 1].content.substring(0, 30).split(' ').slice(0, 5);
@@ -323,6 +323,16 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     this.#titlePromise = null;
     this.#saveMoment();
     return title;
+  }
+
+  #clearResources() {
+    if (this.api instanceof ChatConversationAPI) {
+      if ((this.api.constructor as ChatConversationAPIType<ChatServiceSupportedAPIs>).canRemoveFromServer)
+        this.api.removeFromServer().catch(() => { /* Ignore error */ });
+      this.api.session = null;
+    }
+    if (this.moment)
+      historyKeeper.forget(this.moment);
   }
 
   // Write history to disk.

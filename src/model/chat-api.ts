@@ -55,4 +55,16 @@ export abstract class ChatConversationAPI<T = object> extends WebAPI {
 
   // Send a single user message and get reply.
   abstract sendMessage(text: string, options: ChatAPIOptions): Promise<void>;
+
+  // Tell server to delete current conversation.
+  removeFromServer(): Promise<void> {
+    throw new Error('Not implemented.');
+  }
+}
+
+// Defines static properties on ChatConversationAPI.
+type ChatConversationAPIConstructorType<T> = new (endpoint: APIEndpoint) => ChatConversationAPI<T>;
+
+export interface ChatConversationAPIType<T> extends ChatConversationAPIConstructorType<T> {
+  canRemoveFromServer?: boolean;
 }

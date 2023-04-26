@@ -45,8 +45,15 @@ async function login(firstUrl) {
   try {
     win.browser.loadURL(firstUrl);
     await win.waitForNavigation(/chat\.openai\.com\/?#?$/);
+    for (;;) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Only when input shows do we know login is successful.
+      const hasInput = await win.browser.executeJavaScript('document.getElementsByTagName("textarea").length');
+      console.log(hasInput);
+      if (hasInput)
+        break;
+    }
     const cookie = await win.browser.getCookie('https://chat.openai.com/');
-    await new Promise(resolve => setTimeout(resolve, 1000));
     win.browser.loadURL('https://chat.openai.com/api/auth/session');
     await win.waitForNavigation(/\/api\/auth\/session$/);
     const session = JSON.parse(await win.browser.executeJavaScript('document.body.lastChild.textContent'));

@@ -6,7 +6,6 @@ import {realpathSync} from 'node:fs';
 import AppearanceAware from '../view/appearance-aware';
 
 export const style = {
-  padding: 14,
   light: {
     bgColor: '#FFF',
   },
@@ -35,6 +34,7 @@ export default class BrowserView extends AppearanceAware {
       hardwareAcceleration: false,
     });
     this.browser.setStyle({flex: 1});
+    this.browser.onFinishNavigation = this.#domReady.bind(this);
     if (this.darkMode)
       this.browser.setBackgroundColor(style.dark.bgColor);
     if (options.hideUntilLoaded)
@@ -43,7 +43,6 @@ export default class BrowserView extends AppearanceAware {
 
     // Add bindings to the browser.
     this.browser.setBindingName('chie');
-    this.browser.addBinding('domReady', this.#domReady.bind(this));
     this.browser.addBinding('catchDomError', this.#catchDomError.bind(this));
     this.browser.addBinding('log', this.#log.bind(this));
 
@@ -67,6 +66,27 @@ export default class BrowserView extends AppearanceAware {
     this.#queue.push(cb => this.browser.executeJavaScript(js, () => cb()));
     if (this.isDomReady)
       this.#queue.start();
+  }
+
+  getCookie(url: string): Promise<string> {
+    return new Promise<string>((resolve) => {
+      this.browser.getCookiesForURL(url, (cookies) => {
+        resolve(cookies.map(c => `${c.name}=${c.value}`).join('; '));
+      });
+    });
+  }
+
+  getValue<T>(js: string): Promise<T> {
+    if (!this.isDomReady)
+      throw new Error('Can not call getValue before dom is loaded.');
+    return new Promise<T>((resolve, reject) => {
+      this.browser.executeJavaScript(js, (success: boolean, value: T) => {
+        if (success)
+          resolve(value);
+        else
+          reject(new Error('Failed to execute JavaScript.'));
+      });
+    });
   }
 
   #domReady() {

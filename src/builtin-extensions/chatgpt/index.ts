@@ -6,7 +6,7 @@ export function activate() {
     name: 'ChatGPT API',
     apiType: ChatGPTAPI,
     auth: 'key',
-    icon: new Icon({name: 'chatgpt'}),
+    icon: new Icon({name: 'openai'}),
     description: 'OpenAI Chat API, requires an API key.',
     url: 'https://api.openai.com/v1/chat/completions',
     priority: 10,

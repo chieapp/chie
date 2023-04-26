@@ -204,11 +204,12 @@
     }
   }
   window.setSuggestdReplies = function(replies) {
-    var content = findPending('content');
-    if (!content)
-      throw new Error('Can not set replies when there is no pending message.');
+    var messages = document.getElementsByClassName('msg');
+    if (messages.length === 0)
+      throw new Error('Can not set replies when there is no message.');
     var wasAtBottom = isPageBottom();
     removeSuggestedReplies();
+    var content = messages[messages.length - 1].getElementsByClassName('content')[0];
     content.insertAdjacentHTML('beforeend', replies);
     if (wasAtBottom)
       scrollToBottom();
@@ -297,8 +298,6 @@
 
   // Ready =================================================================
 
-  // We are ready.
-  chie.domReady();
   // See comment above on IE.
   if (isIE)
     scrollToBottom();

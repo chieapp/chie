@@ -7,9 +7,9 @@ import NewAPIWindow from './new-api-window';
 import alert from '../util/alert';
 import app from '../controller/app';
 import apiManager from '../controller/api-manager';
+import basicStyle from './basic-style';
 import windowManager from '../controller/window-manager';
 import serviceManager from '../controller/service-manager';
-import {style} from './browser-view';
 
 export default class SettingsWindow extends BaseWindow {
   tab: gui.Tab;
@@ -24,21 +24,21 @@ export default class SettingsWindow extends BaseWindow {
   constructor() {
     super({pressEscToClose: true});
 
-    this.contentView.setStyle({padding: style.padding});
+    this.contentView.setStyle({padding: basicStyle.padding});
 
     this.tab = gui.Tab.create();
     this.tab.setStyle({flex: 1});
     this.contentView.addChildView(this.tab);
 
     const settings = gui.Container.create();
-    settings.setStyle({padding: style.padding});
+    settings.setStyle({padding: basicStyle.padding});
     this.tab.addPage('Settings', settings);
     settings.addChildView(this.#createAppTraySetting());
     if (process.platform == 'darwin')
       settings.addChildView(this.#createDockIconSetting());
 
     const apis = gui.Container.create();
-    apis.setStyle({padding: style.padding});
+    apis.setStyle({padding: basicStyle.padding});
     this.tab.addPage('APIs', apis);
     this.apisTable = gui.Table.create();
     this.apisTable.setHasBorder(true);
@@ -84,7 +84,7 @@ export default class SettingsWindow extends BaseWindow {
       type: 'checkbox',
       title: 'Show Dock Icon',
     });
-    checkbox.setStyle({marginTop: style.padding / 2});
+    checkbox.setStyle({marginTop: basicStyle.padding / 2});
     checkbox.setChecked(app.isDockIconVisible());
     checkbox.onClick = () => {
       checkbox.setEnabled(false);

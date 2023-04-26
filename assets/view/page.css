@@ -124,7 +124,7 @@ a.icon i.icon-ok {
 .text > p:first-child {
   margin-top: 0;
 }
-.text > p:last-child {
+.text > p:last-child, .text > .code-block:last-child {
   margin-bottom: 0;
 }
 
@@ -215,4 +215,8 @@ a.icon i.icon-ok {
 #replies button:hover {
   background: #EEE;
   box-shadow: 0 1px 3px 0 #00000014;
+}
+#replies button.attention {
+  background-color: <%= style.accentColor %>;
+  color: #FFF;
 }

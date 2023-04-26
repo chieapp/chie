@@ -7,7 +7,7 @@ import Param from '../model/param';
 import ParamsView, {valueMarginLeft} from './params-view';
 import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
-import {style} from './browser-view';
+import basicStyle from './basic-style';
 
 export default class NewAPIWindow extends BaseWindow {
   endpoint?: APIEndpoint;
@@ -21,7 +21,7 @@ export default class NewAPIWindow extends BaseWindow {
     super({pressEscToClose: true});
     this.endpoint = endpoint;
 
-    this.contentView.setStyle({padding: style.padding});
+    this.contentView.setStyle({padding: basicStyle.padding});
 
     this.apiSelector = new ParamsView([
       {
@@ -101,7 +101,7 @@ export default class NewAPIWindow extends BaseWindow {
     if (apiRecord.params)
       params.push(...apiRecord.params);
     this.apiParams = new ParamsView(params);
-    this.apiParams.view.setStyle({marginTop: style.padding / 2});
+    this.apiParams.view.setStyle({marginTop: basicStyle.padding / 2});
     this.contentView.addChildViewAt(this.apiParams.view, 1);
     // Fill other params.
     if (endpoint?.params) {
@@ -112,7 +112,7 @@ export default class NewAPIWindow extends BaseWindow {
     if (apiRecord.auth == 'login') {
       this.loginButton = gui.Button.create('Login');
       this.loginButton.setStyle({
-        marginTop: style.padding / 2,
+        marginTop: basicStyle.padding / 2,
         marginLeft: valueMarginLeft,
         marginRight: 0,
       });
@@ -129,8 +129,13 @@ export default class NewAPIWindow extends BaseWindow {
       const info = await apiRecord.login();
       if (info.cookie)
         this.apiParams.getView('cookie').setValue(info.cookie);
+      if (info.params) {
+        for (const name in info.params)
+          this.apiParams.getView(name)?.setValue(info.params[name]);
+      }
     } catch (error) {
       // Ignore error.
+      console.error(error);
     } finally {
       this.loginButton.setEnabled(true);
       this.submitButton.setEnabled(true);
@@ -152,8 +157,7 @@ export default class NewAPIWindow extends BaseWindow {
       this.endpoint.key = this.apiParams.getValue('key');
       this.endpoint.cookie = this.apiParams.getValue('cookie');
       this.endpoint.params = this.#readAPIParams(apiRecord);
-      apiManager.onUpdateEndpoint.emit(this.endpoint);
-      apiManager.saveConfig();
+      apiManager.updateEndpoint(this.endpoint);
     } else {
       if (apiManager.getEndpoints().find(e => e.name == name)) {
         alert('There is already an API endpoint with the same name.');

@@ -1,6 +1,6 @@
 import gui from 'gui';
 
-import {style} from './browser-view';
+import basicStyle from './basic-style';
 
 export default class ButtonsArea {
   view = gui.Container.create();
@@ -8,13 +8,13 @@ export default class ButtonsArea {
 
   constructor(options: {hideSeparator?: boolean} = {}) {
     if (!options.hideSeparator) {
-      this.view.setStyle({paddingTop: style.padding});
+      this.view.setStyle({paddingTop: basicStyle.padding});
       this.view.addChildView(gui.Separator.create('horizontal'));
     }
     this.view.setStyle({justifyContent: 'flex-end'});
     this.row.setStyle({
       flexDirection: 'row-reverse',
-      paddingTop: style.padding,
+      paddingTop: basicStyle.padding,
     });
     this.view.addChildView(this.row);
   }
@@ -23,7 +23,7 @@ export default class ButtonsArea {
     const button = gui.Button.create(title);
     button.setStyle({width: 60, height: 28});
     if (this.row.childCount() > 0)
-      button.setStyle({marginRight: style.padding});
+      button.setStyle({marginRight: basicStyle.padding});
     this.row.addChildView(button);
     return button;
   }

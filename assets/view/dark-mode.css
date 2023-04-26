@@ -60,3 +60,9 @@ a.icon:hover {
 #replies button:hover {
   background: #515457;
 }
+#replies button.attention {
+  border-color: #00c999;
+}
+#replies button.attention:hover {
+  background: #008F6A;
+}

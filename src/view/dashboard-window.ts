@@ -7,6 +7,7 @@ import IconButton from '../view/icon-button';
 import Instance from '../model/instance';
 import NewAPIWindow from './new-api-window';
 import ToggleButton from './toggle-button';
+import basicStyle from './basic-style';
 import serviceManager from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
 import {createRoundedCornerPath} from '../util/draw-utils';
@@ -14,14 +15,11 @@ import {createRoundedCornerPath} from '../util/draw-utils';
 export const style = {
   buttonSize: 32,
   buttonRadius: 6,
-  padding: 14,
   light: {
     bgColor: '#E5E5E5',
-    handleColor: '#00B386',
   },
   dark: {
     bgColor: '#454545',
-    handleColor: '#00B386',
   },
 };
 
@@ -47,13 +45,12 @@ export default class DashboardWindow extends BaseWindow {
     super({showMenuBar: true, useClassicBackground: true});
 
     this.window.onFocus = () => this.selectedView?.mainView.onFocus();
-    this.window.setContentSize({width: 600, height: 400});
     this.contentView.setStyle({flexDirection: 'row'});
 
     this.#sidebar = new AppearanceAware();
     this.#sidebar.view.onDraw = this.#onDraw.bind(this);
     this.#sidebar.view.setStyle({
-      width: style.buttonSize + 2 * style.padding,
+      width: style.buttonSize + 2 * basicStyle.padding,
       alignItems: 'center',
     });
     this.#sidebar.setBackgroundColor(style.light.bgColor, style.dark.bgColor);
@@ -61,7 +58,7 @@ export default class DashboardWindow extends BaseWindow {
 
     this.#addButton = new IconButton('add');
     this.#addButton.view.setTooltip('Add new assistant');
-    this.#addButton.view.setStyle({marginTop: style.padding});
+    this.#addButton.view.setStyle({marginTop: basicStyle.padding});
     this.#addButton.onClick = () => windowManager.showNamedWindow('newAssistant');
     this.#sidebar.view.addChildView(this.#addButton.view);
 
@@ -73,9 +70,6 @@ export default class DashboardWindow extends BaseWindow {
       this.#createViewForInstance(instance);
       this.switchTo(index);
     }));
-
-    if (this.views.length > 0)
-      this.switchTo(0);
   }
 
   destructor() {
@@ -96,13 +90,7 @@ export default class DashboardWindow extends BaseWindow {
   }
 
   restoreState(state: DashboardState) {
-    if (state.selected) {
-      const index = this.views.findIndex(v => v.instance.id == state.selected);
-      if (index > -1)
-        this.switchTo(index);
-      else
-        console.error('Can not find the selected view in DashboardState.');
-    }
+    super.restoreState(state);
     if (state.views) {
       for (const i in state.views) {
         const view = this.views[i];
@@ -112,7 +100,15 @@ export default class DashboardWindow extends BaseWindow {
           console.error('There is invalid state in DashboardState.');
       }
     }
-    super.restoreState(state);
+    if (state.selected) {
+      const index = this.views.findIndex(v => v.instance.id == state.selected);
+      if (index > -1)
+        this.switchTo(index);
+      else
+        console.error('Can not find the selected view in DashboardState.');
+    } else if (this.views.length > 0) {
+      this.switchTo(0);
+    }
   }
 
   getMainView() {
@@ -131,7 +127,7 @@ export default class DashboardWindow extends BaseWindow {
     // Create a button in sidebar.
     const button = new ToggleButton(instance.service.icon.getImage());
     button.view.setStyle({
-      marginTop: style.padding,
+      marginTop: basicStyle.padding,
       width: style.buttonSize,
       height: style.buttonSize,
     });
@@ -235,8 +231,7 @@ export default class DashboardWindow extends BaseWindow {
     const bounds = {x: -4, y: 0, width: 8, height: style.buttonSize};
     bounds.y = this.selectedView.button.view.getBounds().y;
     createRoundedCornerPath(painter, bounds, style.buttonRadius);
-    const theme = this.#sidebar.darkMode ? style.dark : style.light;
-    painter.setFillColor(theme.handleColor);
+    painter.setFillColor(basicStyle.accentColor);
     painter.fill();
   }
 }

@@ -6,7 +6,7 @@ import WindowMenuBar from './window-menu-bar';
 import windowManager from '../controller/window-manager';
 
 export interface WindowState {
-  bounds: gui.RectF;
+  bounds?: gui.RectF;
 }
 
 export interface BaseWindowOptions extends gui.WindowOptions {
@@ -65,7 +65,12 @@ export default class BaseWindow extends SignalsOwner {
   }
 
   restoreState(state: WindowState) {
-    this.window.setBounds(state.bounds);
+    if (state.bounds) {
+      this.window.setBounds(state.bounds);
+    } else {
+      this.window.setContentSize({width: 600, height: 400});
+      this.window.center();
+    }
   }
 
   // Helper for cases that need to guard against double close.

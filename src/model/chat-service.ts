@@ -121,6 +121,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     };
     this.history.push(senderMessage);
     this.onUserMessage.emit(senderMessage);
+    this.#saveMoment();
     // Start sending.
     await (this.pendingPromise = this.#generateResponse(options));
   }
@@ -131,7 +132,8 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
       throw new Error('Unable to regenerate response when there is no message.');
     if (this.pendingMessage && !this.lastError)
       throw new Error('Can not regenerate when there is pending message being received.');
-    if (this.api instanceof ChatConversationAPI && !this.lastError)
+    if (this.api instanceof ChatConversationAPI &&
+        this.history[this.history.length - 1].role == ChatRole.Assistant)
       throw new Error('Can only regenerate for ChatCompletionAPI.');
     // When last message is from assistant, do regenerate, otherwise it would
     // be the same with sending message.
@@ -151,7 +153,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     if (this.api instanceof ChatCompletionAPI)
       this.onNewTitle.emit(null);
     else if (this.api instanceof ChatConversationAPI)
-      this.api.clear();
+      this.api.session = null;
     this.onClearMessages.emit();
     if (this.moment)
       historyKeeper.forget(this.moment);
@@ -187,11 +189,17 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
       }
     }
 
-    // The pendingMessage should be cleared when end of message has been
-    // received, if there is no such signal and the partial message has been
-    // left after API call ends (for example aborted), send an end signal here.
-    if (this.pendingMessage)
+    if (this.pendingMessage) {
+      // The pendingMessage should be cleared when end of message has been
+      // received, if there is no such signal and the partial message has been
+      // left after API call ends (for example aborted), send an end signal here.
       this.#handleMessageDelta({}, {pending: false});
+    } else if (this.pendingPromise) {
+      // If we have never received any message, then it is likely the server
+      // refused our connection for some reason.
+      this.lastError = new Error('Server closed connection.');
+      this.onMessageError.emit(this.lastError);
+    }
 
     // Generate a name for the conversation.
     if (this.api instanceof ChatCompletionAPI &&

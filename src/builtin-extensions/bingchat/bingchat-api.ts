@@ -29,7 +29,7 @@ type SessionData = {
 };
 
 export default class BingChatAPI extends ChatConversationAPI<SessionData> {
-  #lastContent: string = '';
+  #lastContent: string;
   #lastLinks: {name: string, url: string}[];
 
   constructor(endpoint: APIEndpoint) {
@@ -41,6 +41,8 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
   async sendMessage(text: string, options: ChatAPIOptions) {
     if (!this.session)
       await this.#createConversation(options);
+    this.#lastContent = '';
+    this.#lastLinks = null;
 
     const ws = new WebSocket(sydneyWebSocketUrl);
 
@@ -59,15 +61,7 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
     } finally {
       if (options.signal)
         options.signal.removeEventListener('abort', handler);
-      this.#lastContent = '';
-      this.#lastLinks = null;
     }
-  }
-
-  async clear() {
-    this.#lastContent = '';
-    this.#lastLinks = null;
-    this.session = null;
   }
 
   async #createConversation(options) {

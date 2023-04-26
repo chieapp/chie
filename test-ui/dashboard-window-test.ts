@@ -34,6 +34,7 @@ describe('DashboardWindow', async () => {
       const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
       const instance = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint);
       const dashboard = new DashboardWindow();
+      dashboard.restoreState({});
       await (instance.service as MultiChatsService).chats[0].sendMessage({role: ChatRole.User, content: 'message'});
       addFinalizer(dashboard, () => collected = true);
       dashboard.window.close();

@@ -21,24 +21,13 @@ export default class LoginWindow extends BaseWindow {
     return new Promise<void>((resolve, reject) => {
       this.connectYueSignal(this.window.onClose, () => {
         this.connections.disconnectAll();
-        reject(new Error('Window is close.'));
+        reject(new Error('Window is closed.'));
       });
       this.connectYueSignal(this.browser.browser.onFinishNavigation, (browser, url) => {
         if (target.test(url)) {
           this.connections.disconnectAll();
           resolve();
         }
-      });
-    });
-  }
-
-  getCookie() {
-    return new Promise<string>((resolve, reject) => {
-      this.browser.browser.executeJavaScript('document.cookie', (success, cookie) => {
-        if (success)
-          resolve(cookie);
-        else
-          reject(new Error('Failed to execute JavaScript.'));
       });
     });
   }

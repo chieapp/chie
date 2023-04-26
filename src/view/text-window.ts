@@ -4,7 +4,7 @@ import BaseWindow from './base-window';
 import ButtonsArea from './buttons-area';
 import ChatView from './chat-view';
 import InputView from './input-view';
-import {style} from './browser-view';
+import basicStyle from './basic-style';
 
 export default class TextWindow extends BaseWindow {
   text: string;
@@ -15,7 +15,7 @@ export default class TextWindow extends BaseWindow {
     super({pressEscToClose: true});
     this.text = text;
 
-    this.contentView.setStyle({padding: style.padding});
+    this.contentView.setStyle({padding: basicStyle.padding});
     this.window.setTitle('Raw Message Text');
     this.window.setContentSize({width: 200, height: 300});
 

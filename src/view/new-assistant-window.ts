@@ -4,9 +4,9 @@ import ButtonsArea from './buttons-area';
 import DashboardWindow from './dashboard-window';
 import ParamsView from './params-view';
 import apiManager from '../controller/api-manager';
+import basicStyle from './basic-style';
 import serviceManager, {ServiceRecord} from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
-import {style} from './browser-view';
 
 export default class NewAssistantWindow extends BaseWindow {
   paramsView: ParamsView;
@@ -14,7 +14,7 @@ export default class NewAssistantWindow extends BaseWindow {
   constructor() {
     super({pressEscToClose: true});
 
-    this.contentView.setStyle({padding: style.padding});
+    this.contentView.setStyle({padding: basicStyle.padding});
 
     this.paramsView = new ParamsView([
       {

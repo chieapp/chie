@@ -28,10 +28,10 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
         // https://platform.openai.com/docs/api-reference/chat/create
         model: this.endpoint.params.model,
         stream: true,
-        messages: history.map(m => { return {
+        messages: history.map(m => ({
           role: m.role.toString().toLowerCase(),
           content: m.content,
-        }; }),
+        })),
       }),
       method: 'POST',
       headers: {

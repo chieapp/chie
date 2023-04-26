@@ -2,7 +2,7 @@ import gui from 'gui';
 import {Signal} from 'typed-signals';
 
 import Param from '../model/param';
-import {style} from './browser-view';
+import basicStyle from './basic-style';
 
 const labelWidth = 60;
 const labelPadding = 8;
@@ -19,7 +19,7 @@ abstract class ParamRow<T extends gui.View = gui.View> {
   constructor(param: Param, view: T) {
     this.param = param;
     this.view = view;
-    this.row.setStyle({flexDirection: 'row', marginBottom: style.padding / 2});
+    this.row.setStyle({flexDirection: 'row', marginBottom: basicStyle.padding / 2});
     const label = gui.Label.create(`${param.readableName ?? param.name}:`);
     label.setStyle({width: labelWidth, marginRight: labelPadding});
     label.setAlign('end');

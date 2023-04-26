@@ -4,6 +4,7 @@ import {Signal} from 'typed-signals';
 import AppearanceAware from '../view/appearance-aware';
 import ChatService from '../model/chat-service';
 import IconButton from './icon-button';
+import basicStyle from './basic-style';
 import {createRoundedCornerPath} from '../util/draw-utils';
 import {style} from './multi-chats-view';
 
@@ -95,13 +96,18 @@ export default class ChatListItem extends AppearanceAware {
     this.view.schedulePaint();
   }
 
+  onColorSchemeChange() {
+    super.onColorSchemeChange();
+    this.setTitle(this.title);  // update text color.
+  }
+
   #updateTooltip() {
     const bounds = Object.assign(this.view.getBounds(), {x: 0, y: 0});
     // Always consider space for the close button since the tooltip only shows
     // when mouse is hovering on it.
-    bounds.width -= this.closeButton.view.getBounds().width + style.padding;
+    bounds.width -= this.closeButton.view.getBounds().width + basicStyle.padding;
     // Only show tooltip when there is not enough room to show the title.
-    if ((bounds.width -= 2 * style.padding) < this.#titleBounds.width)
+    if ((bounds.width -= 2 * basicStyle.padding) < this.#titleBounds.width)
       this.view.setTooltip(this.title);
     else
       this.view.setTooltip('');
@@ -123,8 +129,8 @@ export default class ChatListItem extends AppearanceAware {
     if (this.hover)
       bounds.width = this.closeButton.view.getBounds().x;
     // Leave paddings for text.
-    bounds.x += style.padding;
-    bounds.width -= style.padding * 2;
+    bounds.x += basicStyle.padding;
+    bounds.width -= basicStyle.padding * 2;
     painter.drawAttributedText(this.#titleText, bounds);
   }
 }

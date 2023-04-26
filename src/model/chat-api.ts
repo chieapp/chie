@@ -55,7 +55,4 @@ export abstract class ChatConversationAPI<T = object> extends WebAPI {
 
   // Send a single user message and get reply.
   abstract sendMessage(text: string, options: ChatAPIOptions): Promise<void>;
-
-  // Clear current session.
-  abstract clear();
 }

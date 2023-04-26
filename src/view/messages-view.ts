@@ -6,13 +6,13 @@ import path from 'node:path';
 
 import BrowserView, {style} from './browser-view';
 import StreamedMarkdown, {escapeText, highlightCode} from '../util/streamed-markdown';
+import basicStyle from './basic-style';
 import {ChatRole, ChatMessage, Link} from '../model/chat-api';
 
 // EJS templates.
 let pageTemplate: ejs.AsyncTemplateFunction;
 let messageTemplate: ejs.AsyncTemplateFunction;
-let repliesTemplate: ejs.AsyncTemplateFunction;
-let initPromise: Promise<[void, void, void]>;
+let initPromise: Promise<[void, void]>;
 
 // Init templates immediately, since it is asynchronous it won't affect UI
 // loading and will speed up chat loading later.
@@ -35,7 +35,7 @@ export default class MessagesView extends BrowserView {
   // Load messages.
   async loadMessages(messages: ChatMessage[]) {
     const data = {
-      style,
+      style: Object.assign({}, style, basicStyle),
       messages: messages.map(this.#messageToData.bind(this)),
     };
     await initTemplates();
@@ -73,7 +73,15 @@ export default class MessagesView extends BrowserView {
 
   // Add some suggested replies.
   async setSuggestdReplies(replies: string[]) {
-    const html = await repliesTemplate({replies});
+    const buttons = replies.map(r => `<button onclick="chie.sendReply(this.textContent)">${r}</button>`);
+    const html = `<div id="replies">${buttons.join('')}</div>`;
+    this.executeJavaScript(`window.setSuggestdReplies(${JSON.stringify(html)})`);
+  }
+
+  // Add a button to refresh token.
+  async setRefreshAction() {
+    const button = '<button class="attention" onclick="chie.refreshToken()">Refresh token</button>';
+    const html = `<div id="replies">${button}</div>`;
     this.executeJavaScript(`window.setSuggestdReplies(${JSON.stringify(html)})`);
   }
 
@@ -154,7 +162,7 @@ export default class MessagesView extends BrowserView {
 // Initialize EJS templates, and when there are multiple calls to init, they
 // will all wait for the same initialization work.
 async function initTemplates() {
-  if (pageTemplate && messageTemplate && repliesTemplate)
+  if (pageTemplate && messageTemplate)
     return;
   if (initPromise)
     return initPromise;
@@ -169,11 +177,6 @@ async function initTemplates() {
       const filename = path.join(assetsDir, 'view', 'message.html');
       const html = await fs.readFile(filename);
       messageTemplate = await ejs.compile(html.toString(), {filename, async: true});
-    })(),
-    (async () => {
-      const filename = path.join(assetsDir, 'view', 'replies.html');
-      const html = await fs.readFile(filename);
-      repliesTemplate = await ejs.compile(html.toString(), {filename, async: true});
     })(),
   ]);
   await initPromise;

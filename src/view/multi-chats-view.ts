@@ -5,22 +5,22 @@ import BaseView, {ViewState} from '../view/base-view';
 import ChatListItem from './chat-list-item';
 import ChatView from './chat-view';
 import MultiChatsService from '../model/multi-chats-service';
+import basicStyle from './basic-style';
 import {config} from '../controller/configs';
 import {collectGarbage} from '../controller/gc-center';
 
 export const style = {
-  padding: 14,
   resizeHandleWidth: 6,
   light: {
     columnBgColor: '#F5F5F5',
-    activeItem: '#00B386',
+    activeItem: basicStyle.accentColor,
     activeItemText: '#FFFFFF',
     hoverItem: '#E8E8E8',
     textColor: '#1A1A1A',
   },
   dark: {
     columnBgColor: '#333333',
-    activeItem: '#00B386',
+    activeItem: basicStyle.accentColor,
     activeItemText: '#FFFFFF',
     hoverItem: '#3F3F3F',
     textColor: '#F8F8FA',
@@ -103,8 +103,8 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
 
     this.#chatList = gui.Container.create();
     this.#chatList.setStyle({
-      padding: style.padding,
-      paddingRight: style.padding - style.resizeHandleWidth,
+      padding: basicStyle.padding,
+      paddingRight: basicStyle.padding - style.resizeHandleWidth,
       paddingBottom: 0,
     });
     this.#chatListScroll.setContentView(this.#chatList);
@@ -116,8 +116,8 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     else
       button.setStyle({height: 28});
     button.setStyle({
-      margin: style.padding,
-      marginRight: style.padding - style.resizeHandleWidth,
+      margin: basicStyle.padding,
+      marginRight: basicStyle.padding - style.resizeHandleWidth,
     });
     button.onClick = service.createChat.bind(service);
     this.#sidebar.addChildView(button);
@@ -128,8 +128,8 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     else
       clear.setStyle({height: 28});
     clear.setStyle({
-      margin: style.padding,
-      marginRight: style.padding - style.resizeHandleWidth,
+      margin: basicStyle.padding,
+      marginRight: basicStyle.padding - style.resizeHandleWidth,
       marginTop: 0,
     });
     clear.onClick = service.clearChats.bind(service);
@@ -160,10 +160,6 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       this.#items.push(item);
       this.#chatList.addChildView(item.view);
     }
-    if (this.#items.length > 0) {
-      this.#items[0].setSelected(true);
-      this.#updateChatListSize();
-    }
     this.connections.add(service.onNewChat.connect(this.#onNewChat.bind(this)));
     this.connections.add(service.onRemoveChat.connect(this.#onRemoveChat.bind(this)));
     this.connections.add(service.onClearChats.connect(this.#onClearChats.bind(this)));
@@ -175,10 +171,6 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     for (const item of this.#items)
       item.destructor();
     this.#leftPane.destructor();
-  }
-
-  getMainView() {
-    return this.chatView;
   }
 
   initAsMainView() {
@@ -202,11 +194,17 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       this.#leftPane.view.setStyle({width: state.leftPaneWidth});
     if (state?.selected)
       this.#items[state.selected]?.setSelected(true);
+    else if (this.#items.length > 0)
+      this.#items[0].setSelected(true);
     this.#updateChatListSize();
   }
 
   getTitle() {
     return this.chatView?.getTitle() ?? this.service.name;
+  }
+
+  getMainView() {
+    return this.chatView;
   }
 
   getMainViewSize(): gui.SizeF {

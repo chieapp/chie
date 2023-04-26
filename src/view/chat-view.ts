@@ -8,13 +8,16 @@ import InputView from './input-view';
 import MessagesView from './messages-view';
 import StreamedMarkdown from '../util/streamed-markdown';
 import TextWindow from './text-window';
+import apiManager from '../controller/api-manager';
+import basicStyle from './basic-style';
+import deepAssign from '../util/deep-assign';
+import {APIError} from '../model/errors';
 import {
   ChatRole,
   ChatMessage,
   ChatResponse,
   ChatCompletionAPI,
 } from '../model/chat-api';
-import {style} from './browser-view';
 
 type ButtonMode = 'refresh' | 'send' | 'stop';
 
@@ -63,6 +66,7 @@ export default class ChatView extends BaseView<ChatService> {
     this.messagesView.browser.addBinding('showTextAt', this.#showTextAt.bind(this));
     this.messagesView.browser.addBinding('copyTextAt', this.#copyTextAt.bind(this));
     this.messagesView.browser.addBinding('sendReply', this.#sendReply.bind(this));
+    this.messagesView.browser.addBinding('refreshToken', this.#refreshToken.bind(this));
     this.messagesView.onDomReady.connect(this.#onDomReady.bind(this));
     this.view.addChildView(this.messagesView.view);
 
@@ -71,7 +75,7 @@ export default class ChatView extends BaseView<ChatService> {
       ChatView.font = gui.Font.create(gui.Font.default().getName(), 15, 'normal', 'normal');
 
     this.input = new InputView();
-    this.input.view.setStyle({margin: style.padding});
+    this.input.view.setStyle({margin: basicStyle.padding});
     this.input.entry.setFont(ChatView.font);
     // Calculate height for 1 and 5 lines.
     if (!ChatView.entryHeights) {
@@ -121,6 +125,8 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   getTitle() {
+    if (!this.service)
+      return '';
     return this.service.title ?? this.service.name;
   }
 
@@ -197,13 +203,20 @@ export default class ChatView extends BaseView<ChatService> {
       this.#setButtonMode('stop');
       return;
     }
-    // Show refresh button if last message is from bot and there is no input.
-    if (this.service.api instanceof ChatCompletionAPI &&
-        this.service.history.length > 0 &&
-        this.service.history[this.service.history.length - 1].role == ChatRole.Assistant &&
-        this.input.entry.getText().length == 0) {
-      this.#setButtonMode('refresh');
-      return;
+    if (this.service.history.length > 0) {
+      // Show refresh button if last message is from user, this usually means
+      // the last message failed to send.
+      if (this.service.history[this.service.history.length - 1].role == ChatRole.User) {
+        this.#setButtonMode('refresh');
+        return;
+      }
+      // Show refresh button if last message is from bot and there is no input.
+      if (this.service.api instanceof ChatCompletionAPI &&
+          this.service.history[this.service.history.length - 1].role == ChatRole.Assistant &&
+          this.input.entry.getText().length == 0) {
+        this.#setButtonMode('refresh');
+        return;
+      }
     }
     // Otherwise ready to send.
     this.#setButtonMode('send');
@@ -312,11 +325,14 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   // There is error thrown when sending message.
-  #onMessageError(error: Error) {
+  #onMessageError(error: Error | APIError) {
     if (error.name == 'AbortError')
       this.messagesView.abortPending();
     else
       this.messagesView.appendError(error.message);
+    // Append refresh button.
+    if (error.name == 'APIError' && (error as APIError).code == 'refresh')
+      this.messagesView.setRefreshAction();
     this.#resetUIState();
   }
 
@@ -339,6 +355,18 @@ export default class ChatView extends BaseView<ChatService> {
 
   #sendReply(content: string) {
     this.service.sendMessage({role: ChatRole.User, content});
+  }
+
+  async #refreshToken() {
+    try {
+      const record = apiManager.getAPIRecord(this.service.api.endpoint.type);
+      deepAssign(this.service.api.endpoint, await record.refresh());
+      apiManager.updateEndpoint(this.service.api.endpoint);
+      this.service.regenerateResponse();
+    } catch (error) {
+      // Ignore error.
+      console.log(error);
+    }
   }
 }
 

@@ -20,6 +20,7 @@ type APIRecord = {
   priority?: number,
   params?: Param[],
   login?: () => Promise<Partial<APIEndpoint>>;
+  refresh?: () => Promise<Partial<APIEndpoint>>;
 };
 
 export class APIManager extends ConfigStoreItem {
@@ -92,6 +93,11 @@ export class APIManager extends ConfigStoreItem {
     this.onAddEndpoint.emit(endpoint);
     this.saveConfig();
     return endpoint.id;
+  }
+
+  updateEndpoint(endpoint: APIEndpoint) {
+    this.onUpdateEndpoint.emit(endpoint);
+    this.saveConfig();
   }
 
   removeEndpointById(id: string) {

@@ -53,11 +53,11 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   // Error is set if last message failed to send.
   lastError?: Error;
 
+  // Whether there is a message being sent.
+  isPending = false;
+
   // Saves concatenated content of all the received partial messages.
   pendingMessage?: Partial<ChatMessage>;
-
-  // The job of current sendMessage call.
-  pendingPromise?: Promise<void>;
 
   // The aborter that can be used to abort current call.
   aborter: AbortController;
@@ -124,7 +124,11 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     this.onUserMessage.emit(senderMessage);
     this.#saveMoment();
     // Start sending.
-    await (this.pendingPromise = this.#generateResponse(options));
+    try {
+      await this.#generateResponse(options);
+    } finally {
+      this.isPending = false;
+    }
   }
 
   // Generate a new response for the last user message, or resend on error.
@@ -142,7 +146,11 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
       this.history.pop();
       this.onRemoveMessage.emit(this.history.length);
     }
-    await (this.pendingPromise = this.#generateResponse(options));
+    try {
+      await this.#generateResponse(options);
+    } finally {
+      this.isPending = false;
+    }
   }
 
   // Clear chat history.
@@ -165,6 +173,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     if (this.lastError)
       this.onClearError.emit();
     this.lastError = null;
+    this.isPending = true;
     this.pendingMessage = null;
     // Call API.
     this.aborter = new AbortController();
@@ -194,7 +203,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
       // received, if there is no such signal and the partial message has been
       // left after API call ends (for example aborted), send an end signal here.
       this.#handleMessageDelta({}, {pending: false});
-    } else if (this.pendingPromise) {
+    } else if (this.isPending) {
       // If we have never received any message, then it is likely the server
       // refused our connection for some reason.
       this.lastError = new Error('Server closed connection.');
@@ -259,8 +268,8 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   #responseEnded() {
     if (this.pendingMessage)
       this.history.push(this.pendingMessage as ChatMessage);
+    this.isPending = false;
     this.pendingMessage = null;
-    this.pendingPromise = null;
   }
 
   // Generate a name for the conversation.

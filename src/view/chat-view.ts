@@ -135,7 +135,18 @@ export default class ChatView extends BaseView<ChatService> {
       return;
     if (!(service instanceof ChatService))
       throw new Error('ChatView can only be used with ChatService');
+    // Clear previous load.
     this.unload();
+    // Delay loading until the service is ready.
+    if (!service.isLoaded) {
+      this.#serviceConnections.add(service.onLoad.connect(this.loadChatService.bind(this, service)));
+      return;
+    }
+    // Load messages.
+    this.messagesView.assistantName = service.name;
+    this.messagesView.assistantAvatar = service.icon.getChieUrl();
+    await this.messagesView.loadMessages(service.history);
+    // Connect signals.
     this.service = service;
     this.#serviceConnections.add(service.onNewTitle.connect(
       this.onNewTitle.emit.bind(this.onNewTitle)));
@@ -155,14 +166,13 @@ export default class ChatView extends BaseView<ChatService> {
       this.messagesView.removeMessage.bind(this.messagesView)));
     this.#serviceConnections.add(service.onClearMessages.connect(
       this.messagesView.clearMessages.bind(this.messagesView)));
-    this.messagesView.assistantName = service.name;
-    this.messagesView.assistantAvatar = service.icon.getChieUrl();
-    if (service.isLoaded) {
-      await this.messagesView.loadMessages(service.history);
-    } else {
-      this.#serviceConnections.add(service.onLoad.connect(() => {
-        this.messagesView.loadMessages(service.history);
-      }));
+    // Load pending message.
+    if (this.service.isPending) {
+      this.#onMessageBegin();
+      if (this.service.pendingMessage)
+        this.#onMessageDelta(this.service.pendingMessage, {pending: true});
+      if (this.service.lastError)
+        this.#onMessageError(this.service.lastError);
     }
   }
 
@@ -199,7 +209,7 @@ export default class ChatView extends BaseView<ChatService> {
       return;
     }
     // Can only stop if there is pending message.
-    if (this.service.pendingPromise) {
+    if (this.service.isPending) {
       this.#setButtonMode('stop');
       return;
     }
@@ -265,22 +275,15 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   // Recover current state of chat.
-  async #onDomReady() {
+  #onDomReady() {
     this.input.setEntryEnabled(true);
-    if (this.service.pendingPromise) {
-      await this.#onMessageBegin();
-      if (this.service.pendingMessage)
-        await this.#onMessageDelta(this.service.pendingMessage, {pending: true});
-      if (this.service.lastError)
-        this.#onMessageError(this.service.lastError);
-    } else {
+    if (!this.service.isPending)
       this.#resetUIState();
-    }
   }
 
   // User has sent a message.
-  async #onUserMessage(message: ChatMessage) {
-    await this.messagesView.appendMessage(message, this.service.history.length - 1);
+  #onUserMessage(message: ChatMessage) {
+    this.messagesView.appendMessage(message, this.service.history.length - 1);
   }
 
   // Last error has been cleared for renegeration.
@@ -289,16 +292,18 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   // Begin receving response.
-  async #onMessageBegin() {
+  #onMessageBegin() {
     // Add a bot message to indicate we are loading.
-    await this.messagesView.appendPendingMessage({role: ChatRole.Assistant}, this.service.history.length);
+    this.messagesView.appendPendingMessage({role: ChatRole.Assistant}, this.service.history.length);
+    // Clear input.
+    this.#markdown = null;
+    this.input.setText('');
     // Mark state as sending.
     this.#setButtonMode('stop');
-    this.input.setText('');
   }
 
   // Message being received.
-  async #onMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
+  #onMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
     if (delta.steps)
       this.messagesView.appendSteps(delta.steps);
     if (!this.#markdown && (delta.links || delta.content))
@@ -313,11 +318,10 @@ export default class ChatView extends BaseView<ChatService> {
       this.messagesView.appendHtmlToPendingMessage(change);
     }
     if (response.suggestedReplies)
-      await this.messagesView.setSuggestdReplies(response.suggestedReplies);
+      this.messagesView.setSuggestdReplies(response.suggestedReplies);
     if (response.pending)
       return;
     // Reset after message is received.
-    this.#markdown = null;
     this.#resetUIState();
     if (this.service.aborter?.signal.aborted)
       this.messagesView.abortPending();

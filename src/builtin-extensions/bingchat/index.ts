@@ -22,7 +22,7 @@ async function login() {
   try {
     for (;;) {
       await win.waitForNavigation(/(.*\.)?bing\.com\/\?app=chie/);
-      const cookie = await win.browser.getValue<string>('document.cookie');
+      const cookie = await win.browser.executeJavaScript('document.cookie');
       const match = cookie.match(/(_U=)[^\s;]+/);
       if (match)
         return {cookie: match[0]};

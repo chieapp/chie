@@ -62,25 +62,12 @@ export default class BrowserView extends AppearanceAware {
     this.browser.loadHTML(html, baseUrl);
   }
 
+  // Promise version of executeJavaScript.
   executeJavaScript(js: string) {
-    this.#queue.push(cb => this.browser.executeJavaScript(js, () => cb()));
-    if (this.isDomReady)
-      this.#queue.start();
-  }
-
-  getCookie(url: string): Promise<string> {
-    return new Promise<string>((resolve) => {
-      this.browser.getCookiesForURL(url, (cookies) => {
-        resolve(cookies.map(c => `${c.name}=${c.value}`).join('; '));
-      });
-    });
-  }
-
-  getValue<T>(js: string): Promise<T> {
     if (!this.isDomReady)
-      throw new Error('Can not call getValue before dom is loaded.');
-    return new Promise<T>((resolve, reject) => {
-      this.browser.executeJavaScript(js, (success: boolean, value: T) => {
+      throw new Error('Can not call executeJavaScript before page is loaded.');
+    return new Promise<any>((resolve, reject) => {
+      this.browser.executeJavaScript(js, (success: boolean, value) => {
         if (success)
           resolve(value);
         else
@@ -89,9 +76,41 @@ export default class BrowserView extends AppearanceAware {
     });
   }
 
+  // Push a task will be executed one by one in a queue.
+  // If the browser is not ready yet, the tasks will be delayed until page is
+  // fully loaded.
+  // If the browser loads another page before current page is ready, the tasks
+  // will be cancelled.
+  pushTask(callback: (cb?) => void | Promise<void>) {
+    this.#queue.push(callback);
+    if (this.isDomReady)
+      this.#queue.start();
+  }
+
+  // Wrapper of pushTask and executeJavaScript.
+  pushJavaScript(js: string) {
+    this.pushTask(cb => this.browser.executeJavaScript(js, () => cb()));
+  }
+
+  // Return cookie string in the format of |document.cookie|, but include http
+  // only cookies.
+  getCookie(url: string): Promise<string> {
+    return new Promise<string>((resolve) => {
+      this.browser.getCookiesForURL(url, (cookies) => {
+        resolve(cookies.map(c => `${c.name}=${c.value}`).join('; '));
+      });
+    });
+  }
+
   #domReady() {
     // Only show browser when it is loaded, this can remove the white flash.
-    this.browser.setVisible(true);
+    // Note that we put setVisible in queue to execute so the browser only
+    // shows when pending executeJavaScript tasks are executed, which can avoid
+    // flickers.
+    this.#queue.push(cb => {
+      this.browser.setVisible(true);
+      cb();
+    });
     // Start pending works.
     this.isDomReady = true;
     this.onDomReady.emit();

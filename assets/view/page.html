@@ -146,7 +146,7 @@
     messages[index].parentNode.removeChild(messages[index]);
   };
   window.clearMessages = function() {
-    document.getElementById('messages').innerHTML = '';
+    messages.innerHTML = '';
   };
   window.abortPending = function() {
     var text = findPending('text');

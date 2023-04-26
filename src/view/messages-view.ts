@@ -22,6 +22,7 @@ export default class MessagesView extends BrowserView {
   assistantName = 'Bot';
   assistantAvatar = 'chie://app-file/assets/icons/bot.png';
 
+  // Used to assert wrong executeJavaScript sequence.
   hasPendingMessage = false;
 
   constructor() {
@@ -34,94 +35,99 @@ export default class MessagesView extends BrowserView {
 
   // Load messages.
   async loadMessages(messages: ChatMessage[]) {
+    await initTemplates();
+    this.hasPendingMessage = false;
     const data = {
       style: Object.assign({}, style, basicStyle),
       messages: messages.map(this.#messageToData.bind(this)),
     };
-    await initTemplates();
     this.loadHTML(await pageTemplate(data), 'https://chie.app');
   }
 
-  // Add a pending message.
-  async appendPendingMessage(message: Partial<ChatMessage>, index: number) {
+  // Append a message.
+  appendMessage(message: Partial<ChatMessage>, index: number) {
     if (this.hasPendingMessage)
       throw new Error('Can not append message while there is pending message.');
-    const html = await messageTemplate({
-      message: this.#messageToData(message, index),
-      response: {pending: true},
+    this.pushTask(async () => {
+      const html = await messageTemplate({
+        message: this.#messageToData(message, index),
+        response: {pending: false},
+      });
+      await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
     });
+  }
+
+  // Add a pending message.
+  appendPendingMessage(message: Partial<ChatMessage>, index: number) {
+    if (this.hasPendingMessage)
+      throw new Error('Can not append message while there is pending message.');
     this.hasPendingMessage = true;
-    this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
+    this.pushTask(async () => {
+      const html = await messageTemplate({
+        message: this.#messageToData(message, index),
+        response: {pending: true},
+      });
+      await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
+    });
   }
 
   // Append html to the pending message.
   appendHtmlToPendingMessage(delta) {
     if (!this.hasPendingMessage)
       throw new Error('There is no pending message.');
-    this.executeJavaScript(`window.appendHtmlToPendingMessage(${JSON.stringify(delta)})`);
+    this.pushJavaScript(`window.appendHtmlToPendingMessage(${JSON.stringify(delta)})`);
   }
 
   // Append internal steps.
   appendSteps(steps: string[]) {
-    this.executeJavaScript(`window.appendSteps(${JSON.stringify(steps)})`);
+    this.pushJavaScript(`window.appendSteps(${JSON.stringify(steps)})`);
   }
 
   // Add links to references.
   appendLinks(index: number, links: Link[]) {
-    this.executeJavaScript(`window.appendLinks(${index}, ${JSON.stringify(links)})`);
+    this.pushJavaScript(`window.appendLinks(${index}, ${JSON.stringify(links)})`);
   }
 
   // Add some suggested replies.
-  async setSuggestdReplies(replies: string[]) {
+  setSuggestdReplies(replies: string[]) {
     const buttons = replies.map(r => `<button onclick="chie.sendReply(this.textContent)">${r}</button>`);
     const html = `<div id="replies">${buttons.join('')}</div>`;
-    this.executeJavaScript(`window.setSuggestdReplies(${JSON.stringify(html)})`);
+    this.pushJavaScript(`window.setSuggestdReplies(${JSON.stringify(html)})`);
   }
 
   // Add a button to refresh token.
-  async setRefreshAction() {
+  setRefreshAction() {
     const button = '<button class="attention" onclick="chie.refreshToken()">Refresh token</button>';
     const html = `<div id="replies">${button}</div>`;
-    this.executeJavaScript(`window.setSuggestdReplies(${JSON.stringify(html)})`);
+    this.pushJavaScript(`window.setSuggestdReplies(${JSON.stringify(html)})`);
   }
 
   // Mark the end of pending message.
   endPending() {
     this.hasPendingMessage = false;
-    this.executeJavaScript('window.endPending()');
+    this.pushJavaScript('window.endPending()');
   }
 
   // Show error.
   appendError(error: string) {
     this.hasPendingMessage = false;
-    this.executeJavaScript(`window.appendError(${JSON.stringify(error)})`);
+    this.pushJavaScript(`window.appendError(${JSON.stringify(error)})`);
   }
 
   // Add (aborted) label to the pending message.
   abortPending() {
     this.hasPendingMessage = false;
-    this.executeJavaScript('window.abortPending()');
-  }
-
-  // Append a message.
-  async appendMessage(message: Partial<ChatMessage>, index: number) {
-    if (this.hasPendingMessage)
-      throw new Error('Can not append message while there is pending message.');
-    const html = await messageTemplate({
-      message: this.#messageToData(message, index),
-      response: {pending: false},
-    });
-    this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
+    this.pushJavaScript('window.abortPending()');
   }
 
   // Remove a message.
   removeMessage(index: number) {
-    this.executeJavaScript(`window.removeMessage(${index})`);
+    this.pushJavaScript(`window.removeMessage(${index})`);
   }
 
   // Remove all messages.
   clearMessages() {
-    this.executeJavaScript('window.clearMessages()');
+    this.pushJavaScript('window.clearMessages()');
   }
 
   // Translate the message into data to be parsed by EJS template.
@@ -147,7 +153,7 @@ export default class MessagesView extends BrowserView {
   // Browser bindings.
   #highlightCode(text: string, language: string, callbackId: number) {
     const code = highlightCode(text, language);
-    this.executeJavaScript(`window.executeCallback(${callbackId}, ${JSON.stringify(code)})`);
+    this.pushJavaScript(`window.executeCallback(${callbackId}, ${JSON.stringify(code)})`);
   }
 
   #copyText(text: string) {

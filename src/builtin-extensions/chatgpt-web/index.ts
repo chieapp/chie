@@ -46,10 +46,11 @@ async function login(firstUrl) {
     win.browser.loadURL(firstUrl);
     await win.waitForNavigation(/chat\.openai\.com\/?#?$/);
     const cookie = await win.browser.getCookie('https://chat.openai.com/');
+    await new Promise(resolve => setTimeout(resolve, 1000));
     win.browser.loadURL('https://chat.openai.com/api/auth/session');
     await win.waitForNavigation(/\/api\/auth\/session$/);
-    const session = JSON.parse(await win.browser.getValue<string>('document.body.lastChild.textContent'));
-    const userAgent = await win.browser.getValue<string>('navigator.userAgent');
+    const session = JSON.parse(await win.browser.executeJavaScript('document.body.lastChild.textContent'));
+    const userAgent = await win.browser.executeJavaScript('navigator.userAgent');
     return {cookie, params: {token: session.accessToken, userAgent}};
   } finally {
     win.close();

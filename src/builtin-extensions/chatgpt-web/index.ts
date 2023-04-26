@@ -13,11 +13,6 @@ const params: Param[] = [
     readableName: 'UA',
   },
   {
-    name: 'user',
-    type: 'string',
-    readableName: 'User',
-  },
-  {
     name: 'model',
     type: 'string',
     readableName: 'Model',
@@ -55,7 +50,7 @@ async function login(firstUrl) {
     await win.waitForNavigation(/\/api\/auth\/session$/);
     const session = JSON.parse(await win.browser.getValue<string>('document.body.lastChild.textContent'));
     const userAgent = await win.browser.getValue<string>('navigator.userAgent');
-    return {cookie, params: {token: session.accessToken, userAgent, user: session.user.name}};
+    return {cookie, params: {token: session.accessToken, userAgent}};
   } finally {
     win.close();
   }

@@ -1,21 +1,21 @@
 import {Signal} from 'typed-signals';
 
-import ChatService from './chat-service';
+import ChatService, {ChatServiceSupportedAPIs} from './chat-service';
 import WebService, {
   WebServiceData,
   WebServiceOptions,
 } from './web-service';
-import {ChatCompletionAPI} from './chat-api';
+import {ChatCompletionAPI, ChatConversationAPI} from './chat-api';
 
 export interface MultiChatsServiceData extends WebServiceData {
   chats?: string[];
 }
 
-export interface MultiChatsServiceOptions extends WebServiceOptions<ChatCompletionAPI> {
+export interface MultiChatsServiceOptions extends WebServiceOptions<ChatServiceSupportedAPIs> {
   chats?: ChatService[];
 }
 
-export default class MultiChatsService extends WebService<ChatCompletionAPI> {
+export default class MultiChatsService extends WebService<ChatServiceSupportedAPIs> {
   chats: ChatService[];
 
   onNewChat: Signal<(chat: ChatService) => void> = new Signal;
@@ -30,8 +30,9 @@ export default class MultiChatsService extends WebService<ChatCompletionAPI> {
   }
 
   constructor(options: MultiChatsServiceOptions) {
-    if (!(options.api instanceof ChatCompletionAPI))
-      throw new Error('MultiChatsService can only be used with ChatCompletionAPI');
+    if (!(options.api instanceof ChatCompletionAPI) &&
+        !(options.api instanceof ChatConversationAPI))
+      throw new Error('MultiChatsService does not support passed API.');
     super(options);
     this.chats = options.chats ?? [];
   }

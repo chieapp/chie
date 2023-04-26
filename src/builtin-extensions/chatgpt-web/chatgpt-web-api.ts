@@ -43,12 +43,7 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
         } ],
       }),
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': this.endpoint.params.userAgent,
-        Authorization: `Bearer ${this.endpoint.params.token}`,
-        cookie: this.endpoint.cookie,
-      },
+      headers: this.#getHeaders(),
       signal: options.signal,
     });
 
@@ -70,6 +65,15 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
     for await (const chunk of bodyToIterator(response.body)) {
       parser.feed(decoder.decode(chunk));
     }
+  }
+
+  #getHeaders(): HeadersInit {
+    return {
+      'Content-Type': 'application/json',
+      'User-Agent': this.endpoint.params.userAgent,
+      Authorization: `Bearer ${this.endpoint.params.token}`,
+      cookie: this.endpoint.cookie,
+    };
   }
 
   #parseMessage(state, options, message) {

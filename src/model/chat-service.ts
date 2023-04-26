@@ -11,6 +11,7 @@ import {
   ChatCompletionAPI,
   ChatConversationAPI,
 } from './chat-api';
+import apiManager from '../controller/api-manager';
 import serviceManager from '../controller/service-manager';
 import historyKeeper from '../controller/history-keeper';
 
@@ -61,8 +62,8 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   // The aborter that can be used to abort current call.
   aborter: AbortController;
 
-  // Track generation of name.
-  #titlePromise?: Promise<void>;
+  // Track generation of title.
+  #titlePromise?: Promise<string>;
 
   static deserialize(data: ChatServiceData): ChatServiceOptions {
     const options = WebService.deserialize(data) as ChatServiceOptions;
@@ -150,9 +151,8 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
       throw new Error('Can not clear when there is pending message being received.');
     this.history = [];
     this.title = null;
-    if (this.api instanceof ChatCompletionAPI)
-      this.onNewTitle.emit(null);
-    else if (this.api instanceof ChatConversationAPI)
+    this.onNewTitle.emit(null);
+    if (this.api instanceof ChatConversationAPI)
       this.api.session = null;
     this.onClearMessages.emit();
     if (this.moment)
@@ -199,14 +199,15 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
       // refused our connection for some reason.
       this.lastError = new Error('Server closed connection.');
       this.onMessageError.emit(this.lastError);
+      return;
     }
 
-    // Generate a name for the conversation.
-    if (this.api instanceof ChatCompletionAPI &&
-        !this.#titlePromise &&
+    // Generate a title for the conversation.
+    if (!this.#titlePromise &&
         this.history.length > 1 &&
-        this.history.length < 10)
-      this.#titlePromise = this.#generateName();
+        this.history.length < 10) {
+      this.#titlePromise = this.#generateTitle();
+    }
 
     this.#saveMoment();
   }
@@ -263,26 +264,47 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   }
 
   // Generate a name for the conversation.
-  async #generateName() {
-    if (!(this.api instanceof ChatCompletionAPI))
-      return;
-    const message = {
-      role: ChatRole.System,
-      content:
+  async #generateTitle() {
+    const prompt =
       `
         Name the conversation based on following chat records:
         '''
-        ${this.history.map(m => m.content).join('\n\n------\n\n')}
+        ${this.history.map(m => m.content.length > 100 ? m.content.substring(0, 100) + '...' : m.content).join('\n\n------\n\n')}
         '''
-        Provide a concise name, within 20 characters and without quotation marks,
+        Provide a concise name, within 15 characters and without quotation marks,
         use the speak language used in the conversation.
         The conversation is named:
-      `
-    };
+      `;
     let title = '';
-    await this.api.sendConversation([message], {
-      onMessageDelta(delta) { title += delta.content ?? ''; }
-    });
+    if (this.api instanceof ChatCompletionAPI) {
+      const message = {role: ChatRole.System, content: prompt};
+      await this.api.sendConversation([message], {
+        onMessageDelta(delta) { title += delta.content ?? ''; }
+      });
+    } else if (this.api instanceof ChatConversationAPI) {
+      // Spawn a new conversation to ask for title generation.
+      const api = apiManager.createAPIForEndpoint(this.api.endpoint) as ChatConversationAPI;
+      await api.sendMessage(prompt, {
+        onMessageDelta(delta) { title += delta.content ?? ''; }
+      });
+    } else {
+      // Return the first words of last message.
+      const words = this.history[this.history.length - 1].content.substring(0, 30).split(' ').slice(0, 5);
+      if (words.length == 1)  // likely a language without spaces in words
+        return words[0].substring(0, 10);
+      // Join the words but do not exceed 15 characters.
+      for (const word of words) {
+        title += word + ' ';
+        if (title.length > 15)
+          break;
+      }
+    }
+    return this.#setTitle(title.trim());
+  }
+
+  #setTitle(title: string | null) {
+    if (!title)
+      return;
     if (title.endsWith('.'))
       title = title.slice(0, -1);
     else if (title.startsWith('"') && title.endsWith('"'))
@@ -291,6 +313,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     this.onNewTitle.emit(title);
     this.#titlePromise = null;
     this.#saveMoment();
+    return title;
   }
 
   // Write history to disk.

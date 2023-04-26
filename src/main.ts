@@ -22,7 +22,7 @@ export default function main() {
     name: 'MultiChatsService',
     serviceType: MultiChatsService,
     viewType: MultiChatsView,
-    apiTypes: [ChatCompletionAPI],
+    apiTypes: [ChatConversationAPI, ChatCompletionAPI],
   });
 
   // Activate extensions.

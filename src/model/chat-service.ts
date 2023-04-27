@@ -46,7 +46,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   onMessageDelta: Signal<(delta: Partial<ChatMessage>, response: ChatResponse) => void> = new Signal;
   onMessageError: Signal<(error: Error) => void> = new Signal;
   onMessage: Signal<(message: ChatMessage) => void> = new Signal;
-  onRemoveMessage: Signal<((index: number) => void)> = new Signal;
+  onRemoveMessagesAfter: Signal<((index: number) => void)> = new Signal;
   onUpdateMessage: Signal<((index: number, message: ChatMessage) => void)> = new Signal;
   onClearMessages: Signal<() => void> = new Signal;
 
@@ -141,29 +141,24 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     this.#saveMoment();
     // Start sending.
     try {
-      await this.#generateResponse(options);
+      await this.#invokeChatAPI(options);
     } finally {
       this.isPending = false;
     }
   }
 
   // Generate a new response for the last user message, or resend on error.
-  async regenerateResponse(options: object = {}) {
+  async regenerateLastResponse(options: object = {}) {
     if (this.history.length == 0)
       throw new Error('Unable to regenerate response when there is no message.');
     if (this.pendingMessage && !this.lastError)
       throw new Error('Can not regenerate when there is pending message being received.');
-    if (this.api instanceof ChatConversationAPI &&
-        this.history[this.history.length - 1].role == ChatRole.Assistant)
-      throw new Error('Can only regenerate for ChatCompletionAPI.');
     // When last message is from assistant, do regenerate, otherwise it would
     // be the same with sending message.
-    if (this.history[this.history.length - 1].role == ChatRole.Assistant) {
-      this.history.pop();
-      this.onRemoveMessage.emit(this.history.length);
-    }
+    if (this.history[this.history.length - 1].role == ChatRole.Assistant)
+      this.removeMessagesAfter(-1);
     try {
-      await this.#generateResponse(options);
+      await this.#invokeChatAPI(options);
     } finally {
       this.isPending = false;
     }
@@ -178,12 +173,27 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     this.onUpdateMessage.emit(index, target);
   }
 
+  // Remove all messages after index (including message at index).
+  removeMessagesAfter(index: number) {
+    if (index < 0)
+      index += this.history.length;
+    if (this.api instanceof ChatConversationAPI) {
+      if (index != this.history.length -1 ||
+          this.history[index].role != ChatRole.User) {
+        throw new Error('ChatConversationAPI can only resend instead of regenerate.');
+      }
+    }
+    this.history.splice(index);
+    this.onRemoveMessagesAfter.emit(index);
+  }
+
   // Clear chat history.
   clear() {
     if (this.pendingMessage)
       throw new Error('Can not clear when there is pending message being received.');
     this.history = [];
     this.title = null;
+    this.lastError = null;
     this.onNewTitle.emit(null);
     this.#clearResources();
     this.onClearMessages.emit();
@@ -199,7 +209,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   }
 
   // Call the API.
-  async #generateResponse(options: object) {
+  async #invokeChatAPI(options: object) {
     // Clear error and pending message when sending new message.
     if (this.lastError)
       this.onClearError.emit();

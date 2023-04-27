@@ -8,7 +8,7 @@ import InputView from './input-view';
 import basicStyle from './basic-style';
 
 export default class TextWindow extends BaseWindow {
-  modes: 'show' | 'edit';
+  mode: 'show' | 'edit' | 'edit-update';
   service: ChatService;
   index: number;
   text: string;
@@ -34,15 +34,23 @@ export default class TextWindow extends BaseWindow {
     const buttonsArea = new ButtonsArea();
     this.contentView.addChildView(buttonsArea.view);
 
-    if (this.mode == 'edit') {
-      const updateButton = buttonsArea.addButton('Modify');
-      updateButton.onClick = () => {
+    if (this.mode.startsWith('edit')) {
+      buttonsArea.addButton('Modify').onClick = () => {
         service.updateMessage(index, {content: this.input.entry.getText()});
         this.window.close();
       };
+      if (this.mode == 'edit-update') {
+        buttonsArea.addButton('Modify and Regenerate').onClick = () => {
+          service.updateMessage(index, {content: this.input.entry.getText()});
+          service.removeMessagesAfter(index + 1);
+          service.regenerateLastResponse();
+          this.window.close();
+        };
+      }
     }
-    const copyButton = buttonsArea.addButton('Copy');
-    copyButton.onClick = () => gui.Clipboard.get().setText(this.input.entry.getText());
+    buttonsArea.addButton('Copy').onClick = () => {
+      gui.Clipboard.get().setText(this.input.entry.getText());
+    };
     buttonsArea.addCloseButton();
 
     // First button is default button.
@@ -72,7 +80,7 @@ export default class TextWindow extends BaseWindow {
     });
     bounds.width += insets.x + 2;
     bounds.height += insets.y + 2;
-    bounds.width = Math.max(400, bounds.width);
+    bounds.width = Math.max(460, bounds.width);
     bounds.height = Math.max(200, bounds.height);
     this.window.setContentSize(bounds);
     this.window.center();

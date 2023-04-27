@@ -11,7 +11,7 @@
     <% if (message.canEdit) { %>
       <a class="icon" href="#show-text-at" title="Edit"><i class="icon-edit"></i></a>
     <%   if (message.role == 'Assistant') { %>
-      <a class="icon" href="#regenerate-at" title="Regenerate"><i class="icon-refresh"></i></a>
+      <a class="icon" href="#regenerate-from" title="Regenerate"><i class="icon-refresh"></i></a>
     <%   } %>
     <% } else if (message.role == 'Assistant') { %>
       <a class="icon" href="#show-text-at" title="Show raw text"><i class="icon-text"></i></a>

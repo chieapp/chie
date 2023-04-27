@@ -66,7 +66,6 @@
     delete callbacks[id];
   };
   // External API to add a new message.
-  var messages = document.getElementById('messages');
   window.appendMessage = function(html) {
     removeSuggestedReplies();
     var children = HTMLToDOM(html);
@@ -137,13 +136,13 @@
     if (wasAtBottom)
       scrollToBottom();
   }
-  window.removeMessage = function(index) {
-    var message = document.getElementsByClassName('msg')[index];
-    if (!message) {
-      console.error('No message for removing.');
-      return;
-    }
-    message.parentNode.removeChild(message);
+  window.removeMessagesAfter = function(index) {
+    var wasAtBottom = isPageBottom();
+    var count = messages.children.length - index;
+    for (var i = 0; i < count; ++i)
+      messages.removeChild(messages.lastElementChild);
+    if (wasAtBottom)
+      scrollToBottom();
   };
   window.updateMessage = function(index, html) {
     var message = document.getElementsByClassName('msg')[index];
@@ -152,9 +151,6 @@
       return;
     }
     message.outerHTML = html;
-  };
-  window.clearMessages = function() {
-    messages.innerHTML = '';
   };
   window.abortPending = function() {
     var text = findPending('text');
@@ -242,11 +238,16 @@
       return false;
     }
     var msg = target.parentNode.parentNode.parentNode;
-    var index = msg.getAttribute('message-index');
+    var index = parseInt(msg.getAttribute('message-index'));
     var text = msg.getElementsByClassName('text')[0];
     // Show popup window to display message.
     if (target.href.endsWith('#show-text-at')) {
       chie.showTextAt(index, isIE ? text.offsetWidth : text.getBoundingClientRect().width);
+      return false;
+    }
+    // Request regeneration
+    if (target.href.endsWith('#regenerate-from')) {
+      chie.regenerateFrom(index);
       return false;
     }
     // Copy text.

@@ -64,6 +64,7 @@ export default class ChatView extends BaseView<ChatService> {
     this.messagesView.view.setStyle({flex: 1});
     this.messagesView.browser.addBinding('focusEntry', this.onFocus.bind(this));
     this.messagesView.browser.addBinding('showTextAt', this.#showTextAt.bind(this));
+    this.messagesView.browser.addBinding('regenerateFrom', this.#regenerateFrom.bind(this));
     this.messagesView.browser.addBinding('copyTextAt', this.#copyTextAt.bind(this));
     this.messagesView.browser.addBinding('sendReply', this.#sendReply.bind(this));
     this.messagesView.browser.addBinding('refreshToken', this.#refreshToken.bind(this));
@@ -161,8 +162,8 @@ export default class ChatView extends BaseView<ChatService> {
       this.#onMessageError.bind(this)));
     this.#serviceConnections.add(service.onMessage.connect(
       this.#resetUIState.bind(this)));
-    this.#serviceConnections.add(service.onRemoveMessage.connect(
-      this.messagesView.removeMessage.bind(this.messagesView)));
+    this.#serviceConnections.add(service.onRemoveMessagesAfter.connect(
+      this.messagesView.removeMessagesAfter.bind(this.messagesView)));
     this.#serviceConnections.add(service.onUpdateMessage.connect(
       this.messagesView.updateMessage.bind(this.messagesView, this.service.getMessageRenderInfo())));
     this.#serviceConnections.add(service.onClearMessages.connect(
@@ -259,7 +260,7 @@ export default class ChatView extends BaseView<ChatService> {
       this.service.aborter.abort();
     } else if (this.#buttonMode == 'refresh') {
       this.replyButton.setEnabled(false);
-      this.service.regenerateResponse();
+      this.service.regenerateLastResponse();
     }
   }
 
@@ -288,9 +289,9 @@ export default class ChatView extends BaseView<ChatService> {
       this.service.getMessageRenderInfo(), message, this.service.history.length - 1);
   }
 
-  // Last error has been cleared for renegeration.
+  // Last error has been cleared for regeneration.
   #onClearError() {
-    this.messagesView.removeMessage(this.service.history.length);
+    this.messagesView.removeMessagesAfter(this.service.history.length);
   }
 
   // Begin receving response.
@@ -349,12 +350,27 @@ export default class ChatView extends BaseView<ChatService> {
       this.#textWindows[index].window.activate();
       return;
     }
-    const text = this.service.history[index].content;
-    const mode = this.service.api instanceof ChatCompletionAPI ? 'edit' : 'show';
-    const win = new TextWindow(mode, this.service, index, text);
+    const message = this.service.history[index];
+    if (!message)
+      throw new Error(`Can not find message with index "${index}".`);
+    // Determine the capacity of the text window.
+    let mode = 'show';
+    if (this.service.api instanceof ChatCompletionAPI) {
+      if (message.role == ChatRole.User)
+        mode = 'edit-update';
+      else
+        mode = 'edit';
+    }
+    // Show text window.
+    const win = new TextWindow(mode, this.service, index, message.content);
     this.#textWindows[index] = win;
     win.window.onClose = () => delete this.#textWindows[index];
     win.showWithWidth(textWidth);
+  }
+
+  #regenerateFrom(index: number) {
+    this.service.removeMessagesAfter(index);
+    this.service.regenerateLastResponse();
   }
 
   #copyTextAt(index: number) {
@@ -370,7 +386,7 @@ export default class ChatView extends BaseView<ChatService> {
       const record = apiManager.getAPIRecord(this.service.api.endpoint.type);
       deepAssign(this.service.api.endpoint, await record.refresh());
       apiManager.updateEndpoint(this.service.api.endpoint);
-      this.service.regenerateResponse();
+      this.service.regenerateLastResponse();
     } catch (error) {
       // Ignore error.
       console.log(error);
@@ -381,7 +397,7 @@ export default class ChatView extends BaseView<ChatService> {
 // Return the button tooltip for button mode.
 function getTooltipForMode(mode: ButtonMode) {
   if (mode == 'refresh')
-    return 'Reload';
+    return 'Regenerate';
   else if (mode == 'send')
     return 'Send';
   else if (mode == 'stop')

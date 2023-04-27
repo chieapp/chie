@@ -106,8 +106,8 @@ export default class MessagesView extends BrowserView {
   }
 
   // Remove a message.
-  removeMessage(index: number) {
-    this.pushJavaScript(`window.removeMessage(${index})`);
+  removeMessagesAfter(index: number) {
+    this.pushJavaScript(`window.removeMessagesAfter(${index})`);
   }
 
   // Re-render a message.
@@ -123,7 +123,7 @@ export default class MessagesView extends BrowserView {
 
   // Remove all messages.
   clearMessages() {
-    this.pushJavaScript('window.clearMessages()');
+    this.pushJavaScript('messages.innerHTML = ""');
   }
 
   // Browser bindings.

@@ -47,6 +47,8 @@ describe('ServiceManager', () => {
     // The instances are no longer the same object.
     assert.notEqual(instance, serviceManager.getInstances()[0]);
     // But they still have same members.
+    delete (instance.service as ChatService).id;
+    delete (serviceManager.getInstances()[0].service as ChatService).id;
     assert.deepEqual(instance, serviceManager.getInstances()[0]);
   });
 });

@@ -36,7 +36,7 @@ export default class WebService<T extends WebAPI> implements Serializable {
     if (typeof data.params == 'object')
       options.params = data.params;
     if (typeof data.icon == 'string')
-      options.icon = new Icon({chieUrl: data.icon});
+      options.icon = new Icon({chieURL: data.icon});
     return new WebService(options);
   }
 
@@ -56,7 +56,7 @@ export default class WebService<T extends WebAPI> implements Serializable {
     if (this.params)
       data.params = this.params;
     if (this.icon)
-      data.icon = this.icon.getChieUrl();
+      data.icon = this.icon.getChieURL();
     return data;
   }
 

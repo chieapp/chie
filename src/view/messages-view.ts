@@ -1,22 +1,15 @@
 import ejs from 'ejs';
-import fs from 'node:fs/promises';
+import fs from 'node:fs';
 import gui from 'gui';
 import open from 'open';
 import path from 'node:path';
+import {realpathSync} from 'node:fs';
 
 import BrowserView, {style} from './browser-view';
+import ChatService from '../model/chat-service';
 import StreamedMarkdown, {escapeText, highlightCode} from '../util/streamed-markdown';
 import basicStyle from './basic-style';
 import {ChatRole, ChatMessage, Link} from '../model/chat-api';
-
-// EJS templates.
-let pageTemplate: ejs.AsyncTemplateFunction;
-let messageTemplate: ejs.AsyncTemplateFunction;
-let initPromise: Promise<[void, void]>;
-
-// Init templates immediately, since it is asynchronous it won't affect UI
-// loading and will speed up chat loading later.
-initTemplates();
 
 export default class MessagesView extends BrowserView {
   assistantName = 'Bot';
@@ -33,24 +26,13 @@ export default class MessagesView extends BrowserView {
     this.browser.addBinding('openLink', this.#openLink.bind(this));
   }
 
-  // Load messages.
-  async loadMessages(messages: ChatMessage[]) {
-    await initTemplates();
-    this.hasPendingMessage = false;
-    const data = {
-      style: Object.assign({}, style, basicStyle),
-      messages: messages.map(this.#messageToData.bind(this)),
-    };
-    this.loadHTML(await pageTemplate(data), 'https://chie.app');
-  }
-
   // Append a message.
   appendMessage(message: Partial<ChatMessage>, index: number) {
     if (this.hasPendingMessage)
       throw new Error('Can not append message while there is pending message.');
     this.pushTask(async () => {
-      const html = await messageTemplate({
-        message: this.#messageToData(message, index),
+      const html = getTemplate('message')({
+        message: messageToData(this.assistantName, this.assistantAvatar, message, index),
         response: {pending: false},
       });
       await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
@@ -63,8 +45,8 @@ export default class MessagesView extends BrowserView {
       throw new Error('Can not append message while there is pending message.');
     this.hasPendingMessage = true;
     this.pushTask(async () => {
-      const html = await messageTemplate({
-        message: this.#messageToData(message, index),
+      const html = getTemplate('message')({
+        message: messageToData(this.assistantName, this.assistantAvatar, message, index),
         response: {pending: true},
       });
       await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
@@ -130,26 +112,6 @@ export default class MessagesView extends BrowserView {
     this.pushJavaScript('window.clearMessages()');
   }
 
-  // Translate the message into data to be parsed by EJS template.
-  #messageToData(message: Partial<ChatMessage>, index: number) {
-    if (!message.role)  // should not happen
-      throw new Error('Role of message expected for serialization.');
-    let content = message.content;
-    if (content && message.role == ChatRole.Assistant)
-      content = (new StreamedMarkdown({highlight: true, links: message.links})).appendText(content).html;
-    else
-      content = escapeText(content);
-    const sender = {
-      [ChatRole.User]: 'You',
-      [ChatRole.Assistant]: this.assistantName,
-      [ChatRole.System]: 'System',
-    }[message.role];
-    let avatar = null;
-    if (message.role == ChatRole.Assistant)
-      avatar = this.assistantAvatar;
-    return {role: message.role, sender, avatar, content, index, steps: message.steps, links: message.links};
-  }
-
   // Browser bindings.
   #highlightCode(text: string, language: string, callbackId: number) {
     const code = highlightCode(text, language);
@@ -165,26 +127,57 @@ export default class MessagesView extends BrowserView {
   }
 }
 
-// Initialize EJS templates, and when there are multiple calls to init, they
-// will all wait for the same initialization work.
-async function initTemplates() {
-  if (pageTemplate && messageTemplate)
-    return;
-  if (initPromise)
-    return initPromise;
-  const assetsDir = path.join(__dirname, '../../assets');
-  initPromise = Promise.all([
-    (async () => {
-      const filename = path.join(assetsDir, 'view', 'page.html');
-      const html = await fs.readFile(filename);
-      pageTemplate = await ejs.compile(html.toString(), {filename, async: true});
-    })(),
-    (async () => {
-      const filename = path.join(assetsDir, 'view', 'message.html');
-      const html = await fs.readFile(filename);
-      messageTemplate = await ejs.compile(html.toString(), {filename, async: true});
-    })(),
-  ]);
-  await initPromise;
-  initPromise = null;
+// Register chie:// protocol to work around CROS problem with file:// protocol.
+gui.Browser.registerProtocol('chie', (url) => {
+  const u = new URL(url);
+  if (u.host == 'app-file') {
+    // Load file inside app bundle.
+    const p = realpathSync(`${__dirname}/../..${u.pathname}`);
+    return gui.ProtocolFileJob.create(p);
+  } else if (u.host == 'chat') {
+    // Recieve chat service from URL.
+    const [, chatServiceId, title] = u.pathname.split('/');
+    const service = ChatService.fromId(parseInt(chatServiceId));
+    if (!service)
+      return gui.ProtocolStringJob.create('text/plain', `Can not find chat with id "${chatServiceId}" and title "${decodeURIComponent(title)}".`);
+    // Render chat service.
+    const html = getTemplate('page')({
+      style: Object.assign({}, style, basicStyle),
+      messages: service.history.map(messageToData.bind(this, service.name, service.icon.getChieURL())),
+    });
+    return gui.ProtocolStringJob.create('text/html', html);
+  } else {
+    return gui.ProtocolStringJob.create('text/plain', 'Unsupported type');
+  }
+});
+
+// Translate the message into data to be parsed by EJS template.
+function messageToData(assistantName: string, assistantAvatar: string, message: Partial<ChatMessage>, index: number) {
+  if (!message.role)  // should not happen
+    throw new Error('Role of message expected for serialization.');
+  let content = message.content;
+  if (content && message.role == ChatRole.Assistant)
+    content = (new StreamedMarkdown({highlight: true, links: message.links})).appendText(content).html;
+  else
+    content = escapeText(content);
+  const sender = {
+    [ChatRole.User]: 'You',
+    [ChatRole.Assistant]: assistantName,
+    [ChatRole.System]: 'System',
+  }[message.role];
+  let avatar = null;
+  if (message.role == ChatRole.Assistant)
+    avatar = assistantAvatar;
+  return {role: message.role, sender, avatar, content, index, steps: message.steps, links: message.links};
+}
+
+// EJS templates.
+const templates: Record<string, ejs.TemplateFunction> = {};
+function getTemplate(name: string) {
+  if (!(name in templates)) {
+    const filename = path.join(__dirname, '../../assets/view', `${name}.html`);
+    const html = fs.readFileSync(filename);
+    templates[name] = ejs.compile(html.toString(), {filename});
+  }
+  return templates[name];
 }

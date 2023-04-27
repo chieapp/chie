@@ -144,8 +144,8 @@ export default class ChatView extends BaseView<ChatService> {
     }
     // Load messages.
     this.messagesView.assistantName = service.name;
-    this.messagesView.assistantAvatar = service.icon.getChieUrl();
-    await this.messagesView.loadMessages(service.history);
+    this.messagesView.assistantAvatar = service.icon.getChieURL();
+    this.messagesView.loadURL(`chie://chat/${service.id}/${encodeURIComponent(service.title)}`);
     // Connect signals.
     this.service = service;
     this.#serviceConnections.add(service.onNewTitle.connect(

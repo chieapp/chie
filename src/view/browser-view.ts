@@ -1,7 +1,6 @@
 import Queue from 'queue';
 import gui from 'gui';
 import {Signal} from 'typed-signals';
-import {realpathSync} from 'node:fs';
 
 import AppearanceAware from '../view/appearance-aware';
 
@@ -56,16 +55,17 @@ export default class BrowserView extends AppearanceAware {
     this.browser.loadURL(url);
   }
 
-  loadHTML(html: string, baseUrl: string) {
+  loadHTML(html: string, baseURL: string) {
     this.#queue.end();
     this.isDomReady = false;
-    this.browser.loadHTML(html, baseUrl);
+    this.browser.loadHTML(html, baseURL);
   }
 
   // Promise version of executeJavaScript.
   executeJavaScript(js: string) {
     if (!this.isDomReady)
       throw new Error('Can not call executeJavaScript before page is loaded.');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return new Promise<any>((resolve, reject) => {
       this.browser.executeJavaScript(js, (success: boolean, value) => {
         if (success)
@@ -125,12 +125,3 @@ export default class BrowserView extends AppearanceAware {
     console.log(...args);
   }
 }
-
-// Register chie:// protocol to work around CROS problem with file:// protocol.
-gui.Browser.registerProtocol('chie', (url) => {
-  const u = new URL(url);
-  if (u.host !== 'app-file')
-    return gui.ProtocolStringJob.create('text/plain', 'Unsupported type');
-  const p = realpathSync(`${__dirname}/../..${u.pathname}`);
-  return gui.ProtocolFileJob.create(p);
-});

@@ -15,7 +15,7 @@ describe('MultiChatsService', () => {
     service = new MultiChatsService({name: 'Test', api});
   });
   afterEach(() => {
-    service.clearChats();
+    service.destructor();
     config.inMemory = true;
   });
 

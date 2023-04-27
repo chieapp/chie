@@ -39,11 +39,11 @@ export function activate() {
   });
 }
 
-async function login(firstUrl) {
+async function login(firstURL) {
   const win = new LoginWindow();
   win.window.activate();
   try {
-    win.browser.loadURL(firstUrl);
+    win.browser.loadURL(firstURL);
     await win.waitForNavigation(/chat\.openai\.com\/?#?$/);
     for (;;) {
       await new Promise(resolve => setTimeout(resolve, 1000));

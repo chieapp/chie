@@ -13,8 +13,8 @@ import {
 } from 'chie';
 
 import {
-  bingChatUrl,
-  sydneyWebSocketUrl,
+  bingChatURL,
+  sydneyWebSocketURL,
   chatArgument,
   edgeBrowserHeaders,
 } from './bing-env';
@@ -44,7 +44,7 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
     this.#lastContent = '';
     this.#lastLinks = null;
 
-    const ws = new WebSocket(sydneyWebSocketUrl);
+    const ws = new WebSocket(sydneyWebSocketURL);
 
     // Handle abort signals.
     const handler = ws.terminate.bind(ws);
@@ -65,7 +65,7 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
   }
 
   async #createConversation(options) {
-    const response = await fetch(bingChatUrl, {
+    const response = await fetch(bingChatURL, {
       signal: options.signal,
       headers: {
         ...edgeBrowserHeaders,
@@ -179,7 +179,7 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
         if (!this.#lastLinks || sourceAttributions.length > this.#lastLinks.length) {
           delta.links = sourceAttributions
             .slice(this.#lastLinks ? this.#lastLinks.length : 0)
-            .map(a => ({name: a.providerDisplayName, url: a.seeMoreUrl}));
+            .map(a => ({name: a.providerDisplayName, url: a.seeMoreURL}));
           this.#lastLinks = sourceAttributions;
         }
       }

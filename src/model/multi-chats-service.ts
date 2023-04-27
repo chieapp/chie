@@ -5,6 +5,8 @@ import WebService, {
   WebServiceData,
   WebServiceOptions,
 } from './web-service';
+import apiManager from '../controller/api-manager';
+import WebAPI from './web-api';
 import {ChatCompletionAPI, ChatConversationAPI} from './chat-api';
 
 export interface MultiChatsServiceData extends WebServiceData {
@@ -24,8 +26,15 @@ export default class MultiChatsService extends WebService<ChatServiceSupportedAP
 
   static deserialize(data: MultiChatsServiceData): MultiChatsServiceOptions {
     const options = WebService.deserialize(data) as MultiChatsServiceOptions;
-    if (Array.isArray(data.chats))
-      options.chats = data.chats.map(moment => new ChatService(Object.assign({moment}, options)));
+    if (Array.isArray(data.chats)) {
+      options.chats = data.chats.map(moment => new ChatService({
+        moment,
+        name: options.name,
+        api: cloneAPI<ChatServiceSupportedAPIs>(options.api),
+        params: options.params,
+        icon: options.icon,
+      }));
+    }
     return options;
   }
 
@@ -51,7 +60,12 @@ export default class MultiChatsService extends WebService<ChatServiceSupportedAP
   }
 
   createChat() {
-    const chat = new ChatService({name: this.name, api: this.api, icon: this.icon});
+    const chat = new ChatService({
+      name: this.name,
+      api: cloneAPI<ChatServiceSupportedAPIs>(this.api),
+      params: this.params,
+      icon: this.icon,
+    });
     this.chats.unshift(chat);
     this.onNewChat.emit(chat);
     return chat;
@@ -74,4 +88,8 @@ export default class MultiChatsService extends WebService<ChatServiceSupportedAP
     this.onClearChats.emit();
     this.createChat();
   }
+}
+
+function cloneAPI<T extends WebAPI>(api: T) {
+  return apiManager.createAPIForEndpoint(api.endpoint) as T;
 }

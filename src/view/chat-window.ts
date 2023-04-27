@@ -39,8 +39,7 @@ export default class ChatWindow extends BaseWindow {
   }
 
   restoreState(state: ChatWindowState) {
-    if (state.viewState)
-      this.chatView.restoreState(state.viewState);
+    this.chatView.restoreState(state.viewState ?? {});
     super.restoreState(state);
   }
 

@@ -3,17 +3,25 @@ import {assert} from 'chai';
 import ChatListItem from '../src/view/chat-list-item';
 import MultiChatsService from '../src/model/multi-chats-service';
 import MultiChatsView from '../src/view/multi-chats-view';
-import {ChatRole} from '../src/model/chat-api';
+import apiManager from '../src/controller/api-manager';
+import {ChatRole, ChatCompletionAPI} from '../src/model/chat-api';
 import {addFinalizer, gcUntil} from './util';
-import {createChatCompletionAPI} from '../test/util';
 
 describe('MultiChatsView', function() {
-  this.timeout(10 * 1000);
+  let service: MultiChatsService;
+  beforeEach(() => {
+    const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
+    const api = apiManager.createAPIForEndpoint(endpoint) as ChatCompletionAPI;
+    service = new MultiChatsService({name: 'Test', api});
+  });
+  afterEach(() => {
+    service.destructor();
+  });
 
   it('can be garbage collected', async () => {
     let collected = false;
     (() => {
-      const chatView = new MultiChatsView(new MultiChatsService({name: 'chat', api: createChatCompletionAPI()}));
+      const chatView = new MultiChatsView(service);
       chatView.initAsMainView();
       addFinalizer(chatView, () => collected = true);
       chatView.destructor();
@@ -24,7 +32,6 @@ describe('MultiChatsView', function() {
   it('can be garbage collected after sending message', async () => {
     let collected = false;
     await (async () => {
-      const service = new MultiChatsService({name: 'chat', api: createChatCompletionAPI()});
       const chatView = new MultiChatsView(service);
       chatView.initAsMainView();
       const chat = service.createChat();
@@ -38,7 +45,6 @@ describe('MultiChatsView', function() {
   it('can be garbage collected after adding and remove chats', async () => {
     let collected = false;
     (() => {
-      const service = new MultiChatsService({name: 'chat', api: createChatCompletionAPI()});
       const chatView = new MultiChatsView(service);
       chatView.initAsMainView();
       service.createChat();
@@ -56,7 +62,6 @@ describe('MultiChatsView', function() {
   it('item can be garbage collected', async () => {
     let collected = false;
     (() => {
-      const service = new MultiChatsService({name: 'chat', api: createChatCompletionAPI()});
       const chat = service.createChat();
       const item = new ChatListItem(chat);
       service.removeChatAt(0);
@@ -69,7 +74,6 @@ describe('MultiChatsView', function() {
   it('does not reference removed chat', async () => {
     let collected = false;
     (() => {
-      const service = new MultiChatsService({name: 'chat', api: createChatCompletionAPI()});
       const chatView = new MultiChatsView(service);
       chatView.initAsMainView();
       const chat = service.createChat();

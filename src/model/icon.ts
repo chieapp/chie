@@ -7,16 +7,16 @@ export default class Icon {
 
   readonly filePath: string;
 
-  #chieUrl?: string;
+  #chieURL?: string;
   #image?: gui.Image;
 
-  constructor(options: {chieUrl?: string, filePath?: string, name?: string}) {
-    if (options.chieUrl) {
-      const u = new URL(options.chieUrl);
+  constructor(options: {chieURL?: string, filePath?: string, name?: string}) {
+    if (options.chieURL) {
+      const u = new URL(options.chieURL);
       if (u.host !== 'app-file')
-        throw new Error(`Invalid chie URL: ${options.chieUrl}`);
+        throw new Error(`Invalid chie URL: ${options.chieURL}`);
       this.filePath = path.join(__dirname, `../../${u.pathname}`);
-      this.#chieUrl = options.chieUrl;
+      this.#chieURL = options.chieURL;
     } else if (options.filePath) {
       this.filePath = options.filePath;
     } else if (options.name) {
@@ -26,14 +26,14 @@ export default class Icon {
     }
   }
 
-  getChieUrl() {
-    if (!this.#chieUrl) {
+  getChieURL() {
+    if (!this.#chieURL) {
       if (this.filePath.startsWith(Icon.builtinIconsPath))
-        this.#chieUrl = 'chie://app-file/assets/icons' + this.filePath.substr(Icon.builtinIconsPath.length).replaceAll('\\', '/');
+        this.#chieURL = 'chie://app-file/assets/icons' + this.filePath.substr(Icon.builtinIconsPath.length).replaceAll('\\', '/');
       else
         throw new Error('Can not convert arbitrary file path to chie url.');
     }
-    return this.#chieUrl;
+    return this.#chieURL;
   }
 
   getImage() {

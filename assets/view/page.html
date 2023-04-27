@@ -2,20 +2,20 @@
 <html>
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <style type="text/css"><%- await include('page.css', {style}) %></style>
-  <style type="text/css"><%- await include('fontello-embedded.css', {style}) %></style>
+  <style type="text/css"><%- include('page.css', {style}) %></style>
+  <style type="text/css"><%- include('fontello.css') %></style>
   <style type="text/css">
   <% if (process.platform == 'win32') { %>
-    <%- await include('light-mode.css', {style}) %>
-    <%- await include('../../node_modules/highlight.js/styles/github.css') %>
+    <%- include('light-mode.css', {style}) %>
+    <%- include('../../node_modules/highlight.js/styles/github.css') %>
   <% } else { %>
     @media (prefers-color-scheme: light) {
-      <%- await include('light-mode.css', {style}) %>
-      <%- await include('../../node_modules/highlight.js/styles/github.css') %>
+      <%- include('light-mode.css', {style}) %>
+      <%- include('../../node_modules/highlight.js/styles/github.css') %>
     }
     @media (prefers-color-scheme: dark) {
-      <%- await include('dark-mode.css', {style}) %>
-      <%- await include('../../node_modules/highlight.js/styles/github-dark.css') %>
+      <%- include('dark-mode.css', {style}) %>
+      <%- include('../../node_modules/highlight.js/styles/github-dark.css') %>
     }
   <% } %>
   </style>
@@ -24,7 +24,7 @@
 
 <div id="messages">
   <% for (const message of messages) { %>
-    <%- await include('message.html', {message, response: {pending: false}}) %>
+    <%- include('message.html', {message, response: {pending: false}}) %>
   <% } %>
 </div>
 

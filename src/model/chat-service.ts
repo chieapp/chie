@@ -33,9 +33,9 @@ interface ChatHistoryData {
 }
 
 export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
-  history: ChatMessage[] = [];
-  isLoaded = false;
-  moment?: string;
+  static services: Record<number, ChatService> = {};
+  static nextId = 0;
+  static fromId = (id: number) => ChatService.services[id];
 
   onLoad: Signal<() => void> = new Signal;
   onNewTitle: Signal<(title: string | null) => void> = new Signal;
@@ -47,6 +47,18 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   onMessage: Signal<(message: ChatMessage) => void> = new Signal;
   onRemoveMessage: Signal<((index: number) => void)> = new Signal;
   onClearMessages: Signal<() => void> = new Signal;
+
+  // Auto increasing ID.
+  id: number = ++ChatService.nextId;
+
+  // Current chat messages.
+  history: ChatMessage[] = [];
+
+  // Whether the chat messages have be recovered from disk.
+  isLoaded = false;
+
+  // ID of the chat history kept on disk.
+  moment?: string;
 
   // Title of the chat.
   title?: string;
@@ -78,6 +90,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
         !(options.api instanceof ChatConversationAPI))
       throw new Error('Unsupported API type');
     super(options);
+    ChatService.services[this.id] = this;
     if (options.moment) {
       // Load from saved history.
       this.moment = options.moment;
@@ -110,6 +123,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     super.destructor();
     this.aborter?.abort();
     this.#clearResources();
+    delete ChatService.services[this.id];
   }
 
   // Send a message and wait for response.
@@ -209,11 +223,8 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     }
 
     // Generate a title for the conversation.
-    if (!this.#titlePromise &&
-        this.history.length > 1 &&
-        this.history.length < 10) {
+    if (!this.#titlePromise && !this.aborter?.signal.aborted)
       this.#titlePromise = this.#generateTitle();
-    }
 
     this.#saveMoment();
   }
@@ -282,14 +293,18 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
         The conversation is named:
       `;
     let title = '';
-    if (this.api instanceof ChatCompletionAPI) {
+    if (this.api instanceof ChatCompletionAPI &&
+        this.history.length > 1 &&
+        this.history.length < 10) {
       const message = {role: ChatRole.System, content: prompt};
       await this.api.sendConversation([message], {
         onMessageDelta(delta) { title += delta.content ?? ''; }
       });
     } else if (this.api instanceof ChatConversationAPI &&
-               (this.api.constructor as ChatConversationAPIType<ChatServiceSupportedAPIs>).canRemoveFromServer) {
-      // Spawn a new conversation to ask for title generation.
+               (this.api.constructor as ChatConversationAPIType<ChatServiceSupportedAPIs>).canRemoveFromServer &&
+               this.history.length > 1 &&
+               this.history.length < 10) {
+      // Spawn a new conversation to ask for title generation,
       const api = apiManager.createAPIForEndpoint(this.api.endpoint) as ChatConversationAPI;
       await api.sendMessage(prompt, {
         onMessageDelta(delta) { title += delta.content ?? ''; }
@@ -299,19 +314,23 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     } else {
       // Return the first words of last message.
       const words = this.history[this.history.length - 1].content.substring(0, 30).split(' ').slice(0, 5);
-      if (words.length == 1)  // likely a language without spaces in words
-        return words[0].substring(0, 10);
-      // Join the words but do not exceed 15 characters.
-      for (const word of words) {
-        title += word + ' ';
-        if (title.length > 15)
-          break;
+      if (words.length < 3) {
+        // Likely a language without spaces in words.
+        title = words[0].substring(0, 10);
+      } else {
+        // Join the words but do not exceed 15 characters.
+        for (const word of words) {
+          title += word + ' ';
+          if (title.length > 15)
+            break;
+        }
       }
     }
     return this.#setTitle(title.trim());
   }
 
   #setTitle(title: string | null) {
+    this.#titlePromise = null;
     if (!title)
       return;
     if (title.endsWith('.'))
@@ -320,7 +339,6 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
       title = title.slice(1, -1);
     this.title = title;
     this.onNewTitle.emit(title);
-    this.#titlePromise = null;
     this.#saveMoment();
     return title;
   }

@@ -15,6 +15,7 @@ import {
 import apiManager from '../controller/api-manager';
 import serviceManager from '../controller/service-manager';
 import historyKeeper from '../controller/history-keeper';
+import deepAssign from '../util/deep-assign';
 
 export type ChatServiceSupportedAPIs = ChatConversationAPI | ChatCompletionAPI;
 
@@ -46,6 +47,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   onMessageError: Signal<(error: Error) => void> = new Signal;
   onMessage: Signal<(message: ChatMessage) => void> = new Signal;
   onRemoveMessage: Signal<((index: number) => void)> = new Signal;
+  onUpdateMessage: Signal<((index: number, message: ChatMessage) => void)> = new Signal;
   onClearMessages: Signal<() => void> = new Signal;
 
   // Auto increasing ID.
@@ -167,6 +169,15 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     }
   }
 
+  // Edit chat history.
+  updateMessage(index: number, message: Partial<ChatMessage>) {
+    const target = this.history[index];
+    if (!target)
+      throw new Error(`Invalid index ${index}.`);
+    deepAssign(target, message);
+    this.onUpdateMessage.emit(index, target);
+  }
+
   // Clear chat history.
   clear() {
     if (this.pendingMessage)
@@ -176,6 +187,15 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     this.onNewTitle.emit(null);
     this.#clearResources();
     this.onClearMessages.emit();
+  }
+
+  // Return information needed by MessagesView for rendering.
+  getMessageRenderInfo() {
+    return {
+      assistantName: this.name,
+      assistantAvatar: this.icon.getChieURL(),
+      canEdit: this.api instanceof ChatCompletionAPI,
+    };
   }
 
   // Call the API.

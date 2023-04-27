@@ -138,12 +138,20 @@
       scrollToBottom();
   }
   window.removeMessage = function(index) {
-    var messages = document.getElementsByClassName('msg');
-    if (index < 0 || index >= messages.length) {
+    var message = document.getElementsByClassName('msg')[index];
+    if (!message) {
       console.error('No message for removing.');
       return;
     }
-    messages[index].parentNode.removeChild(messages[index]);
+    message.parentNode.removeChild(message);
+  };
+  window.updateMessage = function(index, html) {
+    var message = document.getElementsByClassName('msg')[index];
+    if (!message) {
+      console.error('No message for updating.');
+      return;
+    }
+    message.outerHTML = html;
   };
   window.clearMessages = function() {
     messages.innerHTML = '';

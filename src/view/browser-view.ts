@@ -41,6 +41,7 @@ export default class BrowserView extends AppearanceAware {
     this.view.addChildView(this.browser);
 
     // Add bindings to the browser.
+    this.browser.beginAddingBindings();
     this.browser.setBindingName('chie');
     this.browser.addBinding('catchDomError', this.#catchDomError.bind(this));
     this.browser.addBinding('log', this.#log.bind(this));

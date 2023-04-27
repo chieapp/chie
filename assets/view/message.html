@@ -8,7 +8,12 @@
   </div>
   <div class="content">
     <div class="action-menu">
-    <% if (message.role == 'Assistant') { %>
+    <% if (message.canEdit) { %>
+      <a class="icon" href="#show-text-at" title="Edit"><i class="icon-edit"></i></a>
+    <%   if (message.role == 'Assistant') { %>
+      <a class="icon" href="#regenerate-at" title="Regenerate"><i class="icon-refresh"></i></a>
+    <%   } %>
+    <% } else if (message.role == 'Assistant') { %>
       <a class="icon" href="#show-text-at" title="Show raw text"><i class="icon-text"></i></a>
     <% } %>
       <a class="icon" href="#copy-text-at" title="Copy text"><i class="icon-copy"></i></a>

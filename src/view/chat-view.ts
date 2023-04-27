@@ -67,6 +67,7 @@ export default class ChatView extends BaseView<ChatService> {
     this.messagesView.browser.addBinding('copyTextAt', this.#copyTextAt.bind(this));
     this.messagesView.browser.addBinding('sendReply', this.#sendReply.bind(this));
     this.messagesView.browser.addBinding('refreshToken', this.#refreshToken.bind(this));
+    this.messagesView.browser.endAddingBindings();
     this.messagesView.onDomReady.connect(this.#onDomReady.bind(this));
     this.view.addChildView(this.messagesView.view);
 
@@ -143,8 +144,6 @@ export default class ChatView extends BaseView<ChatService> {
       return;
     }
     // Load messages.
-    this.messagesView.assistantName = service.name;
-    this.messagesView.assistantAvatar = service.icon.getChieURL();
     this.messagesView.loadURL(`chie://chat/${service.id}/${encodeURIComponent(service.title)}`);
     // Connect signals.
     this.service = service;
@@ -164,6 +163,8 @@ export default class ChatView extends BaseView<ChatService> {
       this.#resetUIState.bind(this)));
     this.#serviceConnections.add(service.onRemoveMessage.connect(
       this.messagesView.removeMessage.bind(this.messagesView)));
+    this.#serviceConnections.add(service.onUpdateMessage.connect(
+      this.messagesView.updateMessage.bind(this.messagesView, this.service.getMessageRenderInfo())));
     this.#serviceConnections.add(service.onClearMessages.connect(
       this.messagesView.clearMessages.bind(this.messagesView)));
     // Load pending message.
@@ -283,7 +284,8 @@ export default class ChatView extends BaseView<ChatService> {
 
   // User has sent a message.
   #onUserMessage(message: ChatMessage) {
-    this.messagesView.appendMessage(message, this.service.history.length - 1);
+    this.messagesView.appendMessage(
+      this.service.getMessageRenderInfo(), message, this.service.history.length - 1);
   }
 
   // Last error has been cleared for renegeration.
@@ -294,7 +296,8 @@ export default class ChatView extends BaseView<ChatService> {
   // Begin receving response.
   #onMessageBegin() {
     // Add a bot message to indicate we are loading.
-    this.messagesView.appendPendingMessage({role: ChatRole.Assistant}, this.service.history.length);
+    this.messagesView.appendPendingMessage(
+      this.service.getMessageRenderInfo(), {role: ChatRole.Assistant}, this.service.history.length);
     // Clear input.
     this.#markdown = null;
     this.input.setText('');
@@ -347,7 +350,8 @@ export default class ChatView extends BaseView<ChatService> {
       return;
     }
     const text = this.service.history[index].content;
-    const win = new TextWindow(text);
+    const mode = this.service.api instanceof ChatCompletionAPI ? 'edit' : 'show';
+    const win = new TextWindow(mode, this.service, index, text);
     this.#textWindows[index] = win;
     win.window.onClose = () => delete this.#textWindows[index];
     win.showWithWidth(textWidth);

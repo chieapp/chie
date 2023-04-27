@@ -11,10 +11,13 @@ import StreamedMarkdown, {escapeText, highlightCode} from '../util/streamed-mark
 import basicStyle from './basic-style';
 import {ChatRole, ChatMessage, Link} from '../model/chat-api';
 
-export default class MessagesView extends BrowserView {
-  assistantName = 'Bot';
-  assistantAvatar = 'chie://app-file/assets/icons/bot.png';
+export interface MessageRenderInfo {
+  assistantName: string;
+  assistantAvatar: string;
+  canEdit: boolean;
+}
 
+export default class MessagesView extends BrowserView {
   // Used to assert wrong executeJavaScript sequence.
   hasPendingMessage = false;
 
@@ -27,12 +30,12 @@ export default class MessagesView extends BrowserView {
   }
 
   // Append a message.
-  appendMessage(message: Partial<ChatMessage>, index: number) {
+  appendMessage(info: MessageRenderInfo, message: Partial<ChatMessage>, index: number) {
     if (this.hasPendingMessage)
       throw new Error('Can not append message while there is pending message.');
     this.pushTask(async () => {
       const html = getTemplate('message')({
-        message: messageToData(this.assistantName, this.assistantAvatar, message, index),
+        message: messageToJSON(info, message, index),
         response: {pending: false},
       });
       await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
@@ -40,13 +43,13 @@ export default class MessagesView extends BrowserView {
   }
 
   // Add a pending message.
-  appendPendingMessage(message: Partial<ChatMessage>, index: number) {
+  appendPendingMessage(info: MessageRenderInfo, message: Partial<ChatMessage>, index: number) {
     if (this.hasPendingMessage)
       throw new Error('Can not append message while there is pending message.');
     this.hasPendingMessage = true;
     this.pushTask(async () => {
       const html = getTemplate('message')({
-        message: messageToData(this.assistantName, this.assistantAvatar, message, index),
+        message: messageToJSON(info, message, index),
         response: {pending: true},
       });
       await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
@@ -107,6 +110,17 @@ export default class MessagesView extends BrowserView {
     this.pushJavaScript(`window.removeMessage(${index})`);
   }
 
+  // Re-render a message.
+  updateMessage(info: MessageRenderInfo, index: number, message: ChatMessage) {
+    this.pushTask(async () => {
+      const html = getTemplate('message')({
+        message: messageToJSON(info, message, index),
+        response: {pending: false},
+      });
+      await this.executeJavaScript(`window.updateMessage(${index}, ${JSON.stringify(html)})`);
+    });
+  }
+
   // Remove all messages.
   clearMessages() {
     this.pushJavaScript('window.clearMessages()');
@@ -143,7 +157,7 @@ gui.Browser.registerProtocol('chie', (url) => {
     // Render chat service.
     const html = getTemplate('page')({
       style: Object.assign({}, style, basicStyle),
-      messages: service.history.map(messageToData.bind(this, service.name, service.icon.getChieURL())),
+      messages: service.history.map(messageToJSON.bind(this, service.getMessageRenderInfo())),
     });
     return gui.ProtocolStringJob.create('text/html', html);
   } else {
@@ -151,8 +165,19 @@ gui.Browser.registerProtocol('chie', (url) => {
   }
 });
 
+interface MessageRenderJSON {
+  index: number;
+  role: string;
+  sender: string;
+  content: string;
+  canEdit?: boolean;
+  avatar?: string;
+  steps?: string[];
+  links?: Link[];
+}
+
 // Translate the message into data to be parsed by EJS template.
-function messageToData(assistantName: string, assistantAvatar: string, message: Partial<ChatMessage>, index: number) {
+function messageToJSON(info: MessageRenderInfo, message: Partial<ChatMessage>, index: number): MessageRenderJSON {
   if (!message.role)  // should not happen
     throw new Error('Role of message expected for serialization.');
   let content = message.content;
@@ -162,13 +187,19 @@ function messageToData(assistantName: string, assistantAvatar: string, message: 
     content = escapeText(content);
   const sender = {
     [ChatRole.User]: 'You',
-    [ChatRole.Assistant]: assistantName,
+    [ChatRole.Assistant]: info.assistantName,
     [ChatRole.System]: 'System',
   }[message.role];
-  let avatar = null;
+  const json: MessageRenderJSON = {index, role: message.role, sender, content};
+  if (info.canEdit)
+    json.canEdit = true;
   if (message.role == ChatRole.Assistant)
-    avatar = assistantAvatar;
-  return {role: message.role, sender, avatar, content, index, steps: message.steps, links: message.links};
+    json.avatar = info.assistantAvatar;
+  if (message.steps)
+    json.steps = message.steps;
+  if (message.links)
+    json.links = message.links;
+  return json;
 }
 
 // EJS templates.

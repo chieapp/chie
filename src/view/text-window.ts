@@ -3,16 +3,22 @@ import gui from 'gui';
 import BaseWindow from './base-window';
 import ButtonsArea from './buttons-area';
 import ChatView from './chat-view';
+import ChatService from '../model/chat-service';
 import InputView from './input-view';
 import basicStyle from './basic-style';
 
 export default class TextWindow extends BaseWindow {
+  modes: 'show' | 'edit';
+  service: ChatService;
+  index: number;
   text: string;
   input: InputView;
-  copyButton: gui.Button;
 
-  constructor(text: string) {
+  constructor(mode, service: ChatService, index: number, text: string) {
     super({pressEscToClose: true});
+    this.mode = mode;
+    this.service = service;
+    this.index = index;
     this.text = text;
 
     this.contentView.setStyle({padding: basicStyle.padding});
@@ -27,10 +33,21 @@ export default class TextWindow extends BaseWindow {
 
     const buttonsArea = new ButtonsArea();
     this.contentView.addChildView(buttonsArea.view);
-    this.copyButton = buttonsArea.addButton('Copy');
-    this.copyButton.onClick = () => gui.Clipboard.get().setText(this.input.entry.getText());
-    this.copyButton.makeDefault();
+
+    if (this.mode == 'edit') {
+      const updateButton = buttonsArea.addButton('Modify');
+      updateButton.onClick = () => {
+        service.updateMessage(index, {content: this.input.entry.getText()});
+        this.window.close();
+      };
+    }
+    const copyButton = buttonsArea.addButton('Copy');
+    copyButton.onClick = () => gui.Clipboard.get().setText(this.input.entry.getText());
     buttonsArea.addCloseButton();
+
+    // First button is default button.
+    const defaultButton = buttonsArea.row.childAt(0) as gui.Button;
+    defaultButton.makeDefault();
   }
 
   destructor() {
@@ -55,9 +72,11 @@ export default class TextWindow extends BaseWindow {
     });
     bounds.width += insets.x + 2;
     bounds.height += insets.y + 2;
+    bounds.width = Math.max(400, bounds.width);
+    bounds.height = Math.max(200, bounds.height);
     this.window.setContentSize(bounds);
     this.window.center();
     this.window.activate();
-    this.copyButton.focus();
+    this.input.entry.focus();
   }
 }

@@ -49,7 +49,6 @@ async function login(firstURL) {
       await new Promise(resolve => setTimeout(resolve, 1000));
       // Only when input shows do we know login is successful.
       const hasInput = await win.browser.executeJavaScript('document.getElementsByTagName("textarea").length');
-      console.log(hasInput);
       if (hasInput)
         break;
     }

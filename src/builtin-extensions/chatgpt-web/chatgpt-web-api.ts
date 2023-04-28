@@ -11,15 +11,15 @@ import {
 } from 'chie';
 
 interface SessionData {
+  // The conversationId is given by server.
+  conversationId?: string;
   // Records message IDs, index starts from 1, the 0 index is for root.
   messageIds: string[];
-  conversationId?: string;
 }
 
 export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
   static canRemoveFromServer = true;
-
-  #lastContent: string;
+  static canRemoveMessagesAfter = true;
 
   constructor(endpoint: APIEndpoint) {
     if (endpoint.type != 'ChatGPT Web')
@@ -30,16 +30,16 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
   async sendMessage(text: string, options: ChatAPIOptions) {
     if (!this.session)
       this.session = {messageIds: [ crypto.randomUUID() ]};
-    this.#lastContent = '';
 
+    const messageId = crypto.randomUUID();
     const response = await fetch(this.endpoint.url, {
       body: JSON.stringify({
-        action: 'next',
+        action: 'variant',
         model: this.endpoint.params.model,
         conversation_id: this.session.conversationId,
         parent_message_id: this.session.messageIds[this.session.messageIds.length - 1],
         messages: [ {
-          id: crypto.randomUUID(),
+          id: messageId,
           role: 'user',
           content: {content_type: 'text', parts: [ text ]},
         } ],
@@ -60,8 +60,10 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
         throw new APIError(JSON.stringify(detail));
     }
 
+    this.session.messageIds.push(messageId);
+
     // Parse server sent event (SSE).
-    const state = {firstDelta: true};
+    const state = {firstDelta: true, lastContent: ''};
     const parser = createParser(this.#parseMessage.bind(this, state, options));
     const decoder = new TextDecoder();
     for await (const chunk of bodyToIterator(response.body)) {
@@ -78,6 +80,11 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
       headers: this.#getHeaders(),
     });
     await response.json();
+  }
+
+  async removeMessagesAfter(index: number) {
+    // The index of messageIds starts from 1.
+    this.session.messageIds.splice(index + 1);
   }
 
   #getHeaders(): HeadersInit {
@@ -100,9 +107,6 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
     const data = JSON.parse(message.data);
     if (data.conversation_id)
       this.session.conversationId = data.conversation_id;
-    // The API replies user ID, which means it has been sent successfully.
-    if (data.message.author.role == 'user')
-      this.session.messageIds.push(data.message.id);
     if (data.message.author.role != 'assistant')
       return;
     // Push assistant message ID when seeing first delta.
@@ -114,8 +118,8 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
     const delta: Partial<ChatMessage> = {role: ChatRole.Assistant};
     const content = data.message.content?.parts[0];
     if (content) {
-      delta.content = content.substr(this.#lastContent.length);
-      this.#lastContent = content;
+      delta.content = content.substr(state.lastContent.length);
+      state.lastContent = content;
     }
     // ChatService will handle the rest.
     options.onMessageDelta(delta, {

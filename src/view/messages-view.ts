@@ -11,11 +11,20 @@ import StreamedMarkdown, {escapeText, highlightCode} from '../util/streamed-mark
 import basicStyle from './basic-style';
 import {ChatRole, ChatMessage, Link} from '../model/chat-api';
 
-export interface MessageRenderInfo {
-  assistantName: string;
-  assistantAvatar: string;
-  canEdit: boolean;
-}
+const actionsMap = {
+  refresh: {
+    name: 'Refresh token',
+    onClick: 'chie.refreshToken()',
+  },
+  clear: {
+    name: 'Clear conversation',
+    onClick: 'chie.clearConversation()',
+  },
+  resend: {
+    name: 'Resend message',
+    onClick: 'chie.resendLastMessage()',
+  },
+};
 
 export default class MessagesView extends BrowserView {
   // Used to assert wrong executeJavaScript sequence.
@@ -29,13 +38,19 @@ export default class MessagesView extends BrowserView {
     this.browser.addBinding('openLink', this.#openLink.bind(this));
   }
 
+  // Load a chat service.
+  loadChatService(service: ChatService) {
+    this.hasPendingMessage = false;
+    this.loadURL(`chie://chat/${service.id}/${encodeURIComponent(service.title)}`);
+  }
+
   // Append a message.
-  appendMessage(info: MessageRenderInfo, message: Partial<ChatMessage>, index: number) {
+  appendMessage(service: ChatService, message: Partial<ChatMessage>) {
     if (this.hasPendingMessage)
       throw new Error('Can not append message while there is pending message.');
     this.pushTask(async () => {
       const html = getTemplate('message')({
-        message: messageToJSON(info, message, index),
+        message: messageToJSON(service, message, service.history.length - 1),
         response: {pending: false},
       });
       await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
@@ -43,13 +58,15 @@ export default class MessagesView extends BrowserView {
   }
 
   // Add a pending message.
-  appendPendingMessage(info: MessageRenderInfo, message: Partial<ChatMessage>, index: number) {
+  appendPendingMessage(service: ChatService, message: Partial<ChatMessage>) {
     if (this.hasPendingMessage)
       throw new Error('Can not append message while there is pending message.');
     this.hasPendingMessage = true;
     this.pushTask(async () => {
       const html = getTemplate('message')({
-        message: messageToJSON(info, message, index),
+        // A pending message is not added to service.history yet, so we use one
+        // pass end as its index.
+        message: messageToJSON(service, message, service.history.length),
         response: {pending: true},
       });
       await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
@@ -80,11 +97,17 @@ export default class MessagesView extends BrowserView {
     this.pushJavaScript(`window.setSuggestdReplies(${JSON.stringify(html)})`);
   }
 
-  // Add a button to refresh token.
-  setRefreshAction() {
-    const button = '<button class="attention" onclick="chie.refreshToken()">Refresh token</button>';
-    const html = `<div id="replies">${button}</div>`;
-    this.pushJavaScript(`window.setSuggestdReplies(${JSON.stringify(html)})`);
+  // Add buttons for actions.
+  setReplyActions(actions: ('refresh' | 'clear' | 'resend')[]) {
+    const buttons: string[] = [];
+    for (const name of actions) {
+      const action = actionsMap[name];
+      buttons.push(`<button class="attention" onclick="${action.onClick}">${action.name}</button>`);
+    }
+    if (buttons.length > 0) {
+      const html = `<div id="replies">${buttons.join('')}</div>`;
+      this.pushJavaScript(`window.setSuggestdReplies(${JSON.stringify(html)})`);
+    }
   }
 
   // Mark the end of pending message.
@@ -111,10 +134,10 @@ export default class MessagesView extends BrowserView {
   }
 
   // Re-render a message.
-  updateMessage(info: MessageRenderInfo, index: number, message: ChatMessage) {
+  updateMessage(service: ChatService, message: ChatMessage, index: number) {
     this.pushTask(async () => {
       const html = getTemplate('message')({
-        message: messageToJSON(info, message, index),
+        message: messageToJSON(service, message, index),
         response: {pending: false},
       });
       await this.executeJavaScript(`window.updateMessage(${index}, ${JSON.stringify(html)})`);
@@ -157,7 +180,7 @@ gui.Browser.registerProtocol('chie', (url) => {
     // Render chat service.
     const html = getTemplate('page')({
       style: Object.assign({}, style, basicStyle),
-      messages: service.history.map(messageToJSON.bind(this, service.getMessageRenderInfo())),
+      messages: service.history.map(messageToJSON.bind(this, service)),
     });
     return gui.ProtocolStringJob.create('text/html', html);
   } else {
@@ -177,7 +200,7 @@ interface MessageRenderJSON {
 }
 
 // Translate the message into data to be parsed by EJS template.
-function messageToJSON(info: MessageRenderInfo, message: Partial<ChatMessage>, index: number): MessageRenderJSON {
+function messageToJSON(service: ChatService, message: Partial<ChatMessage>, index: number): MessageRenderJSON {
   if (!message.role)  // should not happen
     throw new Error('Role of message expected for serialization.');
   let content = message.content;
@@ -187,14 +210,14 @@ function messageToJSON(info: MessageRenderInfo, message: Partial<ChatMessage>, i
     content = escapeText(content);
   const sender = {
     [ChatRole.User]: 'You',
-    [ChatRole.Assistant]: info.assistantName,
+    [ChatRole.Assistant]: service.name,
     [ChatRole.System]: 'System',
   }[message.role];
   const json: MessageRenderJSON = {index, role: message.role, sender, content};
-  if (info.canEdit)
+  if (service.canEditMessages())
     json.canEdit = true;
   if (message.role == ChatRole.Assistant)
-    json.avatar = info.assistantAvatar;
+    json.avatar = service.icon.getChieURL();
   if (message.steps)
     json.steps = message.steps;
   if (message.links)

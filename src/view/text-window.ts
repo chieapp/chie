@@ -8,7 +8,7 @@ import InputView from './input-view';
 import basicStyle from './basic-style';
 
 export default class TextWindow extends BaseWindow {
-  mode: 'show' | 'edit' | 'edit-update';
+  mode: 'show' | 'edit' | 'regenerate' | 'edit-regenerate';
   service: ChatService;
   index: number;
   text: string;
@@ -36,17 +36,16 @@ export default class TextWindow extends BaseWindow {
 
     if (this.mode.startsWith('edit')) {
       buttonsArea.addButton('Modify').onClick = () => {
-        service.updateMessage(index, {content: this.input.entry.getText()});
+        service.updateMessage({content: this.input.entry.getText()}, index);
         this.window.close();
       };
-      if (this.mode == 'edit-update') {
-        buttonsArea.addButton('Modify and Regenerate').onClick = () => {
-          service.updateMessage(index, {content: this.input.entry.getText()});
-          service.removeMessagesAfter(index + 1);
-          service.regenerateLastResponse();
-          this.window.close();
-        };
-      }
+    }
+    if (this.mode.endsWith('regenerate')) {
+      buttonsArea.addButton('Modify and Regenerate').onClick = () => {
+        service.updateMessage({content: this.input.entry.getText()}, index);
+        service.regenerateFrom(index + 1);
+        this.window.close();
+      };
     }
     buttonsArea.addButton('Copy').onClick = () => {
       gui.Clipboard.get().setText(this.input.entry.getText());

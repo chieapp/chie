@@ -60,6 +60,12 @@ export abstract class ChatConversationAPI<T = object> extends WebAPI {
   removeFromServer(): Promise<void> {
     throw new Error('Not implemented.');
   }
+
+  // Remove all messages after index (including message at index).
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  removeMessagesAfter(index: number): Promise<void> {
+    throw new Error('Not implemented.');
+  }
 }
 
 // Defines static properties on ChatConversationAPI.
@@ -67,4 +73,5 @@ type ChatConversationAPIConstructorType<T> = new (endpoint: APIEndpoint) => Chat
 
 export interface ChatConversationAPIType<T> extends ChatConversationAPIConstructorType<T> {
   canRemoveFromServer?: boolean;
+  canRemoveMessagesAfter?: boolean;
 }

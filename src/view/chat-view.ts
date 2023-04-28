@@ -65,9 +65,11 @@ export default class ChatView extends BaseView<ChatService> {
     this.messagesView.browser.addBinding('focusEntry', this.onFocus.bind(this));
     this.messagesView.browser.addBinding('showTextAt', this.#showTextAt.bind(this));
     this.messagesView.browser.addBinding('regenerateFrom', this.#regenerateFrom.bind(this));
+    this.messagesView.browser.addBinding('resendLastMessage', this.#resendLastMessage.bind(this));
     this.messagesView.browser.addBinding('copyTextAt', this.#copyTextAt.bind(this));
     this.messagesView.browser.addBinding('sendReply', this.#sendReply.bind(this));
     this.messagesView.browser.addBinding('refreshToken', this.#refreshToken.bind(this));
+    this.messagesView.browser.addBinding('clearConversation', this.#clearConversation.bind(this));
     this.messagesView.browser.endAddingBindings();
     this.messagesView.onDomReady.connect(this.#onDomReady.bind(this));
     this.view.addChildView(this.messagesView.view);
@@ -145,7 +147,7 @@ export default class ChatView extends BaseView<ChatService> {
       return;
     }
     // Load messages.
-    this.messagesView.loadURL(`chie://chat/${service.id}/${encodeURIComponent(service.title)}`);
+    this.messagesView.loadChatService(service);
     // Connect signals.
     this.service = service;
     this.#serviceConnections.add(service.onNewTitle.connect(
@@ -165,16 +167,23 @@ export default class ChatView extends BaseView<ChatService> {
     this.#serviceConnections.add(service.onRemoveMessagesAfter.connect(
       this.messagesView.removeMessagesAfter.bind(this.messagesView)));
     this.#serviceConnections.add(service.onUpdateMessage.connect(
-      this.messagesView.updateMessage.bind(this.messagesView, this.service.getMessageRenderInfo())));
-    this.#serviceConnections.add(service.onClearMessages.connect(
-      this.messagesView.clearMessages.bind(this.messagesView)));
-    // Load pending message.
+      this.messagesView.updateMessage.bind(this.messagesView, this.service)));
+    this.#serviceConnections.add(service.onClearMessages.connect(() => {
+      this.messagesView.clearMessages();
+      this.onFocus();
+    }));
     if (this.service.isPending) {
+      // Load pending message.
       this.#onMessageBegin();
       if (this.service.pendingMessage)
         this.#onMessageDelta(this.service.pendingMessage, {pending: true});
       if (this.service.lastError)
         this.#onMessageError(this.service.lastError);
+    } else {
+      // If last message is from user, add a resend button.
+      if (this.service.history.length > 0 &&
+          this.service.history[this.service.history.length - 1].role == ChatRole.User)
+        this.messagesView.setReplyActions(['resend']);
     }
   }
 
@@ -285,8 +294,7 @@ export default class ChatView extends BaseView<ChatService> {
 
   // User has sent a message.
   #onUserMessage(message: ChatMessage) {
-    this.messagesView.appendMessage(
-      this.service.getMessageRenderInfo(), message, this.service.history.length - 1);
+    this.messagesView.appendMessage(this.service, message);
   }
 
   // Last error has been cleared for regeneration.
@@ -297,8 +305,7 @@ export default class ChatView extends BaseView<ChatService> {
   // Begin receving response.
   #onMessageBegin() {
     // Add a bot message to indicate we are loading.
-    this.messagesView.appendPendingMessage(
-      this.service.getMessageRenderInfo(), {role: ChatRole.Assistant}, this.service.history.length);
+    this.messagesView.appendPendingMessage(this.service, {role: ChatRole.Assistant});
     // Clear input.
     this.#markdown = null;
     this.input.setText('');
@@ -339,8 +346,13 @@ export default class ChatView extends BaseView<ChatService> {
     else
       this.messagesView.appendError(error.message);
     // Append refresh button.
-    if (error.name == 'APIError' && (error as APIError).code == 'refresh')
-      this.messagesView.setRefreshAction();
+    if (error.name == 'APIError') {
+      const code = (error as APIError).code;
+      if (code == 'refresh')
+        this.messagesView.setReplyActions(['refresh']);
+      else if (code == 'invalid-session')
+        this.messagesView.setReplyActions(['clear']);
+    }
     this.#resetUIState();
   }
 
@@ -356,10 +368,14 @@ export default class ChatView extends BaseView<ChatService> {
     // Determine the capacity of the text window.
     let mode = 'show';
     if (this.service.api instanceof ChatCompletionAPI) {
+      // Only ChatCompletionAPI can do arbitrary edits.
       if (message.role == ChatRole.User)
-        mode = 'edit-update';
+        mode = 'edit-regenerate';
       else
         mode = 'edit';
+    } else if (this.service.canEditMessages() && message.role == ChatRole.User) {
+      // Others may only do regeneration.
+      mode = 'regenerate';
     }
     // Show text window.
     const win = new TextWindow(mode, this.service, index, message.content);
@@ -368,9 +384,12 @@ export default class ChatView extends BaseView<ChatService> {
     win.showWithWidth(textWidth);
   }
 
-  #regenerateFrom(index: number) {
-    this.service.removeMessagesAfter(index);
+  #resendLastMessage() {
     this.service.regenerateLastResponse();
+  }
+
+  #regenerateFrom(index: number) {
+    this.service.regenerateFrom(index);
   }
 
   #copyTextAt(index: number) {
@@ -391,6 +410,10 @@ export default class ChatView extends BaseView<ChatService> {
       // Ignore error.
       console.log(error);
     }
+  }
+
+  #clearConversation() {
+    this.service.clear();
   }
 }
 

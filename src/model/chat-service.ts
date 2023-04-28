@@ -47,7 +47,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   onMessageError: Signal<(error: Error) => void> = new Signal;
   onMessage: Signal<(message: ChatMessage) => void> = new Signal;
   onRemoveMessagesAfter: Signal<((index: number) => void)> = new Signal;
-  onUpdateMessage: Signal<((index: number, message: ChatMessage) => void)> = new Signal;
+  onUpdateMessage: Signal<((message: ChatMessage, index: number) => void)> = new Signal;
   onClearMessages: Signal<() => void> = new Signal;
 
   // Auto increasing ID.
@@ -78,7 +78,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   aborter: AbortController;
 
   // Track generation of title.
-  #titlePromise?: Promise<string>;
+  #titlePromise?: Promise<string | void>;
 
   static deserialize(data: ChatServiceData): ChatServiceOptions {
     const options = WebService.deserialize(data) as ChatServiceOptions;
@@ -140,6 +140,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     this.onUserMessage.emit(senderMessage);
     this.#saveMoment();
     // Start sending.
+    this.isPending = true;
     try {
       await this.#invokeChatAPI(options);
     } finally {
@@ -147,17 +148,56 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     }
   }
 
-  // Generate a new response for the last user message, or resend on error.
+  // Resend or regenerate.
   async regenerateLastResponse(options: object = {}) {
-    if (this.history.length == 0)
-      throw new Error('Unable to regenerate response when there is no message.');
-    if (this.pendingMessage && !this.lastError)
-      throw new Error('Can not regenerate when there is pending message being received.');
-    // When last message is from assistant, do regenerate, otherwise it would
-    // be the same with sending message.
+    if (!this.canRegenerateLastResponse())
+      throw new Error('Unable to regenerate last response.');
+    // If last message is from user, then we just need to resend.
+    if (this.history[this.history.length - 1].role == ChatRole.User) {
+      this.isPending = true;
+      try {
+        await this.#invokeChatAPI(options);
+      } finally {
+        this.isPending = false;
+      }
+      return;
+    }
+    // For assistant message, we need to remove it and regenerate.
     if (this.history[this.history.length - 1].role == ChatRole.Assistant)
-      this.removeMessagesAfter(-1);
+      return await this.regenerateFrom(-1, options);
+    // We don't support other cases.
+    throw new Error('Can not regenerate from last message');
+  }
+
+  // Remove last messages and regenerate response.
+  async regenerateFrom(index: number = -1, options: object = {}) {
+    if (this.history.length == 0)
+      throw new Error('Unable to regenerate when there is no message.');
+    if (this.isPending)
+      throw new Error('Can not regenerate when there is pending message being received.');
+    if (index < 0)  // support negative index
+      index += this.history.length;
+    if (index == 0)
+      throw new Error('Can not regenerate from the root message.');
+    if (index < 0 || index >= this.history.length)
+      throw new Error('Index is out of range.');
+    if (this.api instanceof ChatConversationAPI) {
+      if (this.history[index - 1].role != ChatRole.User)
+        throw new Error('ChatConversationAPI requires last message to be from user.');
+      if (!(this.api.constructor as ChatConversationAPIType<ChatServiceSupportedAPIs>).canRemoveMessagesAfter)
+        throw new Error('The API does not have ability for regeneration.');
+    }
+    // Remove the messages from history.
+    this.history.splice(index);
+    this.onRemoveMessagesAfter.emit(index);
+    this.isPending = true;
     try {
+      // Tell ChatConversationAPI to remove message records.
+      // Note that we are removing one more message (which is guaranteed to be
+      // the user's message), because when calling the API we have to send the
+      // user message again and we don't want it to be duplicated in server.
+      if (this.api instanceof ChatConversationAPI)
+        await this.api.removeMessagesAfter(index - 1);
       await this.#invokeChatAPI(options);
     } finally {
       this.isPending = false;
@@ -165,26 +205,12 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   }
 
   // Edit chat history.
-  updateMessage(index: number, message: Partial<ChatMessage>) {
+  updateMessage(message: Partial<ChatMessage>, index: number) {
     const target = this.history[index];
     if (!target)
       throw new Error(`Invalid index ${index}.`);
     deepAssign(target, message);
-    this.onUpdateMessage.emit(index, target);
-  }
-
-  // Remove all messages after index (including message at index).
-  removeMessagesAfter(index: number) {
-    if (index < 0)
-      index += this.history.length;
-    if (this.api instanceof ChatConversationAPI) {
-      if (index != this.history.length -1 ||
-          this.history[index].role != ChatRole.User) {
-        throw new Error('ChatConversationAPI can only resend instead of regenerate.');
-      }
-    }
-    this.history.splice(index);
-    this.onRemoveMessagesAfter.emit(index);
+    this.onUpdateMessage.emit(target, index);
   }
 
   // Clear chat history.
@@ -199,13 +225,29 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     this.onClearMessages.emit();
   }
 
-  // Return information needed by MessagesView for rendering.
-  getMessageRenderInfo() {
-    return {
-      assistantName: this.name,
-      assistantAvatar: this.icon.getChieURL(),
-      canEdit: this.api instanceof ChatCompletionAPI,
-    };
+  // Whether user can do regeneration for last message, can be used for
+  // validating the reload button.
+  canRegenerateLastResponse() {
+    if (this.history.length == 0)
+      return false;
+    if (this.isPending)
+      return false;
+    if (this.history[this.history.length - 1].role == ChatRole.User)
+      return true;
+    if (this.history[this.history.length - 1].role == ChatRole.Assistant &&
+        this.canEditMessages())
+      return true;
+    return false;
+  }
+
+  // Helper to know whether this service supports message editing.
+  canEditMessages() {
+    if (this.api instanceof ChatCompletionAPI)
+      return true;
+    if (this.api instanceof ChatConversationAPI &&
+        (this.api.constructor as ChatConversationAPIType<ChatServiceSupportedAPIs>).canRemoveMessagesAfter)
+      return true;
+    return false;
   }
 
   // Call the API.
@@ -214,11 +256,14 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     if (this.lastError)
       this.onClearError.emit();
     this.lastError = null;
-    this.isPending = true;
     this.pendingMessage = null;
-    // Call API.
     this.aborter = new AbortController();
     this.onMessageBegin.emit();
+    // ChatConversationAPI usually don't like sending multiple conversations
+    // at the same time, so wait for title generation to end.
+    if (this.api instanceof ChatConversationAPI && this.#titlePromise)
+      await this.#titlePromise;
+    // Call API.
     try {
       const apiOptions = {
         ...options,
@@ -253,8 +298,11 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     }
 
     // Generate a title for the conversation.
-    if (!this.#titlePromise && !this.aborter?.signal.aborted)
-      this.#titlePromise = this.#generateTitle();
+    if (!this.#titlePromise && !this.aborter?.signal.aborted) {
+      this.#titlePromise = this.#generateTitle()
+        .catch(() => { /* ignore error */ })
+        .finally(() => this.#titlePromise = null);
+    }
 
     this.#saveMoment();
   }
@@ -323,24 +371,25 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
         The conversation is named:
       `;
     let title = '';
-    if (this.api instanceof ChatCompletionAPI &&
-        this.history.length > 1 &&
-        this.history.length < 10) {
+    if (this.api instanceof ChatCompletionAPI) {
+      if (this.history.length > 10)
+        return;
       const message = {role: ChatRole.System, content: prompt};
       await this.api.sendConversation([message], {
+        signal: this.aborter.signal,
         onMessageDelta(delta) { title += delta.content ?? ''; }
       });
-    } else if (this.api instanceof ChatConversationAPI &&
-               (this.api.constructor as ChatConversationAPIType<ChatServiceSupportedAPIs>).canRemoveFromServer &&
-               this.history.length > 1 &&
-               this.history.length < 10) {
+    } else if (this.canEditMessages()) {
+      if (this.history.length > 10)
+        return;
       // Spawn a new conversation to ask for title generation,
       const api = apiManager.createAPIForEndpoint(this.api.endpoint) as ChatConversationAPI;
       await api.sendMessage(prompt, {
+        signal: this.aborter.signal,
         onMessageDelta(delta) { title += delta.content ?? ''; }
       });
       // Clear the temporary conversation.
-      await api.removeFromServer().catch(() => { /* Ignore error */ });
+      await api.removeFromServer();
     } else {
       // Return the first words of last message.
       const words = this.history[this.history.length - 1].content.substring(0, 30).split(' ').slice(0, 5);
@@ -355,12 +404,13 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
             break;
         }
       }
+      // Do a fake await since this method is async.
+      await new Promise(resolve => setImmediate(resolve));
     }
-    return this.#setTitle(title.trim());
+    this.#setTitle(title.trim());
   }
 
   #setTitle(title: string | null) {
-    this.#titlePromise = null;
     if (!title)
       return;
     if (title.endsWith('.'))
@@ -370,7 +420,6 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     this.title = title;
     this.onNewTitle.emit(title);
     this.#saveMoment();
-    return title;
   }
 
   #clearResources() {

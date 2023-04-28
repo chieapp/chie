@@ -111,7 +111,10 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
           } else if (event.type == 2) {
             // Possible denied service.
             if (event.item.result.value != 'Success') {
-              reject(new APIError(event.item.result.message));
+              const error = new APIError(event.item.result.message);
+              if (event.item.result.value == 'InvalidSession')
+                error.code = 'invalid-session';
+              reject(error);
               return;
             }
             const message = event.item.messages[event.item.messages.length - 1];
@@ -179,7 +182,7 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
         if (!this.#lastLinks || sourceAttributions.length > this.#lastLinks.length) {
           delta.links = sourceAttributions
             .slice(this.#lastLinks ? this.#lastLinks.length : 0)
-            .map(a => ({name: a.providerDisplayName, url: a.seeMoreURL}));
+            .map(a => ({name: a.providerDisplayName, url: a.seeMoreUrl}));
           this.#lastLinks = sourceAttributions;
         }
       }

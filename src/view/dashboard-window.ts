@@ -44,6 +44,7 @@ export default class DashboardWindow extends BaseWindow {
   constructor() {
     super({showMenuBar: true, useClassicBackground: true});
 
+    this.window.setTitle('Dashboard');
     this.window.onFocus = () => this.selectedView?.mainView.onFocus();
     this.contentView.setStyle({flexDirection: 'row'});
 

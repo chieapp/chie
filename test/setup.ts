@@ -5,6 +5,7 @@ import MultiChatsService from '../src/model/multi-chats-service';
 import MultiChatsView from '../src/view/multi-chats-view';
 import apiManager from '../src/controller/api-manager';
 import serviceManager from '../src/controller/service-manager';
+import windowManager from '../src/controller/window-manager';
 import {
   ChatRole,
   ChatCompletionAPI,
@@ -38,6 +39,9 @@ export const mochaHooks = {
     const {config, windowConfig} = require('../src/controller/configs');
     config.inMemory = true;
     windowConfig.inMemory = true;
+
+    // Don't quit when windows are closed.
+    windowManager.quitOnAllWindowsClosed = false;
 
     // Register some APIs for testing.
     apiManager.registerAPI({

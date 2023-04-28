@@ -66,4 +66,5 @@ export type MenuItemOptions<T> = {
 };
 export interface BaseViewType extends BaseViewConstructorType {
   getMenuItems?(): MenuItemOptions<BaseView<WebService<WebAPI>>>[];
+  getSubViewType?(): BaseViewType;
 }

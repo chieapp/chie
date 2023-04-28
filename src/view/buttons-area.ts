@@ -21,7 +21,7 @@ export default class ButtonsArea {
 
   addButton(title: string): gui.Button {
     const button = gui.Button.create(title);
-    button.setStyle({width: 60, height: 28});
+    button.setStyle({width: 70});
     if (this.row.childCount() > 0)
       button.setStyle({marginRight: basicStyle.padding});
     this.row.addChildView(button);

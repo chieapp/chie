@@ -27,7 +27,7 @@ export const style = {
   },
 };
 
-export interface SplitViewState extends ViewState {
+export interface MultiChatsViewState extends ViewState {
   leftPaneWidth?: number;
   selected?: number;
 }
@@ -44,13 +44,13 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       },
       {
         label: 'Show Previous Chat',
-        accelerator: 'Ctrl+Shift+Tab',
+        accelerator: 'Ctrl+[',
         validate: (view: MultiChatsView) => view.service.chats.length > 1,
         onClick: (view: MultiChatsView) => view.showPreviousChat(),
       },
       {
         label: 'Show Next Chat',
-        accelerator: 'Ctrl+Tab',
+        accelerator: 'Ctrl+]',
         validate: (view: MultiChatsView) => view.service.chats.length > 1,
         onClick: (view: MultiChatsView) => view.showNextChat(),
       },
@@ -59,6 +59,10 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
         onClick: (view: MultiChatsView) => view.service.clearChats(),
       },
     ];
+  }
+
+  static getSubViewType() {
+    return ChatView;
   }
 
   chatView: ChatView;
@@ -182,21 +186,23 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
     this.chatView.onFocus();
   }
 
-  saveState(): SplitViewState {
+  saveState(): MultiChatsViewState {
     return {
       leftPaneWidth: this.#leftPane.view.getBounds().width,
       selected: this.#items.indexOf(this.#selectedItem),
     };
   }
 
-  restoreState(state?: SplitViewState) {
+  restoreState(state?: MultiChatsViewState) {
     if (state?.leftPaneWidth)
       this.#leftPane.view.setStyle({width: state.leftPaneWidth});
     if (state?.selected)
       this.#items[state.selected]?.setSelected(true);
     else if (this.#items.length > 0)
       this.#items[0].setSelected(true);
-    this.#updateChatListSize();
+    // The bounds of views are not changed immediately, so delay update a
+    // tick to wait for resize.
+    setImmediate(() => this.#updateChatListSize());
   }
 
   getTitle() {

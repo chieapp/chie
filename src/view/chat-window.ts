@@ -13,7 +13,10 @@ export default class ChatWindow extends BaseWindow {
   chatView: BaseView<WebService<WebAPI>>;
 
   constructor(instance: Instance) {
-    super({useClassicBackground: true});
+    super({
+      viewType: instance.viewType,
+      useClassicBackground: true,
+    });
     this.instance = instance;
 
     this.window.setTitle(instance.service.name);

@@ -46,6 +46,11 @@ function guiMain() {
   if (process.platform == 'darwin')
     gui.lifetime.onActivate = () => windowManager.showNamedWindow('dashboard');
 
+  // For non-mac platforms, show the dashboard when there is no tray icon and
+  // no opened windows.
+  if (process.platform != 'darwin' && windowManager.windows.length == 0 && !app.tray)
+    windowManager.showNamedWindow('dashboard');
+
   // After windows are initialized, all errors happened later are usually not
   // critical and we do not need to quit.
   setQuitOnException(false);

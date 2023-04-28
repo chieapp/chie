@@ -47,10 +47,12 @@ export default class WindowStore {
     let win = this.#windows[id];
     if (!win) {
       win = this.#windows[id] = this.#windowCreator(id);
-      if (id in this.#windowStates)
+      if (id in this.#windowStates) {
         win.restoreState(this.#windowStates[id]);
-      else
+      } else {
+        win.restoreState({});
         win.window.center();
+      }
       win.window.onClose = () => {
         this.saveWindowState(id);
         // It is possible to cache, but windows are cheap to create in "gui" so

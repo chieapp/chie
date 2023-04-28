@@ -130,7 +130,7 @@ export default class ChatView extends BaseView<ChatService> {
 
   getTitle() {
     if (!this.service)
-      return '';
+      return null;
     return this.service.title ?? this.service.name;
   }
 

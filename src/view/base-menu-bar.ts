@@ -2,6 +2,7 @@ import gui from 'gui';
 
 import AssistantsMenu from './assistants-menu';
 import SignalsOwner from '../model/signals-owner';
+import serviceManager from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
 import {BaseViewType} from './base-view';
 
@@ -57,7 +58,9 @@ export default class BaseMenuBar extends SignalsOwner {
   }
 
   destructor() {
+    super.destructor();
     this.#assistantsMenu?.destructor();
+    this.#assistantsMenuInView?.destructor();
   }
 
   protected createViewMenu(items: object[]) {
@@ -111,6 +114,21 @@ export default class BaseMenuBar extends SignalsOwner {
           win.switchTo(win.views.findIndex(v => v.instance == instance));
       }
     }));
+  }
+
+  // Concatenate menu items of all registered views.
+  protected getAllViewMenuItems() {
+    // Create items for all registered views.
+    const items: object[] = [];
+    for (const view of serviceManager.getRegisteredViews()) {
+      const viewItems = this.getViewMenuItems(view);
+      if (!viewItems)
+        continue;
+      if (items.length > 0)
+        items.push({type: 'separator'});
+      items.push(...viewItems);
+    }
+    return items;
   }
 
   // Wrap the menu items of |viewType| by doing auto validation.

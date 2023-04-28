@@ -1,7 +1,6 @@
 import gui from 'gui';
 
 import BaseMenuBar from './base-menu-bar';
-import serviceManager from '../controller/service-manager';
 
 export default class AppMenuBar extends BaseMenuBar {
   constructor() {
@@ -24,18 +23,8 @@ export default class AppMenuBar extends BaseMenuBar {
 
     // Create "Assistants" menu.
     this.createAssistantsMenu();
-    // Create items for all registered views.
-    const items: object[] = [];
-    for (const view of serviceManager.getRegisteredViews()) {
-      const viewItems = this.getViewMenuItems(view);
-      if (!viewItems)
-        continue;
-      if (items.length > 0)
-        items.push({type: 'separator'});
-      items.push(...viewItems);
-    }
     // Create "View" menu.
-    this.createViewMenu(items);
+    this.createViewMenu(this.getAllViewMenuItems());
     this.createAssistantsItemsInViewMenu();
 
     gui.app.setApplicationMenu(this.menu);

@@ -15,8 +15,11 @@ type WindowManagerData = {
 type NamedWindowType = new () => BaseWindow;
 
 export class WindowManager extends ConfigStoreItem {
+  // Do not quit when all windows are closed.
+  quitOnAllWindowsClosed = true;
+
   // Saves all windows.
-  #windows: BaseWindow[] = [];
+  windows: BaseWindow[] = [];
   // Chat windows, using instance id as name.
   #chatWindows: WindowStore;
   // Global windows, each window has its own type.
@@ -75,7 +78,7 @@ export class WindowManager extends ConfigStoreItem {
   }
 
   getCurrentWindow() {
-    return this.#windows.find(w => w.window.isActive());
+    return this.windows.find(w => w.window.isActive());
   }
 
   quit() {
@@ -90,12 +93,12 @@ export class WindowManager extends ConfigStoreItem {
   }
 
   addWindow(win: BaseWindow) {
-    this.#windows.push(win);
+    this.windows.push(win);
   }
 
   removeWindow(win: BaseWindow) {
-    this.#windows.splice(this.#windows.indexOf(win), 1);
-    if (this.#windows.length == 0)
+    this.windows.splice(this.windows.indexOf(win), 1);
+    if (this.windows.length == 0)
       this.#onAllWindowsClosed();
     // A closed window usually has a large chunk of memory to recycle.
     collectGarbage();
@@ -105,6 +108,8 @@ export class WindowManager extends ConfigStoreItem {
   }
 
   #onAllWindowsClosed() {
+    if (!this.quitOnAllWindowsClosed)
+      return;
     const app = require('./app').default;
     if (!app.tray && !app.isDockIconVisible())
       this.quit();

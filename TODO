@@ -7,4 +7,3 @@
   * resize window to increase the entry height
 * bug
   * inactive background color of input on linux
-  * Ctrl+Tab not working when focus is in browser

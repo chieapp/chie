@@ -134,8 +134,8 @@ export default class NewAPIWindow extends BaseWindow {
           this.apiParams.getView(name)?.setValue(info.params[name]);
       }
     } catch (error) {
-      // Ignore error.
-      console.error(error);
+      if (error.name != 'CancelledError')
+        alert(error.message);
     } finally {
       this.loginButton.setEnabled(true);
       this.submitButton.setEnabled(true);

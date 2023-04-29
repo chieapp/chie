@@ -74,7 +74,10 @@ export default class BaseWindow extends SignalsOwner {
     if (state.bounds) {
       this.window.setBounds(state.bounds);
     } else {
-      this.window.setContentSize({width: 600, height: 400});
+      // Give window a initial size.
+      const size = this.window.getContentSize();
+      if (size.width < 2 && size.height < 2)
+        this.window.setContentSize({width: 600, height: 400});
       this.window.center();
     }
   }
@@ -92,7 +95,16 @@ export default class BaseWindow extends SignalsOwner {
 
   // Set window's size automatically to the preferred size of content view.
   resizeToFitContentView(override: {width?: number, height?: number} = {}) {
-    const contentSize = Object.assign(this.contentView.getPreferredSize(), override);
+    let contentSize: gui.SizeF;
+    if (override.width && override.height) {
+      contentSize = override as gui.SizeF;
+    } else {
+      contentSize = Object.assign(this.contentView.getPreferredSize(), override);
+      if (override.width)
+        contentSize.height = this.contentView.getPreferredHeightForWidth(override.width);
+      else if (override.height)
+        contentSize.width = this.contentView.getPreferredWidthForHeight(override.height);
+    }
     this.window.setContentSize(contentSize);
   }
 }

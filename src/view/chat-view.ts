@@ -8,6 +8,7 @@ import InputView from './input-view';
 import MessagesView from './messages-view';
 import StreamedMarkdown from '../util/streamed-markdown';
 import TextWindow from './text-window';
+import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
 import basicStyle from './basic-style';
 import deepAssign from '../util/deep-assign';
@@ -214,6 +215,7 @@ export default class ChatView extends BaseView<ChatService> {
 
   // Set the input and button to ready to send state.
   #resetUIState() {
+    this.onFocus();
     // Can only refresh if there was error.
     if (this.service.lastError) {
       this.#setButtonMode('refresh');
@@ -241,7 +243,6 @@ export default class ChatView extends BaseView<ChatService> {
     }
     // Otherwise ready to send.
     this.#setButtonMode('send');
-    this.onFocus();
   }
 
   // User presses Enter in the reply entry.
@@ -407,8 +408,8 @@ export default class ChatView extends BaseView<ChatService> {
       apiManager.updateEndpoint(this.service.api.endpoint);
       this.service.regenerateLastResponse();
     } catch (error) {
-      // Ignore error.
-      console.log(error);
+      if (error.name != 'CancelledError')
+        alert(error.message);
     }
   }
 

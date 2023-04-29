@@ -7,7 +7,10 @@ export function activate() {
     apiType: ChatGPTAPI,
     auth: 'key',
     icon: new Icon({name: 'openai'}),
-    description: 'OpenAI Chat API, requires an API key.',
+    description: `Use OpenAI API key for chat.
+Note that if you don't have a credit card bound to your OpenAI account, the \
+response might be very slow and rate limited. You get all features of Chie \
+under this mode, but GPT-4 API access is quite hard to get.`,
     url: 'https://api.openai.com/v1/chat/completions',
     priority: 10,
     params: [

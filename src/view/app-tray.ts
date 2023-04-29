@@ -11,6 +11,7 @@ export default class AppTray {
   menu: gui.Menu;
 
   #assistantsMenu: AssistantsMenu;
+  #onExitCallback?: () => void;
 
   constructor() {
     const image = gui.Image.createFromPath(fs.realpathSync(path.join(__dirname, '../../assets/icons/tray@2x.png')));
@@ -26,15 +27,25 @@ export default class AppTray {
       { type: 'separator' },
       ...BaseMenuBar.fileMenuItems,
     ]);
-    this.#assistantsMenu = new AssistantsMenu(this.menu, 3, null, (instance) => ({
+    this.#assistantsMenu = new AssistantsMenu(this.menu, 2, null, (instance) => ({
       label: `Open ${instance.service.name}...`,
       onClick: () => windowManager.showChatWindow(instance.id),
     }));
     this.tray.setMenu(this.menu);
+
+    if (process.platform == 'win32') {
+      // Click on tray icon to show dashboard window.
+      this.tray.onClick = () => windowManager.showNamedWindow('dashboard');
+      // Remove tray on exit, Windows does not clean it automatically.
+      this.#onExitCallback = () => this.destructor();
+      process.on('exit', this.#onExitCallback);
+    }
   }
 
   destructor() {
     this.tray.remove();
     this.#assistantsMenu.destructor();
+    if (this.#onExitCallback)
+      process.removeListener('exit', this.#onExitCallback);
   }
 }

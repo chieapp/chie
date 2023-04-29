@@ -17,3 +17,7 @@ export class APIError extends Error {
 export class NetworkError extends Error {
   name = 'NetworkError';
 }
+
+export class CancelledError extends Error {
+  name = 'CancelledError';
+}

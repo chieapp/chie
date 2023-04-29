@@ -13,6 +13,11 @@ export const style = {
   }
 };
 
+export interface BrowserViewOptions {
+  hideUntilLoaded?: boolean;
+  browserOptions?: gui.BrowserOptions;
+}
+
 export default class BrowserView extends AppearanceAware {
   browser: gui.Browser;
   isDomReady = false;
@@ -21,19 +26,23 @@ export default class BrowserView extends AppearanceAware {
 
   #queue: Queue;
 
-  constructor(options: {hideUntilLoaded?: boolean} = {}) {
+  constructor(options: BrowserViewOptions = {}) {
     super();
     // The background color of this view should be the same with the browser,
     // so there would be no flashing when browser is loaded later.
     this.setBackgroundColor(style.light.bgColor, style.dark.bgColor);
-    this.browser = gui.Browser.create({
+
+    const browserOptions = {
       devtools: true,
       contextMenu: true,
-      allowFileAccessFromFiles: true,
       hardwareAcceleration: false,
-    });
+    };
+    if (options.browserOptions)
+      Object.assign(browserOptions, options.browserOptions);
+    this.browser = gui.Browser.create(browserOptions);
+
     this.browser.setStyle({flex: 1});
-    this.browser.onFinishNavigation = this.#domReady.bind(this);
+    this.connectYueSignal(this.browser.onFinishNavigation, this.#domReady.bind(this));
     if (this.darkMode)
       this.browser.setBackgroundColor(style.dark.bgColor);
     if (options.hideUntilLoaded)

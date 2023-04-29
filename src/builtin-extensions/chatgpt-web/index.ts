@@ -30,7 +30,11 @@ export function activate() {
     apiType: ChatGPTWebAPI,
     auth: 'login',
     icon: new Icon({name: 'chatgpt'}),
-    description: 'ChatGPT web backend, requires OpenAI account.',
+    description: `ChatGPT web backend, requires OpenAI account.
+While this is free of charge you will be highly rate limited if you don't have \
+a credit card bound to your account, and even when you have Plus subscription \
+you still have to verify you are a human being now and then. Also there are \
+less features available compared to the API key backend.`,
     url: 'https://chat.openai.com/backend-api/conversation',
     priority: 9,
     params,
@@ -40,7 +44,7 @@ export function activate() {
 }
 
 async function login(firstURL) {
-  const win = new LoginWindow();
+  const win = new LoginWindow({browserOptions: {webview2Support: true}});
   win.window.activate();
   try {
     win.browser.loadURL(firstURL);
@@ -56,6 +60,8 @@ async function login(firstURL) {
     win.browser.loadURL('https://chat.openai.com/api/auth/session');
     await win.waitForNavigation(/\/api\/auth\/session$/);
     const session = JSON.parse(await win.browser.executeJavaScript('document.body.lastChild.textContent'));
+    if (!session.accessToken)
+      throw new Error('Can not get access token.');
     const userAgent = await win.browser.executeJavaScript('navigator.userAgent');
     return {cookie, params: {token: session.accessToken, userAgent}};
   } finally {

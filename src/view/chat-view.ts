@@ -19,6 +19,7 @@ import {
   ChatResponse,
   ChatCompletionAPI,
 } from '../model/chat-api';
+import {runExportMenu} from './conversation-exporter';
 
 type ButtonMode = 'refresh' | 'send' | 'stop';
 
@@ -44,9 +45,13 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   messagesView: MessagesView;
+
+  toolbar: gui.Container;
+  clearButton: IconButton;
+  exportButton: IconButton;
+
   input: InputView;
   replyButton: IconButton;
-  menuButton: IconButton;
 
   #serviceConnections: SignalConnections = new SignalConnections();
   #markdown?: StreamedMarkdown;
@@ -79,8 +84,27 @@ export default class ChatView extends BaseView<ChatService> {
     if (!ChatView.font)
       ChatView.font = gui.Font.create(gui.Font.default().getName(), 15, 'normal', 'normal');
 
+    this.toolbar = gui.Container.create();
+    this.toolbar.setStyle({
+      flexDirection: 'row',
+      marginLeft: basicStyle.padding,
+      marginTop: basicStyle.padding / 2,
+      marginBottom: basicStyle.padding / 2,
+    });
+    this.view.addChildView(this.toolbar);
+
+    this.clearButton = new IconButton('trash');
+    this.clearButton.view.setTooltip('Clear conversation');
+    this.clearButton.onClick = this.#clearConversation.bind(this);
+    this.toolbar.addChildView(this.clearButton.view);
+
+    this.exportButton = new IconButton('export');
+    this.exportButton.view.setTooltip('Export conversation');
+    this.exportButton.onClick = () => runExportMenu(this.view.getWindow(), this.service);
+    this.toolbar.addChildView(this.exportButton.view);
+
     this.input = new InputView();
-    this.input.view.setStyle({margin: basicStyle.padding});
+    this.input.view.setStyle({marginTop: 0, margin: basicStyle.padding});
     this.input.entry.setFont(ChatView.font);
     // Calculate height for 1 and 5 lines.
     if (!ChatView.entryHeights) {
@@ -102,12 +126,10 @@ export default class ChatView extends BaseView<ChatService> {
     this.input.addButton(this.replyButton);
 
     // Disable button and entry until loaded.
+    this.clearButton.setEnabled(false);
+    this.exportButton.setEnabled(false);
     this.input.setEntryEnabled(false);
     this.replyButton.setEnabled(false);
-
-    this.menuButton = new IconButton('menu');
-    this.menuButton.onClick = this.#onMenuButton.bind(this);
-    this.input.addButton(this.menuButton);
 
     if (service)
       this.loadChatService(service);
@@ -117,6 +139,8 @@ export default class ChatView extends BaseView<ChatService> {
     super.destructor();
     this.unload();
     this.messagesView.destructor();
+    this.clearButton.destructor();
+    this.exportButton.destructor();
     this.input.destructor();
   }
 
@@ -171,7 +195,7 @@ export default class ChatView extends BaseView<ChatService> {
       this.messagesView.updateMessage.bind(this.messagesView, this.service)));
     this.#serviceConnections.add(service.onClearMessages.connect(() => {
       this.messagesView.clearMessages();
-      this.onFocus();
+      this.#resetUIState();
     }));
     if (this.service.isPending) {
       // Load pending message.
@@ -206,7 +230,6 @@ export default class ChatView extends BaseView<ChatService> {
     this.replyButton.setImage(mode);
     this.replyButton.setEnabled(true);
     this.replyButton.view.setTooltip(getTooltipForMode(mode));
-    this.menuButton.setEnabled(mode != 'stop');
     this.#buttonMode = mode;
     // Disable send button when there is error happened.
     if (mode == 'send' && this.service.lastError)
@@ -216,6 +239,14 @@ export default class ChatView extends BaseView<ChatService> {
   // Set the input and button to ready to send state.
   #resetUIState() {
     this.onFocus();
+    // Button states.
+    if (this.service.history.length > 0) {
+      this.clearButton.setEnabled(true);
+      this.exportButton.setEnabled(true);
+    } else {
+      this.clearButton.setEnabled(false);
+      this.exportButton.setEnabled(false);
+    }
     // Can only refresh if there was error.
     if (this.service.lastError) {
       this.#setButtonMode('refresh');
@@ -226,20 +257,18 @@ export default class ChatView extends BaseView<ChatService> {
       this.#setButtonMode('stop');
       return;
     }
-    if (this.service.history.length > 0) {
-      // Show refresh button if last message is from user, this usually means
-      // the last message failed to send.
-      if (this.service.history[this.service.history.length - 1].role == ChatRole.User) {
-        this.#setButtonMode('refresh');
-        return;
-      }
-      // Show refresh button if last message is from bot and there is no input.
-      if (this.service.api instanceof ChatCompletionAPI &&
-          this.service.history[this.service.history.length - 1].role == ChatRole.Assistant &&
-          this.input.entry.getText().length == 0) {
-        this.#setButtonMode('refresh');
-        return;
-      }
+    // Show refresh button if can regenerate and there is no input.
+    if (this.service.canRegenerateLastResponse() &&
+        this.input.entry.getText().length == 0) {
+      this.#setButtonMode('refresh');
+      return;
+    }
+    // Show refresh button if last message is from user, this usually means
+    // the last message failed to send.
+    if (this.service.history.length > 0 &&
+        this.service.history[this.service.history.length - 1].role == ChatRole.User) {
+      this.#setButtonMode('refresh');
+      return;
     }
     // Otherwise ready to send.
     this.#setButtonMode('send');
@@ -260,6 +289,11 @@ export default class ChatView extends BaseView<ChatService> {
     return false;
   }
 
+  // Clear conversation.
+  #clearConversation() {
+    this.service.clear();
+  }
+
   // User clicks on the send button.
   #onButtonClick() {
     // Do the action depending on button mode.
@@ -272,18 +306,6 @@ export default class ChatView extends BaseView<ChatService> {
       this.replyButton.setEnabled(false);
       this.service.regenerateLastResponse();
     }
-  }
-
-  // User clicks on the menu button.
-  #onMenuButton() {
-    const menu = gui.Menu.create([
-      {
-        label: 'Clear',
-        enabled: this.service.history.length > 0,
-        onClick: () => this.service.clear(),
-      },
-    ]);
-    menu.popup();
   }
 
   // Recover current state of chat.
@@ -411,10 +433,6 @@ export default class ChatView extends BaseView<ChatService> {
       if (error.name != 'CancelledError')
         alert(error.message);
     }
-  }
-
-  #clearConversation() {
-    this.service.clear();
   }
 }
 

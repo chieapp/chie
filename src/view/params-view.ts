@@ -60,8 +60,8 @@ class PickerParamRow extends ParamRow<gui.Picker> {
         this.affects.forEach(p => p.update());
       });
     }
-    // There is a description for each selection.
-    if (param.selectionHasDescription) {
+    // There is a description field in selection.
+    if (param.selections.length > 0 && 'description' in param.selections[0].value) {
       // Note that creating an empty Label will trigger a bug that draws the
       // text always with black color.
       this.description = gui.Label.create('(description)');

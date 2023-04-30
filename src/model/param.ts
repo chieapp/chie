@@ -22,8 +22,6 @@ export default class Param {
 
   // The param has a set of values to select.
   selections?: Selection[];
-  // Each preset value has a |description| to show.
-  selectionHasDescription? = false;
 
   // The id of param that will constrain whether a selection is usable.
   constrainedBy?: string;

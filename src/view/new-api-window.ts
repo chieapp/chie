@@ -35,7 +35,6 @@ export default class NewAPIWindow extends BaseWindow {
         type: 'selection',
         readableName: 'API Type',
         value: endpoint?.type,
-        selectionHasDescription: true,
         selections: apiManager.getAPISelections(),
       },
     ]);

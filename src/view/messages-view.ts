@@ -144,6 +144,11 @@ export default class MessagesView extends BrowserView {
     });
   }
 
+  // Update the name of assistant.
+  changeAssistantName(name: string) {
+    this.pushJavaScript(`window.changeAssistantName(${JSON.stringify(name)})`);
+  }
+
   // Remove all messages.
   clearMessages() {
     this.pushJavaScript('messages.innerHTML = ""');

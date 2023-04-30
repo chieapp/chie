@@ -149,6 +149,7 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
           },
         ],
       };
+      params.arguments[0].optionsSets.push(this.endpoint.params.tone);
       this.session.invocationId += 1;
       ws.send(`${JSON.stringify(params)}${nullChar}`);
     })).finally(() => {

@@ -10,7 +10,7 @@ import {getNextId} from '../util/id-generator';
 
 type WebAPIType = new (endpoint: APIEndpoint) => WebAPI;
 
-type APIRecord = {
+export type APIRecord = {
   name: string,
   apiType: WebAPIType,
   auth: 'none' | 'key' | 'login',
@@ -57,20 +57,8 @@ export class APIManager extends ConfigStoreItem {
     this.#apis[record.name] = record;
   }
 
-  getAPISelections(): Selection<APIRecord>[] {
-    return Object.keys(this.#apis)
-      .map(k => ({name: k, value: this.#apis[k]}))
-      .sort((a, b) => {
-        // Sort by priority, if no priority defined then sort by name.
-        if (a.value.priority && b.value.priority)
-          return b.value.priority - a.value.priority;
-        else if (!a.value.priority && !b.value.priority)
-          return a.name.localeCompare(b.name);
-        else if (a.value.priority)
-          return -1;
-        else
-          return 1;
-      });
+  getAPISelections(): Selection[] {
+    return Object.keys(this.#apis).map(k => ({name: k, value: this.#apis[k]})).sort(sortByPriority);
   }
 
   getAPIRecord(name: string) {
@@ -126,9 +114,21 @@ export class APIManager extends ConfigStoreItem {
       .map(k => this.#endpoints[k]);
   }
 
-  getEndpointSelections(): Selection<APIEndpoint>[] {
+  getEndpointSelections(): Selection[] {
     return Object.values(this.#endpoints).map(v => ({name: v.name, value: v}));
   }
 }
 
 export default new APIManager;
+
+// Sort by priority, if no priority defined then sort by name.
+export function sortByPriority(a: Selection, b: Selection) {
+  if (a.value.priority && b.value.priority)
+    return b.value.priority - a.value.priority;
+  else if (!a.value.priority && !b.value.priority)
+    return a.name.localeCompare(b.name);
+  else if (a.value.priority)
+    return -1;
+  else
+    return 1;
+}

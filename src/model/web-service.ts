@@ -1,3 +1,5 @@
+import {Signal} from 'typed-signals';
+
 import Icon from '../model/icon';
 import Serializable from '../model/serializable';
 import WebAPI from './web-api';
@@ -18,6 +20,10 @@ export interface WebServiceOptions<T extends WebAPI> {
 }
 
 export default class WebService<T extends WebAPI> implements Serializable {
+  onChangeName: Signal<() => void> = new Signal;
+  onChangeParams: Signal<() => void> = new Signal;
+  onChangeIcon: Signal<() => void> = new Signal;
+
   name: string;
   api: T;
   params?: Record<string, string>;
@@ -62,6 +68,14 @@ export default class WebService<T extends WebAPI> implements Serializable {
 
   destructor() {
     // Nothing to destructor by default.
+  }
+
+  setName(name: string) {
+    if (this.name == name)
+      return false;
+    this.name = name;
+    this.onChangeName.emit();
+    return true;
   }
 }
 

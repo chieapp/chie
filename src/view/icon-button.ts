@@ -13,7 +13,7 @@ const style = {
     buttonPressedColor: '#B0B0B0',
   },
   dark: {
-    textColor: '#FFF',
+    textColor: '#EEE',
     buttonHoverColor: '#5F5F5F',
     buttonPressedColor: '#AFAFAF',
   },

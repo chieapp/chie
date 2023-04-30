@@ -59,6 +59,14 @@ export default class MultiChatsService extends WebService<ChatServiceSupportedAP
     this.chats = [];
   }
 
+  setName(name: string) {
+    if (super.setName(name)) {
+      this.chats.forEach(c => c.setName(name));
+      return true;
+    }
+    return false;
+  }
+
   createChat() {
     const chat = new ChatService({
       name: this.name,

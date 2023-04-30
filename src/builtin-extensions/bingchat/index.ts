@@ -1,5 +1,26 @@
-import {Icon, LoginWindow, apiManager} from 'chie';
+import {Icon, LoginWindow, Param, apiManager} from 'chie';
 import BingChatAPI from './bingchat-api';
+
+const toneParam: Param = {
+  name: 'tone',
+  type: 'selection',
+  readableName: 'Tone',
+  value: 'Balanced',
+  selections: [
+    {
+      name: 'Creative',
+      value: 'h3imaginative',
+    },
+    {
+      name: 'Precise',
+      value: 'h3precise',
+    },
+    {
+      name: 'Balanced',
+      value: 'harmonyv3',
+    },
+  ]
+};
 
 export function activate() {
   apiManager.registerAPI({
@@ -12,6 +33,7 @@ Features of Chie are quite limited since Bing does not provide such APIs, and \
 the response is slower than ChatGPT, but it can do web search and does not \
 require a credit card.`,
     priority: 8,
+    params: [ toneParam ],
     login: login,
     refresh: login,
   });

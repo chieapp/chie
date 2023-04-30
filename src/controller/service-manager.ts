@@ -4,7 +4,7 @@ import APIEndpoint from '../model/api-endpoint';
 import BaseView, {BaseViewType} from '../view/base-view';
 import Instance from '../model/instance';
 import WebAPI from '../model/web-api';
-import apiManager from './api-manager';
+import apiManager, {sortByPriority} from './api-manager';
 import {ConfigStoreItem} from '../model/config-store';
 import {Selection} from '../model/param';
 import {WebServiceData, WebServiceType} from '../model/web-service';
@@ -24,10 +24,13 @@ export type ServiceRecord = {
   serviceType: WebServiceType<WebAPI>,
   apiTypes: WebAPIType[],
   viewType: BaseViewType,
+  description?: string,
+  priority?: number,
 };
 
 export class ServiceManager extends ConfigStoreItem {
   onNewInstance: Signal<(instance: Instance, index: number) => void> = new Signal;
+  onUpdateInstance: Signal<(instance: Instance) => void> = new Signal;
   onRemoveInstance: Signal<(instance: Instance) => void> = new Signal;
 
   #services: Record<string, ServiceRecord> = {};
@@ -87,7 +90,7 @@ export class ServiceManager extends ConfigStoreItem {
     return this.#views;
   }
 
-  getViewSelections(): Selection<BaseViewType>[] {
+  getViewSelections(): Selection[] {
     return this.#views.map(v => ({name: v.name, value: v}));
   }
 
@@ -99,8 +102,8 @@ export class ServiceManager extends ConfigStoreItem {
     this.#services[record.name] = record;
   }
 
-  getServiceSelections(): Selection<ServiceRecord>[] {
-    return Object.keys(this.#services).map(k => ({name: k, value: this.#services[k]}));
+  getServiceSelections(): Selection[] {
+    return Object.keys(this.#services).map(k => ({name: k, value: this.#services[k]})).sort(sortByPriority);
   }
 
   createInstance(name: string, serviceName: string, endpoint: APIEndpoint) {
@@ -124,6 +127,11 @@ export class ServiceManager extends ConfigStoreItem {
     this.onNewInstance.emit(instance, ids.length);
     this.saveConfig();
     return instance;
+  }
+
+  updateInstance(instance: Instance) {
+    this.onUpdateInstance.emit(instance);
+    this.saveConfig();
   }
 
   removeInstanceById(id: string) {

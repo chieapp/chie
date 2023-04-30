@@ -6,6 +6,7 @@ import BaseWindow, {WindowState} from './base-window';
 import IconButton from '../view/icon-button';
 import Instance from '../model/instance';
 import NewAPIWindow from './new-api-window';
+import NewAssistantWindow from './new-assistant-window';
 import ToggleButton from './toggle-button';
 import basicStyle from './basic-style';
 import serviceManager from '../controller/service-manager';
@@ -67,6 +68,8 @@ export default class DashboardWindow extends BaseWindow {
       this.#createViewForInstance(instance);
     this.connections.add(serviceManager.onRemoveInstance.connect(
       this.#removeViewForInstance.bind(this)));
+    this.connections.add(serviceManager.onUpdateInstance.connect(
+      this.#updateViewForInstance.bind(this)));
     this.connections.add(serviceManager.onNewInstance.connect((instance, index) => {
       this.#createViewForInstance(instance);
       this.switchTo(index);
@@ -147,6 +150,13 @@ export default class DashboardWindow extends BaseWindow {
       this.#onNewTitle.bind(this, view)));
   }
 
+  #updateViewForInstance(instance: Instance) {
+    const view = this.views.find(v => v.instance == instance);
+    if (!view)
+      throw new Error(`Can not find view for ${instance.service.name}.`);
+    this.#onNewTitle(view);
+  }
+
   #removeViewForInstance(instance: Instance) {
     const index = this.views.findIndex(v => v.instance == instance);
     if (index < 0)
@@ -195,7 +205,7 @@ export default class DashboardWindow extends BaseWindow {
     }
     this.selectedView = view;
     // Change window title.
-    this.window.setTitle(view.mainView.getTitle());
+    this.#onNewTitle(view);
   }
 
   #onContextMenu(view: InstanceView) {
@@ -205,6 +215,14 @@ export default class DashboardWindow extends BaseWindow {
         onClick: () => windowManager.showChatWindow(view.instance.id),
       },
       {
+        label: 'Edit assistant...',
+        onClick: () => {
+          const win = new NewAssistantWindow(view.instance);
+          win.window.center();
+          win.window.activate();
+        }
+      },
+      {
         label: 'Edit API endpoint...',
         onClick: () => {
           const win = new NewAPIWindow(view.instance.service.api.endpoint);
@@ -212,6 +230,7 @@ export default class DashboardWindow extends BaseWindow {
           win.window.activate();
         }
       },
+      {type: 'separator'},
       {
         label: 'Remove',
         onClick: () => serviceManager.removeInstanceById(view.instance.id),
@@ -221,8 +240,12 @@ export default class DashboardWindow extends BaseWindow {
   }
 
   #onNewTitle(view: InstanceView) {
-    if (view == this.selectedView)
-      this.window.setTitle(view.mainView.getTitle());
+    if (view == this.selectedView) {
+      let title = view.mainView.getTitle();
+      if (title != view.instance.service.name)
+        title = view.instance.service.name + ': ' + title;
+      this.window.setTitle(title);
+    }
   }
 
   #onDraw(view: gui.Container, painter: gui.Painter) {

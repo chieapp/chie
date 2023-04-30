@@ -152,6 +152,11 @@
     }
     message.outerHTML = html;
   };
+  window.changeAssistantName = function(name) {
+    var names = document.querySelectorAll('.role-assistant .sender .name');
+    for (var i = 0; i < names.length; ++i)
+      names[i].textContent = name;
+  }
   window.abortPending = function() {
     var text = findPending('text');
     var wasAtBottom = isPageBottom();

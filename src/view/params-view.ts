@@ -4,7 +4,7 @@ import {Signal} from 'typed-signals';
 import Param from '../model/param';
 import basicStyle from './basic-style';
 
-const labelWidth = 60;
+const labelWidth = 100;
 const labelPadding = 8;
 
 export const valueMarginLeft = labelWidth + labelPadding;
@@ -61,12 +61,17 @@ class PickerParamRow extends ParamRow<gui.Picker> {
       });
     }
     // There is a description field in selection.
-    if (param.selections.length > 0 && 'description' in param.selections[0].value) {
+    if (param.selections.length > 0 &&
+        typeof param.selections[0].value == 'object' &&
+        'description' in param.selections[0].value) {
       // Note that creating an empty Label will trigger a bug that draws the
       // text always with black color.
       this.description = gui.Label.create('(description)');
       this.description.setAlign('start');
-      this.description.setStyle({marginLeft: valueMarginLeft + 2});
+      this.description.setStyle({
+        marginLeft: valueMarginLeft + 2,
+        marginBottom: basicStyle.padding / 2,
+      });
       this.subscribeOnChange(() => this.#updateDescription());
     }
     // Fill the picker with selections.
@@ -88,7 +93,9 @@ class PickerParamRow extends ParamRow<gui.Picker> {
     this.view.clear();
     for (const selection of selections)
       this.view.addItem(selection.name);
-    if (this.param.value)
+    if (this.param.selection)
+      this.#setSelection(this.param.selection);
+    else if (this.param.value)
       this.setValue(this.param.value);
     if (this.description)
       this.#updateDescription();
@@ -99,16 +106,22 @@ class PickerParamRow extends ParamRow<gui.Picker> {
     return this.param.selections.find(s => s.name == name)?.value;
   }
 
-  setValue(value: string) {
-    const index = this.view.getItems().indexOf(value);
-    if (index == -1)
-      return;
-    this.view.selectItemAt(index);
-    this.affects.forEach(p => p.update());
+  setValue(value) {
+    const selection = this.param.selections.find(s => s.value == value)?.name;
+    if (selection)
+      this.#setSelection(selection);
   }
 
   subscribeOnChange(callback: () => void) {
     this.view.onSelectionChange = callback;
+  }
+
+  #setSelection(name: string) {
+    const index = this.view.getItems().indexOf(name);
+    if (index == -1)
+      return;
+    this.view.selectItemAt(index);
+    this.affects.forEach(p => p.update());
   }
 
   #updateDescription() {
@@ -125,11 +138,23 @@ class EntryParamRow extends ParamRow<gui.Entry> {
   }
 
   getValue() {
-    return this.view.getText().trim();
+    const value = this.view.getText().trim();
+    if (this.param.type == 'string')
+      return value;
+    if (this.param.type == 'number') {
+      const n = parseFloat(value);
+      return Number.isNaN(n) ? null : n;
+    }
+    return null;
   }
 
-  setValue(value: string) {
-    this.view.setText(value ?? '');
+  setValue(value: string | number) {
+    if (typeof value != this.param.type)
+      throw new Error(`Type of param "${this.param.name}" is ${this.param.type} but got ${typeof value}.`);
+    if (typeof value == 'string')
+      this.view.setText(value ?? '');
+    else if (typeof value == 'number')
+      this.view.setText(String(value));
   }
 
   subscribeOnChange(callback: () => void) {
@@ -140,7 +165,7 @@ class EntryParamRow extends ParamRow<gui.Entry> {
 class ComboBoxParamRow extends ParamRow<gui.ComboBox> {
   constructor(param: Param) {
     super(param, gui.ComboBox.create());
-    if (param.value)
+    if (param.value && typeof param.value == 'string')
       this.setValue(param.value);
     if (param.preset)
       param.preset.forEach(p => this.view.addItem(p));

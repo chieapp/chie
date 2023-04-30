@@ -24,7 +24,26 @@ under this mode, but GPT-4 API access is quite hard to get.`,
           'gpt-4',
           'gpt-4-32k',
         ],
-      }
+      },
+      {
+        name: 'temperature',
+        type: 'number',
+        readableName: 'Temperature',
+        range: [0, 2],
+        value: 1,
+      },
+      {
+        name: 'top_p',
+        type: 'number',
+        readableName: 'Top P',
+        range: [0, 2],
+        value: 1,
+      },
+      {
+        name: 'max_tokens',
+        type: 'number',
+        readableName: 'Max Tokens',
+      },
     ],
   });
 }

@@ -17,12 +17,16 @@ export default function main() {
     serviceType: ChatService,
     viewType: ChatView,
     apiTypes: [ChatConversationAPI, ChatCompletionAPI],
+    description: 'Simple chat interface.',
+    priority: 9,
   });
   serviceManager.registerService({
     name: 'MultiChatsService',
     serviceType: MultiChatsService,
     viewType: MultiChatsView,
     apiTypes: [ChatConversationAPI, ChatCompletionAPI],
+    description: 'Chat interface supporting multiple conversations.',
+    priority: 10,
   });
 
   // Activate extensions.

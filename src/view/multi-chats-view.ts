@@ -248,7 +248,6 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       this.#selectedItem.setSelected(false);
     this.#selectedItem = item;
     await this.chatView.loadChatService(this.#selectedItem.service);
-    this.onNewTitle.emit();
   }
 
   #onCloseItem(item: ChatListItem) {

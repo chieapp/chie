@@ -19,7 +19,7 @@ class StockIcons {
     if (!(key in this.tinted)) {
       let tintColor;
       if (colorMode == 'dark')
-        tintColor = enabled ? '#FFF' : '#666';
+        tintColor = enabled ? '#EEE' : '#666';
       else
         tintColor = enabled ? '#000' : '#AAA';
       this.tinted[key] = this.getImage(name).tint(tintColor);

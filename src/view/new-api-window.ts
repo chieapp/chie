@@ -1,19 +1,20 @@
 import gui from 'gui';
 
 import APIEndpoint from '../model/api-endpoint';
+import APIParamsView from './api-params-view';
 import BaseWindow from './base-window';
 import ButtonsArea from './buttons-area';
-import Param from '../model/param';
 import ParamsView, {valueMarginLeft} from './params-view';
 import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
 import basicStyle from './basic-style';
+import deepAssign from '../util/deep-assign';
 
 export default class NewAPIWindow extends BaseWindow {
   endpoint?: APIEndpoint;
 
   apiSelector: ParamsView;
-  apiParams?: ParamsView;
+  apiParams?: APIParamsView;
   submitButton: gui.Button;
   loginButton?: gui.Button;
 
@@ -21,7 +22,11 @@ export default class NewAPIWindow extends BaseWindow {
     super({pressEscToClose: true});
     this.endpoint = endpoint;
 
-    this.contentView.setStyle({padding: basicStyle.padding});
+    this.contentView.setStyle({
+      padding: basicStyle.padding,
+      paddingLeft: 50,
+      paddingRight: 50,
+    });
 
     this.apiSelector = new ParamsView([
       {
@@ -34,7 +39,7 @@ export default class NewAPIWindow extends BaseWindow {
         name: 'type',
         type: 'selection',
         readableName: 'API Type',
-        value: endpoint?.type,
+        selection: endpoint?.type,
         selections: apiManager.getAPISelections(),
       },
     ]);
@@ -56,9 +61,9 @@ export default class NewAPIWindow extends BaseWindow {
     buttonsArea.addCloseButton();
 
     this.apiSelector.getView('name').view.focus();
-    this.resizeToFitContentView({width: 400});
+    this.resizeToFitContentView({width: 500});
 
-    this.window.setTitle(endpoint ? `Edit ${endpoint.name}` : 'Add New API Endpoint');
+    this.window.setTitle(endpoint ? `Edit API Endpoint: ${endpoint.name}` : 'Add New API Endpoint');
   }
 
   saveState() {
@@ -70,52 +75,21 @@ export default class NewAPIWindow extends BaseWindow {
       this.contentView.removeChildView(this.apiParams.view);
     if (this.loginButton)
       this.contentView.removeChildView(this.loginButton);
-    const apiRecord = this.apiSelector.getValue('type');
-    // Show params for users to fill in.
-    const params: Param[] = [];
-    if (apiRecord.url) {
-      params.push({
-        name: 'url',
-        type: 'string',
-        readableName: 'URL',
-        value: endpoint?.url ?? apiRecord.url,
-      });
-    }
-    if (apiRecord.auth == 'key') {
-      params.push({
-        name: 'key',
-        type: 'string',
-        readableName: 'API Key',
-        value: endpoint?.key,
-      });
-    }
-    if (apiRecord.auth == 'login') {
-      params.push({
-        name: 'cookie',
-        type: 'string',
-        readableName: 'Cookie',
-        value: endpoint?.cookie,
-      });
-    }
-    if (apiRecord.params)
-      params.push(...apiRecord.params);
-    this.apiParams = new ParamsView(params);
-    this.apiParams.view.setStyle({marginTop: basicStyle.padding / 2});
+    this.apiParams = new APIParamsView({
+      apiRecord: this.apiSelector.getValue('type'),
+      showAuthParams: true,
+      endpoint,
+    });
     this.contentView.addChildViewAt(this.apiParams.view, 1);
-    // Fill other params.
-    if (endpoint?.params) {
-      for (const name in endpoint.params)
-        this.apiParams.getView(name)?.setValue(endpoint.params[name]);
-    }
     // Show a login button.
-    if (apiRecord.auth == 'login') {
+    if (this.apiParams.apiRecord.auth == 'login') {
       this.loginButton = gui.Button.create('Login');
       this.loginButton.setStyle({
-        marginTop: basicStyle.padding / 2,
+        marginBottom: basicStyle.padding / 2,
         marginLeft: valueMarginLeft,
         marginRight: 0,
       });
-      this.loginButton.onClick = this.#onLogin.bind(this, apiRecord);
+      this.loginButton.onClick = this.#onLogin.bind(this, this.apiParams.apiRecord);
       this.contentView.addChildViewAt(this.loginButton, 1);
     }
     this.resizeToFitContentView({width: this.contentView.getBounds().width});
@@ -148,14 +122,10 @@ export default class NewAPIWindow extends BaseWindow {
       this.apiSelector.requestAttention('name');
       return;
     }
-    const apiRecord = this.apiSelector.getValue('type');
     if (this.endpoint) {
       // Edit endpoint.
       this.endpoint.name = name;
-      this.endpoint.url = this.apiParams.getValue('url');
-      this.endpoint.key = this.apiParams.getValue('key');
-      this.endpoint.cookie = this.apiParams.getValue('cookie');
-      this.endpoint.params = this.#readAPIParams(apiRecord);
+      deepAssign(this.endpoint, this.apiParams.readParams());
       apiManager.updateEndpoint(this.endpoint);
     } else {
       if (apiManager.getEndpoints().find(e => e.name == name)) {
@@ -164,29 +134,12 @@ export default class NewAPIWindow extends BaseWindow {
         return;
       }
       // Create a new endpoint.
-      const endpoint = new APIEndpoint({
+      const endpoint = new APIEndpoint(deepAssign({
         name,
         type: this.apiSelector.getValue('type').name,
-        url: this.apiParams.getValue('url'),
-        key: this.apiParams.getValue('key'),
-        cookie: this.apiParams.getValue('cookie'),
-        params: this.#readAPIParams(apiRecord),
-      });
+      }, this.apiParams.readParams()));
       apiManager.addEndpoint(endpoint);
     }
     this.window.close();
-  }
-
-  // Read the params from the entries, and convert to key-value pairs.
-  #readAPIParams(apiRecord) {
-    if (!apiRecord.params)
-      return;
-    const params = {};
-    for (const p of apiRecord.params) {
-      const value = this.apiParams.getValue(p.name);
-      if (value)
-        params[p.name] = value;
-    }
-    return params;
   }
 }

@@ -33,6 +33,11 @@ a.icon:hover {
 .text .edited.label {
   color: #A0A0A2;
 }
+.text blockquote {
+  background-color: #F0F0F0;
+  border-color: #ABABAB;
+  color: #4D4D4D;
+}
 .text .code-block, .text code {
   background: #F9F9F9;
   border-color: rgba(0, 0, 0, .15);

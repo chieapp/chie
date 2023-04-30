@@ -7,7 +7,6 @@ export const sydneyWebSocketURL = 'wss://sydney.bing.com/sydney/ChatHub';
 export const chatArgument = {
   source: 'cib',
   optionsSets: [
-    'harmonyv3',  // tone
     'nlu_direct_response_filter',
     'deepleo',
     'disable_emoji_spoken_text',

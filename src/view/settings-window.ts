@@ -61,7 +61,7 @@ export default class SettingsWindow extends BaseWindow {
 
     this.#createAPISetting();
 
-    this.resizeToFitContentView({width: 400, height: 400});
+    this.resizeToFitContentView({width: 500, height: 400});
     this.window.setTitle('Settings');
   }
 

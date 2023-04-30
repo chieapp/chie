@@ -1,8 +1,9 @@
 export type ParamType = 'string' | 'selection' | 'number';
 
-export interface Selection<T = object> {
+export interface Selection {
   name: string,
-  value: T,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  value: any,
 }
 
 export default class Param {
@@ -12,7 +13,7 @@ export default class Param {
   readableName?: string;
 
   // Default value.
-  value?: string;
+  value?: string | number;
 
   // Some preset values that users can choose from.
   preset?: string[];
@@ -22,6 +23,9 @@ export default class Param {
 
   // The param has a set of values to select.
   selections?: Selection[];
+
+  // Name of the default selection.
+  selection?: string;
 
   // The id of param that will constrain whether a selection is usable.
   constrainedBy?: string;

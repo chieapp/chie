@@ -176,11 +176,14 @@ export default class ChatView extends BaseView<ChatService> {
     // Load messages.
     this.messagesView.loadChatService(service);
     this.service = service;
+    this.onNewTitle.emit();
     if (!this.switchButton)
       this.#createSwitchButton();
     // Connect signals.
     this.#serviceConnections.add(service.onNewTitle.connect(
       this.onNewTitle.emit.bind(this.onNewTitle)));
+    this.#serviceConnections.add(service.onChangeName.connect(
+      this.#onChangeName.bind(this)));
     this.#serviceConnections.add(service.onUserMessage.connect(
       this.#onUserMessage.bind(this)));
     this.#serviceConnections.add(service.onClearError.connect(
@@ -257,7 +260,7 @@ export default class ChatView extends BaseView<ChatService> {
     this.onFocus();
     // Button states.
     if (this.service.history.length > 0) {
-      this.clearButton.setEnabled(true);
+      this.clearButton.setEnabled(!this.service.isPending);
       this.exportButton.setEnabled(true);
     } else {
       this.clearButton.setEnabled(false);
@@ -329,6 +332,11 @@ export default class ChatView extends BaseView<ChatService> {
     this.input.setEntryEnabled(true);
     if (!this.service.isPending)
       this.#resetUIState();
+  }
+
+  // Service's name has changed.
+  #onChangeName() {
+    this.messagesView.changeAssistantName(this.service.name);
   }
 
   // User has sent a message.

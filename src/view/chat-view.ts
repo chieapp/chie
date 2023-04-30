@@ -49,6 +49,7 @@ export default class ChatView extends BaseView<ChatService> {
   toolbar: gui.Container;
   clearButton: IconButton;
   exportButton: IconButton;
+  switchButton?: IconButton;
 
   input: InputView;
   replyButton: IconButton;
@@ -141,6 +142,7 @@ export default class ChatView extends BaseView<ChatService> {
     this.messagesView.destructor();
     this.clearButton.destructor();
     this.exportButton.destructor();
+    this.switchButton?.destructor();
     this.input.destructor();
   }
 
@@ -173,8 +175,10 @@ export default class ChatView extends BaseView<ChatService> {
     }
     // Load messages.
     this.messagesView.loadChatService(service);
-    // Connect signals.
     this.service = service;
+    if (!this.switchButton)
+      this.#createSwitchButton();
+    // Connect signals.
     this.#serviceConnections.add(service.onNewTitle.connect(
       this.onNewTitle.emit.bind(this.onNewTitle)));
     this.#serviceConnections.add(service.onUserMessage.connect(
@@ -234,6 +238,18 @@ export default class ChatView extends BaseView<ChatService> {
     // Disable send button when there is error happened.
     if (mode == 'send' && this.service.lastError)
       this.replyButton.setEnabled(false);
+  }
+
+  // Create the switch button.
+  #createSwitchButton() {
+    const record = apiManager.getAPIRecord(this.service.api.endpoint.type);
+    const modelParam = record.params?.find(p => p.name == 'model');
+    if (!modelParam)
+      return;
+    this.switchButton = new IconButton('switch');
+    this.switchButton.setText(this.service.api.endpoint.params['model']);
+    this.switchButton.view.setTooltip('Switch chat model');
+    this.toolbar.addChildView(this.switchButton.view);
   }
 
   // Set the input and button to ready to send state.

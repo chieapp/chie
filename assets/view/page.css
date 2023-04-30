@@ -129,7 +129,7 @@ a.icon i.icon-ok {
 }
 
 .text sup {
-  padding-left: 2px;
+  padding: 0.2em;
 }
 
 .text .code-block pre, .text code {

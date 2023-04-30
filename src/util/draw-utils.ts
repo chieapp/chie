@@ -1,5 +1,11 @@
 import gui from 'gui';
 
+// Create a circle.
+export function createCirclePath(painter: gui.Painter, center: gui.PointF, radius: number) {
+  painter.beginPath();
+  painter.arc(center, radius, 0, 2 * Math.PI);
+}
+
 // Create rounded rect.
 export function createRoundedCornerPath(painter: gui.Painter, r: gui.RectF, radius: number) {
   const degrees = Math.PI / 180;

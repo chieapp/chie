@@ -41,7 +41,7 @@ export default class MessagesView extends BrowserView {
   // Load a chat service.
   loadChatService(service: ChatService) {
     this.hasPendingMessage = false;
-    this.loadURL(`chie://chat/${service.id}/${encodeURIComponent(service.title)}`);
+    this.loadURL(`chie://chat/${service.id}/${encodeURIComponent(service.getTitle())}`);
   }
 
   // Append a message.

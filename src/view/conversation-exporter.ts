@@ -16,11 +16,11 @@ export function runExportMenu(win: gui.Window, service: ChatService) {
     {type: 'separator'},
     {
       label: 'Export to JSON',
-      onClick: () => exportToFile(win, `${service.title}.json`, chatToJSON(service)),
+      onClick: () => exportToFile(win, `${service.getTitle()}.json`, chatToJSON(service)),
     },
     {
       label: 'Export to Text',
-      onClick: () => exportToFile(win, `${service.title}.txt`, chatToText(service)),
+      onClick: () => exportToFile(win, `${service.getTitle()}.txt`, chatToText(service)),
     },
   ]);
   menu.popup();
@@ -28,7 +28,7 @@ export function runExportMenu(win: gui.Window, service: ChatService) {
 
 function chatToJSON(service: ChatService) {
   return JSON.stringify({
-    title: service.title,
+    title: service.getTitle(),
     conversation: service.history.map(m => ({
       role: m.role.toString(),
       content: m.content,
@@ -38,7 +38,7 @@ function chatToJSON(service: ChatService) {
 
 function chatToText(service: ChatService) {
   const separator = '\n\n-------------------\n\n';
-  return `Title: ${service.title}` + separator + service.history.map(m => `${m.role.toString()}:\n${m.content.trim()}`).join(separator);
+  return `Title: ${service.getTitle()}` + separator + service.history.map(m => `${m.role.toString()}:\n${m.content.trim()}`).join(separator);
 }
 
 async function exportToFile(win: gui.Window, filename: string, content: string) {

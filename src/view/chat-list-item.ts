@@ -1,23 +1,22 @@
 import gui from 'gui';
 import {Signal} from 'typed-signals';
 
-import AppearanceAware from '../view/appearance-aware';
 import ChatService from '../model/chat-service';
+import Clickable from './clickable';
 import IconButton from './icon-button';
 import basicStyle from './basic-style';
+import prompt from '../util/prompt';
 import {createRoundedCornerPath} from '../util/draw-utils';
 import {style} from './multi-chats-view';
 
-export default class ChatListItem extends AppearanceAware {
-  service: ChatService;
-
+export default class ChatListItem extends Clickable {
   onSelect: Signal<(item: ChatListItem) => void> = new Signal;
   onClose: Signal<(item: ChatListItem) => void> = new Signal;
 
+  service: ChatService;
   closeButton: IconButton;
 
   selected = false;
-  hover = false;
 
   title: string;
   #titleText: gui.AttributedText;
@@ -27,23 +26,12 @@ export default class ChatListItem extends AppearanceAware {
     super();
     this.service = service;
     this.connections.add(service.onNewTitle.connect(this.setTitle.bind(this)));
-    this.view.setMouseDownCanMoveWindow(false);
     this.view.setStyle({width: '100%', height: 32, marginBottom: 2});
-    this.view.onDraw = this.#onDraw.bind(this);
-    this.view.onMouseEnter = () => {
-      this.hover = true;
-      this.closeButton.view.setVisible(true);
-      this.view.schedulePaint();
-    };
-    this.view.onMouseLeave = () => {
-      this.hover = false;
-      this.closeButton.view.setVisible(false);
-      this.view.schedulePaint();
-    };
-    this.view.onMouseUp = () => {
-      this.setSelected(true);
-    };
+    this.view.onMouseEnter = () => this.closeButton.view.setVisible(true);
+    this.view.onMouseLeave = () => this.closeButton.view.setVisible(false);
     this.view.onSizeChanged = this.#updateTooltip.bind(this);
+    this.onClick = () => this.setSelected(true);
+    this.onContextMenu = () => this.runMenu();
 
     this.view.setStyle({
       flexDirection: 'row-reverse',
@@ -56,10 +44,10 @@ export default class ChatListItem extends AppearanceAware {
     this.closeButton.onClick = () => this.onClose.emit(this);
     this.view.addChildView(this.closeButton.view);
 
-    this.setTitle(service.title);
+    this.setTitle(service.getTitle());
     if (!service.isLoaded) {
       this.connections.add(service.onLoad.connect(() => {
-        this.setTitle(service.title);
+        this.setTitle(service.getTitle());
       }));
     }
   }
@@ -96,24 +84,30 @@ export default class ChatListItem extends AppearanceAware {
     this.view.schedulePaint();
   }
 
+  runMenu() {
+    const menu = gui.Menu.create([
+      {
+        label: 'Edit title...',
+        onClick: async () => {
+          const title = await prompt('Edit Title', this.title);
+          if (title)
+            this.service.setCustomTitle(title);
+        },
+      },
+      {
+        label: 'Close',
+        onClick: () => this.onClose.emit(this),
+      },
+    ]);
+    menu.popup();
+  }
+
   onColorSchemeChange() {
     super.onColorSchemeChange();
     this.setTitle(this.title);  // update text color.
   }
 
-  #updateTooltip() {
-    const bounds = Object.assign(this.view.getBounds(), {x: 0, y: 0});
-    // Always consider space for the close button since the tooltip only shows
-    // when mouse is hovering on it.
-    bounds.width -= this.closeButton.view.getBounds().width + basicStyle.padding;
-    // Only show tooltip when there is not enough room to show the title.
-    if ((bounds.width -= 2 * basicStyle.padding) < this.#titleBounds.width)
-      this.view.setTooltip(this.title);
-    else
-      this.view.setTooltip('');
-  }
-
-  #onDraw(view, painter: gui.Painter) {
+  onDraw(view, painter: gui.Painter) {
     // Background color.
     const theme = this.darkMode ? style.dark : style.light;
     if (this.selected)
@@ -132,5 +126,17 @@ export default class ChatListItem extends AppearanceAware {
     bounds.x += basicStyle.padding;
     bounds.width -= basicStyle.padding * 2;
     painter.drawAttributedText(this.#titleText, bounds);
+  }
+
+  #updateTooltip() {
+    const bounds = Object.assign(this.view.getBounds(), {x: 0, y: 0});
+    // Always consider space for the close button since the tooltip only shows
+    // when mouse is hovering on it.
+    bounds.width -= this.closeButton.view.getBounds().width + basicStyle.padding;
+    // Only show tooltip when there is not enough room to show the title.
+    if ((bounds.width -= 2 * basicStyle.padding) < this.#titleBounds.width)
+      this.view.setTooltip(this.title);
+    else
+      this.view.setTooltip('');
   }
 }

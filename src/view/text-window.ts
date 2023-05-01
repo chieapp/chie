@@ -8,18 +8,20 @@ import InputView from './input-view';
 import basicStyle from './basic-style';
 
 export default class TextWindow extends BaseWindow {
-  mode: 'show' | 'edit' | 'regenerate' | 'edit-regenerate';
-  service: ChatService;
-  index: number;
+  mode: 'prompt' | 'show' | 'edit' | 'regenerate' | 'edit-regenerate';
   text: string;
-  input: InputView;
+  service?: ChatService;
+  index?: number;
 
-  constructor(mode, service: ChatService, index: number, text: string) {
+  input: InputView;
+  defaultButton: gui.Button;
+
+  constructor(mode, text: string, index?: number, service?: ChatService) {
     super({pressEscToClose: true});
     this.mode = mode;
-    this.service = service;
-    this.index = index;
     this.text = text;
+    this.index = index;
+    this.service = service;
 
     this.contentView.setStyle({padding: basicStyle.padding});
     this.window.setTitle('Raw Message Text');
@@ -47,14 +49,18 @@ export default class TextWindow extends BaseWindow {
         this.window.close();
       };
     }
-    buttonsArea.addButton('Copy').onClick = () => {
-      gui.Clipboard.get().setText(this.input.entry.getText());
-    };
+    if (this.mode == 'prompt') {
+      buttonsArea.addButton('OK');
+    } else {
+      buttonsArea.addButton('Copy').onClick = () => {
+        gui.Clipboard.get().setText(this.input.entry.getText());
+      };
+    }
     buttonsArea.addCloseButton();
 
     // First button is default button.
-    const defaultButton = buttonsArea.row.childAt(0) as gui.Button;
-    defaultButton.makeDefault();
+    this.defaultButton = buttonsArea.row.childAt(0) as gui.Button;
+    this.defaultButton.makeDefault();
   }
 
   destructor() {
@@ -62,7 +68,7 @@ export default class TextWindow extends BaseWindow {
     this.input.destructor();
   }
 
-  showWithWidth(textWidth: number) {
+  showWithWidth(textWidth: number, options: {minWidth?: number, minHeight?: number} = {}) {
     // Get the insets between the input and window.
     const inputBounds = this.input.entry.getBounds();
     const contentBounds = this.contentView.getBounds();
@@ -79,8 +85,8 @@ export default class TextWindow extends BaseWindow {
     });
     bounds.width += insets.x + 2;
     bounds.height += insets.y + 2;
-    bounds.width = Math.max(460, bounds.width);
-    bounds.height = Math.max(200, bounds.height);
+    bounds.width = Math.max(options?.minWidth ?? 460, bounds.width);
+    bounds.height = Math.max(options?.minHeight ?? 200, bounds.height);
     this.window.setContentSize(bounds);
     this.window.center();
     this.window.activate();

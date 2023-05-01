@@ -160,7 +160,7 @@ export default class ChatView extends BaseView<ChatService> {
   getTitle() {
     if (!this.service)
       return null;
-    return this.service.title ?? this.service.name;
+    return this.service.getTitle() ?? this.service.name;
   }
 
   async loadChatService(service: ChatService) {
@@ -432,7 +432,7 @@ export default class ChatView extends BaseView<ChatService> {
       mode = 'regenerate';
     }
     // Show text window.
-    const win = new TextWindow(mode, this.service, index, message.content);
+    const win = new TextWindow(mode, message.content, index, this.service);
     this.#textWindows[index] = win;
     win.window.onClose = () => delete this.#textWindows[index];
     win.showWithWidth(textWidth);

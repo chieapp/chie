@@ -29,6 +29,7 @@ export interface ChatServiceOptions extends WebServiceOptions<ChatServiceSupport
 
 interface ChatHistoryData {
   title?: string;
+  customTitle?: string;
   session?: object;
   history?: ChatMessage[];
 }
@@ -63,6 +64,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   moment?: string;
 
   // Title of the chat.
+  customTitle?: string;
   title?: string;
 
   // Error is set if last message failed to send.
@@ -100,7 +102,9 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
         if (value) {
           if (value.history)
             this.history = value.history.slice();
-          if (value.title)
+          if (value.customTitle)
+            this.customTitle = value.customTitle;
+          else if (value.title)
             this.title = value.title;
           if (options.api instanceof ChatConversationAPI && value.session)
             options.api.session = value.session;
@@ -250,6 +254,16 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     return false;
   }
 
+  // Titles.
+  getTitle() {
+    return this.customTitle ?? this.title;
+  }
+
+  setCustomTitle(title: string) {
+    this.customTitle = title;
+    this.onNewTitle.emit(title);
+  }
+
   // Call the API.
   async #invokeChatAPI(options: object) {
     // Clear error and pending message when sending new message.
@@ -298,7 +312,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
     }
 
     // Generate a title for the conversation.
-    if (!this.#titlePromise && !this.aborter?.signal.aborted) {
+    if (!this.customTitle && !this.#titlePromise && !this.aborter?.signal.aborted) {
       this.#titlePromise = this.#generateTitle()
         .catch(() => { /* ignore error */ })
         .finally(() => this.#titlePromise = null);
@@ -439,7 +453,9 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
       serviceManager.saveConfig();
     }
     const data: ChatHistoryData = {history: this.history};
-    if (this.title)
+    if (this.customTitle)
+      data.customTitle = this.customTitle;
+    else if (this.title)
       data.title = this.title;
     if (this.api instanceof ChatConversationAPI && this.api.session)
       data.session = this.api.session;

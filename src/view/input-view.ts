@@ -69,7 +69,8 @@ export default class InputView extends AppearanceAware {
 
   setText(text: string) {
     this.entry.setText(text);
-    this.#adjustEntryHeight();
+    if (this.autoResize)
+      this.#adjustEntryHeight();
   }
 
   setEntryEnabled(enabled: boolean) {

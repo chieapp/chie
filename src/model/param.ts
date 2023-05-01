@@ -9,8 +9,13 @@ export interface Selection {
 export default class Param {
   name: string;
   type: ParamType;
-
   readableName?: string;
+
+  // This param will own a switcher button in toolbar.
+  hasSwitcher?: boolean;
+
+  // This param is only used for authentication.
+  authOnly?: boolean;
 
   // Default value.
   value?: string | number;

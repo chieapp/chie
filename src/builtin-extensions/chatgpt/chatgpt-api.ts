@@ -26,7 +26,7 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
       body: JSON.stringify({
         // API reference:
         // https://platform.openai.com/docs/api-reference/chat/create
-        model: this.endpoint.params.model,
+        model: this.getParam('model'),
         stream: true,
         messages: history.map(m => ({
           role: m.role.toString().toLowerCase(),

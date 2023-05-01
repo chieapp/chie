@@ -68,8 +68,6 @@ export default class DashboardWindow extends BaseWindow {
       this.#createViewForInstance(instance);
     this.connections.add(serviceManager.onRemoveInstance.connect(
       this.#removeViewForInstance.bind(this)));
-    this.connections.add(serviceManager.onUpdateInstance.connect(
-      this.#updateViewForInstance.bind(this)));
     this.connections.add(serviceManager.onNewInstance.connect((instance, index) => {
       this.#createViewForInstance(instance);
       this.switchTo(index);
@@ -148,13 +146,6 @@ export default class DashboardWindow extends BaseWindow {
     button.onContextMenu = this.#onContextMenu.bind(this, view);
     mainView.connections.add(mainView.onNewTitle.connect(
       this.#onNewTitle.bind(this, view)));
-  }
-
-  #updateViewForInstance(instance: Instance) {
-    const view = this.views.find(v => v.instance == instance);
-    if (!view)
-      throw new Error(`Can not find view for ${instance.service.name}.`);
-    this.#onNewTitle(view);
   }
 
   #removeViewForInstance(instance: Instance) {

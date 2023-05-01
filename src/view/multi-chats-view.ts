@@ -44,13 +44,13 @@ export default class MultiChatsView extends BaseView<MultiChatsService> {
       },
       {
         label: 'Show Previous Chat',
-        accelerator: 'Ctrl+[',
+        accelerator: 'CmdOrCtrl+[',
         validate: (view: MultiChatsView) => view.service.chats.length > 1,
         onClick: (view: MultiChatsView) => view.showPreviousChat(),
       },
       {
         label: 'Show Next Chat',
-        accelerator: 'Ctrl+]',
+        accelerator: 'CmdOrCtrl+]',
         validate: (view: MultiChatsView) => view.service.chats.length > 1,
         onClick: (view: MultiChatsView) => view.showNextChat(),
       },

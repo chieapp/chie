@@ -53,7 +53,7 @@ export default class NewAPIWindow extends BaseWindow {
       this.apiSelector.getView('type').subscribeOnChange(this.#updateAPIParamsView.bind(this));
 
     const buttonsArea = new ButtonsArea();
-    buttonsArea.view.setStyle({flex: 1});
+    buttonsArea.view.setStyle({flex: 1, paddingTop: basicStyle.padding / 2});
     this.contentView.addChildView(buttonsArea.view);
     this.submitButton = buttonsArea.addButton(endpoint ? 'OK' : 'Add');
     this.submitButton.makeDefault();
@@ -78,8 +78,9 @@ export default class NewAPIWindow extends BaseWindow {
     this.apiParams = new APIParamsView({
       apiRecord: this.apiSelector.getValue('type'),
       showAuthParams: true,
-      endpoint,
     });
+    if (endpoint)
+      this.apiParams.fillEndpoint(endpoint);
     this.contentView.addChildViewAt(this.apiParams.view, 1);
     // Show a login button.
     if (this.apiParams.apiRecord.auth == 'login') {
@@ -125,7 +126,7 @@ export default class NewAPIWindow extends BaseWindow {
     if (this.endpoint) {
       // Edit endpoint.
       this.endpoint.name = name;
-      deepAssign(this.endpoint, this.apiParams.readParams());
+      deepAssign(this.endpoint, this.apiParams.readEndpoint());
       apiManager.updateEndpoint(this.endpoint);
     } else {
       if (apiManager.getEndpoints().find(e => e.name == name)) {
@@ -137,7 +138,7 @@ export default class NewAPIWindow extends BaseWindow {
       const endpoint = new APIEndpoint(deepAssign({
         name,
         type: this.apiSelector.getValue('type').name,
-      }, this.apiParams.readParams()));
+      }, this.apiParams.readEndpoint()));
       apiManager.addEndpoint(endpoint);
     }
     this.window.close();

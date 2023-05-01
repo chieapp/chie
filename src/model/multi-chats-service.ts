@@ -9,8 +9,13 @@ import apiManager from '../controller/api-manager';
 import WebAPI from './web-api';
 import {ChatCompletionAPI, ChatConversationAPI} from './chat-api';
 
+interface ChildChatServiceData {
+  moment: string;
+  params?: Record<string, string>;
+}
+
 export interface MultiChatsServiceData extends WebServiceData {
-  chats?: string[];
+  chats?: ChildChatServiceData[];
 }
 
 export interface MultiChatsServiceOptions extends WebServiceOptions<ChatServiceSupportedAPIs> {
@@ -27,12 +32,12 @@ export default class MultiChatsService extends WebService<ChatServiceSupportedAP
   static deserialize(data: MultiChatsServiceData): MultiChatsServiceOptions {
     const options = WebService.deserialize(data) as MultiChatsServiceOptions;
     if (Array.isArray(data.chats)) {
-      options.chats = data.chats.map(moment => new ChatService({
+      options.chats = data.chats.map(({moment, params}) => new ChatService({
         moment,
         name: options.name,
         api: cloneAPI<ChatServiceSupportedAPIs>(options.api),
-        params: options.params,
         icon: options.icon,
+        params: params ?? options.params,
       }));
     }
     return options;
@@ -48,7 +53,12 @@ export default class MultiChatsService extends WebService<ChatServiceSupportedAP
 
   serialize() {
     const data: MultiChatsServiceData = super.serialize();
-    data.chats = this.chats.filter(c => c.moment).map(c => c.moment);
+    data.chats = this.chats.filter(service => service.moment).map(service => {
+      const data: ChildChatServiceData = {moment: service.moment};
+      if (service.api.params && Object.keys(service.api.params).length >0)
+        data.params = service.api.params;
+      return data;
+    });
     return data;
   }
 
@@ -67,11 +77,27 @@ export default class MultiChatsService extends WebService<ChatServiceSupportedAP
     return false;
   }
 
+  setParam(name: string, value: string) {
+    if (super.setParam(name, value)) {
+      this.chats.forEach(c => c.setParam(name, value));
+      return true;
+    }
+    return false;
+  }
+
+  setParams(params: Record<string, string>) {
+    if (super.setParams(params)) {
+      this.chats.forEach(c => c.setParams(params));
+      return true;
+    }
+    return false;
+  }
+
   createChat() {
     const chat = new ChatService({
       name: this.name,
       api: cloneAPI<ChatServiceSupportedAPIs>(this.api),
-      params: this.params,
+      params: this.api.params,
       icon: this.icon,
     });
     this.chats.unshift(chat);

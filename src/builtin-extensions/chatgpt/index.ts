@@ -18,6 +18,7 @@ under this mode, but GPT-4 API access is quite hard to get.`,
         name: 'model',
         type: 'string',
         readableName: 'Model',
+        hasSwitcher: true,
         value: 'gpt-3.5-turbo',
         preset: [
           'gpt-3.5-turbo',

@@ -121,12 +121,12 @@ a.icon i.icon-ok {
   font-size: 13px;
   white-space: nowrap;
 }
-.text p:first-child,
-.text .code-block:first-child {
+.text > p:first-child,
+.text > .code-block:first-child {
   margin-top: 0;
 }
-.text p:last-child,
-.text .code-block:last-child {
+.text > p:last-child,
+.text > .code-block:last-child {
   margin-bottom: 0;
 }
 

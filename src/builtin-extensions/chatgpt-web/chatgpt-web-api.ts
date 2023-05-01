@@ -35,7 +35,7 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
     const response = await fetch(this.endpoint.url, {
       body: JSON.stringify({
         action: 'variant',
-        model: this.endpoint.params.model,
+        model: this.getParam('model'),
         conversation_id: this.session.conversationId,
         parent_message_id: this.session.messageIds[this.session.messageIds.length - 1],
         messages: [ {
@@ -90,9 +90,11 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
   #getHeaders(): HeadersInit {
     return {
       'Content-Type': 'application/json',
-      'User-Agent': this.endpoint.params.userAgent,
-      Authorization: `Bearer ${this.endpoint.params.token}`,
+      'User-Agent': this.getParam('userAgent'),
+      Authorization: `Bearer ${this.getParam('token')}`,
       cookie: this.endpoint.cookie,
+      referer: 'https://chat.openai.com/',
+      authority: 'chat.openai.com',
     };
   }
 

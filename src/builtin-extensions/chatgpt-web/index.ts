@@ -6,20 +6,33 @@ const params: Param[] = [
     name: 'token',
     type: 'string',
     readableName: 'Token',
+    authOnly: true,
   },
   {
     name: 'userAgent',
     type: 'string',
     readableName: 'UA',
+    authOnly: true,
   },
   {
     name: 'model',
-    type: 'string',
+    type: 'selection',
     readableName: 'Model',
-    value: 'text-davinci-002-render',
-    preset: [
-      'text-davinci-002-render',
-      'gpt-4',
+    hasSwitcher: true,
+    selection: 'Default',
+    selections: [
+      {
+        name: 'Default',
+        value: 'text-davinci-002-render-sha',
+      },
+      {
+        name: 'Paid',
+        value: 'text-davinci-002-render-paid',
+      },
+      {
+        name: 'GPT-4',
+        value: 'gpt-4',
+      },
     ],
   },
 ];

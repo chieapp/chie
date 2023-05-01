@@ -30,7 +30,6 @@ export type ServiceRecord = {
 
 export class ServiceManager extends ConfigStoreItem {
   onNewInstance: Signal<(instance: Instance, index: number) => void> = new Signal;
-  onUpdateInstance: Signal<(instance: Instance) => void> = new Signal;
   onRemoveInstance: Signal<(instance: Instance) => void> = new Signal;
 
   #services: Record<string, ServiceRecord> = {};
@@ -127,11 +126,6 @@ export class ServiceManager extends ConfigStoreItem {
     this.onNewInstance.emit(instance, ids.length);
     this.saveConfig();
     return instance;
-  }
-
-  updateInstance(instance: Instance) {
-    this.onUpdateInstance.emit(instance);
-    this.saveConfig();
   }
 
   removeInstanceById(id: string) {

@@ -26,7 +26,7 @@ describe('MultiChatsService', () => {
       name: 'Test',
       api: service.api.endpoint.id,
       icon: 'chie://app-file/assets/icons/bot.png',
-      chats: [ chat.moment ],
+      chats: [ {moment: chat.moment} ],
     });
   });
 
@@ -45,7 +45,7 @@ describe('MultiChatsService', () => {
       name: 'Test',
       api: service.api.endpoint.id,
       icon: 'chie://app-file/assets/icons/bot.png',
-      chats: [ moment ],
+      chats: [ {moment} ],
     };
     service = new MultiChatsService(MultiChatsService.deserialize(data));
     await new Promise<void>((resolve) => service.chats[0].onLoad.connect(resolve));

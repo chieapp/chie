@@ -7,6 +7,7 @@ import IconButton from './icon-button';
 import InputView from './input-view';
 import MessagesView from './messages-view';
 import StreamedMarkdown from '../util/streamed-markdown';
+import SwitcherButton from './switcher-button';
 import TextWindow from './text-window';
 import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
@@ -49,7 +50,7 @@ export default class ChatView extends BaseView<ChatService> {
   toolbar: gui.Container;
   clearButton: IconButton;
   exportButton: IconButton;
-  switchButton?: IconButton;
+  switchers: SwitcherButton[] = [];
 
   input: InputView;
   replyButton: IconButton;
@@ -142,7 +143,8 @@ export default class ChatView extends BaseView<ChatService> {
     this.messagesView.destructor();
     this.clearButton.destructor();
     this.exportButton.destructor();
-    this.switchButton?.destructor();
+    for (const switcher of this.switchers)
+      switcher.destructor();
     this.input.destructor();
   }
 
@@ -177,8 +179,7 @@ export default class ChatView extends BaseView<ChatService> {
     this.messagesView.loadChatService(service);
     this.service = service;
     this.onNewTitle.emit();
-    if (!this.switchButton)
-      this.#createSwitchButton();
+    this.#updateSwitchButton();
     // Connect signals.
     this.#serviceConnections.add(service.onNewTitle.connect(
       this.onNewTitle.emit.bind(this.onNewTitle)));
@@ -244,15 +245,22 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   // Create the switch button.
-  #createSwitchButton() {
+  #updateSwitchButton() {
+    for (const switcher of this.switchers) {
+      this.toolbar.removeChildView(switcher.view);
+      switcher.destructor();
+    }
+    this.switchers = [];
     const record = apiManager.getAPIRecord(this.service.api.endpoint.type);
-    const modelParam = record.params?.find(p => p.name == 'model');
-    if (!modelParam)
+    if (!record.params)
       return;
-    this.switchButton = new IconButton('switch');
-    this.switchButton.setText(this.service.api.endpoint.params['model']);
-    this.switchButton.view.setTooltip('Switch chat model');
-    this.toolbar.addChildView(this.switchButton.view);
+    for (const param of record.params) {
+      if (param.hasSwitcher) {
+        const switcher = new SwitcherButton(this.service, param);
+        this.toolbar.addChildView(switcher.view);
+        this.switchers.push(switcher);
+      }
+    }
   }
 
   // Set the input and button to ready to send state.
@@ -356,8 +364,7 @@ export default class ChatView extends BaseView<ChatService> {
     // Clear input.
     this.#markdown = null;
     this.input.setText('');
-    // Mark state as sending.
-    this.#setButtonMode('stop');
+    this.#resetUIState();
   }
 
   // Message being received.

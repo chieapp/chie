@@ -8,12 +8,12 @@ const buttonRadius = 4;
 
 const style = {
   light: {
-    textColor: '#333',
+    color: '#333',
     buttonHoverColor: '#E0E0E0',
     buttonPressedColor: '#B0B0B0',
   },
   dark: {
-    textColor: '#EEE',
+    color: '#EEE',
     buttonHoverColor: '#5F5F5F',
     buttonPressedColor: '#AFAFAF',
   },
@@ -21,7 +21,7 @@ const style = {
 
 export default class IconButton extends Clickable {
   name: string;
-  text?: string;
+  title?: string;
   attributedText?: gui.AttributedText;
   imageSize: gui.SizeF;
 
@@ -45,11 +45,11 @@ export default class IconButton extends Clickable {
     this.view.schedulePaint();
   }
 
-  setText(text: string) {
+  setTitle(title: string) {
     const colorMode = this.colorMode ?? (this.darkMode ? 'dark' : 'light');
-    this.text = text;
-    this.attributedText = gui.AttributedText.create(text, {
-      color: style[colorMode].textColor,
+    this.title = title;
+    this.attributedText = gui.AttributedText.create(title, {
+      color: style[colorMode].color,
       valign: 'center',
     });
     const bounds = this.attributedText.getBoundsFor({width: 10000, height: 1000});
@@ -61,8 +61,8 @@ export default class IconButton extends Clickable {
 
   onColorSchemeChange() {
     super.onColorSchemeChange();
-    if (this.text)
-      this.setText(this.text);  // update text color.
+    if (this.title)
+      this.setTitle(this.title);  // update title color.
   }
 
   onDraw(view, painter: gui.Painter) {
@@ -87,7 +87,7 @@ export default class IconButton extends Clickable {
     // Button image.
     const imageBounds = Object.assign({x: buttonRadius, y: buttonRadius}, this.imageSize);
     painter.drawImage(stockIcons.getTintedImage(this.name, colorMode, this.enabled), imageBounds);
-    // Text.
+    // Title.
     if (this.attributedText) {
       const x = this.imageSize.width + 2 * buttonRadius;
       painter.drawAttributedText(this.attributedText, {x, y: 0, width: bounds.width - x, height: bounds.height});

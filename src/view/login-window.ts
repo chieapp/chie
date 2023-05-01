@@ -16,6 +16,11 @@ export default class LoginWindow extends BaseWindow {
     this.window.center();
   }
 
+  destructor() {
+    super.destructor();
+    this.browser.destructor();
+  }
+
   waitForNavigation(target: RegExp) {
     return new Promise<void>((resolve, reject) => {
       this.connectYueSignal(this.window.onClose, () => {

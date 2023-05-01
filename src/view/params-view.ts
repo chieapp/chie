@@ -12,13 +12,15 @@ export const valueMarginLeft = labelWidth + labelPadding;
 abstract class ParamRow<T extends gui.View = gui.View> {
   param: Param;
   view: T;
+  nullable: boolean;
 
   row = gui.Container.create();
   affects: ParamRow[] = [];
 
-  constructor(param: Param, view: T) {
+  constructor(param: Param, view: T, nullable: boolean) {
     this.param = param;
     this.view = view;
+    this.nullable = nullable;
     this.row.setStyle({flexDirection: 'row', marginBottom: basicStyle.padding / 2});
     const label = gui.Label.create(`${param.readableName ?? param.name}:`);
     label.setStyle({width: labelWidth, marginRight: labelPadding});
@@ -45,10 +47,10 @@ class PickerParamRow extends ParamRow<gui.Picker> {
   constrainedBy?: ParamRow;
   description?: gui.Label;
 
-  constructor(param: Param, constrainedBy?: ParamRow) {
+  constructor(param: Param, constrainedBy?: ParamRow, nullable = false) {
     if (!param.selections)
       throw new Error('Property "selections" expected.');
-    super(param, gui.Picker.create());
+    super(param, gui.Picker.create(), nullable);
 
     // Listen to controlling param's change and update.
     if (constrainedBy) {
@@ -91,6 +93,8 @@ class PickerParamRow extends ParamRow<gui.Picker> {
       selections = selections.filter(s => this.param.constrain(controllingValue, s.value));
     }
     this.view.clear();
+    if (this.nullable)
+      this.view.addItem('');
     for (const selection of selections)
       this.view.addItem(selection.name);
     if (this.param.selection)
@@ -107,6 +111,10 @@ class PickerParamRow extends ParamRow<gui.Picker> {
   }
 
   setValue(value) {
+    if (this.nullable && !value) {
+      this.view.selectItemAt(0);
+      return;
+    }
     const selection = this.param.selections.find(s => s.value == value)?.name;
     if (selection)
       this.#setSelection(selection);
@@ -131,8 +139,8 @@ class PickerParamRow extends ParamRow<gui.Picker> {
 }
 
 class EntryParamRow extends ParamRow<gui.Entry> {
-  constructor(param: Param) {
-    super(param, gui.Entry.create());
+  constructor(param: Param, nullable: boolean) {
+    super(param, gui.Entry.create(), nullable);
     if (param.value)
       this.setValue(param.value);
   }
@@ -149,6 +157,10 @@ class EntryParamRow extends ParamRow<gui.Entry> {
   }
 
   setValue(value: string | number) {
+    if (this.nullable && !value) {
+      this.view.setText('');
+      return;
+    }
     if (typeof value != this.param.type)
       throw new Error(`Type of param "${this.param.name}" is ${this.param.type} but got ${typeof value}.`);
     if (typeof value == 'string')
@@ -163,8 +175,8 @@ class EntryParamRow extends ParamRow<gui.Entry> {
 }
 
 class ComboBoxParamRow extends ParamRow<gui.ComboBox> {
-  constructor(param: Param) {
-    super(param, gui.ComboBox.create());
+  constructor(param: Param, nullable: boolean) {
+    super(param, gui.ComboBox.create(), nullable);
     if (param.value && typeof param.value == 'string')
       this.setValue(param.value);
     if (param.preset)
@@ -190,7 +202,7 @@ export default class ParamsView {
 
   onActivate: Signal<() => void> = new Signal;
 
-  constructor(params: Param[]) {
+  constructor(params: Param[], nullable = false) {
     for (const param of params) {
       let view: ParamRow;
       let constrainedBy: ParamRow;
@@ -198,14 +210,15 @@ export default class ParamsView {
         constrainedBy = this.views[param.constrainedBy];
       if (param.type == 'string' || param.type == 'number') {
         if (param.preset) {
-          view = new ComboBoxParamRow(param);
+          view = new ComboBoxParamRow(param, nullable);
         } else {
-          view = new EntryParamRow(param);
+          view = new EntryParamRow(param, nullable);
           (view as EntryParamRow).view.onActivate = () => this.onActivate.emit();
         }
       } else if (param.type == 'selection') {
-        view = new PickerParamRow(param, constrainedBy);
+        view = new PickerParamRow(param, constrainedBy, nullable);
       }
+      view.nullable = nullable;
       view.addToView(this.view);
       this.views[param.name] = view;
     }

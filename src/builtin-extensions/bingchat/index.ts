@@ -5,6 +5,7 @@ const toneParam: Param = {
   name: 'tone',
   type: 'selection',
   readableName: 'Tone',
+  hasSwitcher: true,
   value: 'Balanced',
   selections: [
     {

@@ -6,7 +6,8 @@ import BaseWindow from './base-window';
 import ButtonsArea from './buttons-area';
 import DashboardWindow from './dashboard-window';
 import Instance from '../model/instance';
-import ParamsView from './params-view';
+import NewAPIWindow from './new-api-window';
+import ParamsView, {valueMarginLeft} from './params-view';
 import apiManager from '../controller/api-manager';
 import basicStyle from './basic-style';
 import serviceManager, {ServiceRecord} from '../controller/service-manager';
@@ -72,8 +73,32 @@ export default class NewAssistantWindow extends BaseWindow {
     this.serviceSelector.onActivate.connect(this.#onSubmit.bind(this));
     this.contentView.addChildView(this.serviceSelector.view);
 
+    // Create helper button to add or edit api endpoint.
+    let apiButton: gui.Button;
+    if (instance) {
+      apiButton = gui.Button.create('Edit API endpoint...');
+      apiButton.onClick = () => {
+        const win = new NewAPIWindow(instance.service.api.endpoint);
+        win.window.center();
+        win.window.activate();
+        this.close();
+      };
+    } else {
+      apiButton = gui.Button.create('Create new API endpoint...');
+      apiButton.onClick = () => {
+        windowManager.showNamedWindow('newAPI');
+        this.close();
+      };
+    }
+    apiButton.setStyle({
+      marginBottom: basicStyle.padding / 2,
+      marginLeft: valueMarginLeft,
+    });
+    this.serviceSelector.view.addChildViewAt(apiButton, 2);
+
     this.#updateAPIParamsView();
     if (instance) {
+      // We do not allow editing types of instance.
       this.serviceSelector.getView('api').view.setEnabled(false);
       this.serviceSelector.getView('service').view.setEnabled(false);
       this.serviceSelector.getView('view').view.setEnabled(false);

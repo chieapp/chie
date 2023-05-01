@@ -4,17 +4,21 @@ import APIEndpoint from '../model/api-endpoint';
 import APIParamsView from './api-params-view';
 import BaseWindow from './base-window';
 import ButtonsArea from './buttons-area';
+import DashboardWindow from './dashboard-window';
 import ParamsView, {valueMarginLeft} from './params-view';
 import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
 import basicStyle from './basic-style';
 import deepAssign from '../util/deep-assign';
+import serviceManager from '../controller/service-manager';
+import windowManager from '../controller/window-manager';
 
 export default class NewAPIWindow extends BaseWindow {
   endpoint?: APIEndpoint;
 
   apiSelector: ParamsView;
   apiParams?: APIParamsView;
+  createCheckbox?: gui.Button;
   submitButton: gui.Button;
   loginButton?: gui.Button;
 
@@ -45,6 +49,19 @@ export default class NewAPIWindow extends BaseWindow {
     ]);
     this.apiSelector.onActivate.connect(this.#onSubmit.bind(this));
     this.contentView.addChildView(this.apiSelector.view);
+
+    if (!endpoint) {
+      this.createCheckbox = gui.Button.create({
+        type: 'checkbox',
+        title: 'Create an assistant for this API endpoint...'
+      });
+      this.createCheckbox.setChecked(true);
+      this.createCheckbox.setStyle({
+        marginBottom: basicStyle.padding / 2,
+        marginLeft: valueMarginLeft,
+      });
+      this.apiSelector.view.addChildViewAt(this.createCheckbox, 1);
+    }
 
     this.#updateAPIParamsView(endpoint);
     if (endpoint)
@@ -135,11 +152,29 @@ export default class NewAPIWindow extends BaseWindow {
         return;
       }
       // Create a new endpoint.
+      const apiRecord = this.apiSelector.getValue('type');
       const endpoint = new APIEndpoint(deepAssign({
         name,
-        type: this.apiSelector.getValue('type').name,
+        type: apiRecord.name,
       }, this.apiParams.readEndpoint()));
       apiManager.addEndpoint(endpoint);
+      if (this.createCheckbox?.isChecked()) {
+        // Find a service type supporting the API.
+        const serviceRecord = serviceManager.getServiceSelections().find(s => {
+          for (const apiType of s.value.apiTypes) {
+            if (apiRecord.apiType == apiType || apiRecord.apiType.prototype instanceof apiType)
+              return true;
+          }
+          return false;
+        });
+        if (!serviceRecord)
+          throw new Error('Unable to find a service type for the endpoint.');
+        // Create a new assistant.
+        serviceManager.createInstance(name, serviceRecord.name, endpoint);
+        // Show the added assistant.
+        const dashboard = windowManager.showNamedWindow('dashboard') as DashboardWindow;
+        dashboard.switchTo(-1);
+      }
     }
     this.window.close();
   }

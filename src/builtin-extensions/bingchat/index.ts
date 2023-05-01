@@ -6,7 +6,7 @@ const toneParam: Param = {
   type: 'selection',
   readableName: 'Tone',
   hasSwitcher: true,
-  value: 'Balanced',
+  selection: 'Balanced',
   selections: [
     {
       name: 'Creative',
@@ -43,11 +43,11 @@ require a credit card.`,
 async function login() {
   const win = new LoginWindow();
   win.window.activate();
-  const requrl = encodeURIComponent('https://www.bing.com/?app=chie&wlexpsignin=1');
+  const requrl = encodeURIComponent('https://www.bing.com/?wlexpsignin=1');
   win.browser.loadURL(`https://login.live.com/login.srf?wa=wsignin1.0&wreply=${requrl}&aadredir=1`);
   try {
     for (;;) {
-      await win.waitForNavigation(/(.*\.)?bing\.com\/\?app=chie/);
+      await win.waitForNavigation(/(.*\.)?bing\.com/);
       const cookie = await win.browser.executeJavaScript('document.cookie');
       const match = cookie.match(/(_U=)[^\s;]+/);
       if (match)

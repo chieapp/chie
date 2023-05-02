@@ -1,4 +1,4 @@
-export type ParamType = 'string' | 'selection' | 'number';
+export type ParamType = 'string' | 'selection' | 'number' | 'image';
 
 export interface Selection {
   name: string,
@@ -18,7 +18,8 @@ export default class Param {
   authOnly?: boolean;
 
   // Default value.
-  value?: string | number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  value?: any;
 
   // Some preset values that users can choose from.
   preset?: string[];

@@ -185,6 +185,8 @@ export default class ChatView extends BaseView<ChatService> {
       this.onNewTitle.emit.bind(this.onNewTitle)));
     this.#serviceConnections.add(service.onChangeName.connect(
       this.#onChangeName.bind(this)));
+    this.#serviceConnections.add(service.onChangeIcon.connect(
+      this.#onChangeIcon.bind(this)));
     this.#serviceConnections.add(service.onUserMessage.connect(
       this.#onUserMessage.bind(this)));
     this.#serviceConnections.add(service.onClearError.connect(
@@ -344,7 +346,13 @@ export default class ChatView extends BaseView<ChatService> {
 
   // Service's name has changed.
   #onChangeName() {
-    this.messagesView.changeAssistantName(this.service.name);
+    this.messagesView.changeAll('.role-assistant .name', this.service.name);
+  }
+
+  // Service's icon has changed.
+  #onChangeIcon() {
+    const img = `<img src='${this.service.icon.getChieURL()}'/>`;
+    this.messagesView.changeAll('.role-assistant .avatar', img);
   }
 
   // User has sent a message.

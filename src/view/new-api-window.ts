@@ -105,7 +105,7 @@ export default class NewAPIWindow extends BaseWindow {
       this.loginButton.setStyle({
         marginBottom: basicStyle.padding / 2,
         marginLeft: valueMarginLeft,
-        marginRight: 0,
+        alignSelf: 'flex-start',
       });
       this.loginButton.onClick = this.#onLogin.bind(this, this.apiParams.apiRecord);
       this.contentView.addChildViewAt(this.loginButton, 1);

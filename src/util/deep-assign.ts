@@ -2,6 +2,8 @@
 type AnyObject = Record<string, any>;
 
 export default function deepAssign<T extends AnyObject, S extends AnyObject>(target: T, source: S): T {
+  if (!source)
+    return target;
   for (const key of Object.keys(source)) {
     const value = source[key];
     if (typeof value == 'object' && value !== null) {

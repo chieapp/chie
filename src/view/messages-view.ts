@@ -10,6 +10,7 @@ import ChatService from '../model/chat-service';
 import StreamedMarkdown, {escapeText, highlightCode} from '../util/streamed-markdown';
 import basicStyle from './basic-style';
 import {ChatRole, ChatMessage, Link} from '../model/chat-api';
+import {config} from '../controller/configs';
 
 const actionsMap = {
   refresh: {
@@ -145,8 +146,8 @@ export default class MessagesView extends BrowserView {
   }
 
   // Update the name of assistant.
-  changeAssistantName(name: string) {
-    this.pushJavaScript(`window.changeAssistantName(${JSON.stringify(name)})`);
+  changeAll(query: string, content: string) {
+    this.pushJavaScript(`window.changeAll(${JSON.stringify(query)}, ${JSON.stringify(content)})`);
   }
 
   // Remove all messages.
@@ -176,6 +177,9 @@ gui.Browser.registerProtocol('chie', (url) => {
     // Load file inside app bundle.
     const p = realpathSync(`${__dirname}/../..${u.pathname}`);
     return gui.ProtocolFileJob.create(p);
+  } else if (u.host == 'user-file') {
+    // Load file inside user data dir.
+    return gui.ProtocolFileJob.create(path.join(config.dir, u.pathname));
   } else if (u.host == 'chat') {
     // Recieve chat service from URL.
     const [, chatServiceId, title] = u.pathname.split('/');

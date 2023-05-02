@@ -1,13 +1,18 @@
+import crypto from 'node:crypto';
+import fs from 'fs-extra';
+import path from 'node:path';
 import {Signal} from 'typed-signals';
 
 import APIEndpoint from '../model/api-endpoint';
 import BaseView, {BaseViewType} from '../view/base-view';
+import Icon from '../model/icon';
 import Instance from '../model/instance';
 import WebAPI from '../model/web-api';
 import apiManager, {sortByPriority} from './api-manager';
+import deepAssign from '../util/deep-assign';
 import {ConfigStoreItem} from '../model/config-store';
 import {Selection} from '../model/param';
-import {WebServiceData, WebServiceType} from '../model/web-service';
+import {WebServiceData, WebServiceOptions, WebServiceType} from '../model/web-service';
 import {collectGarbage} from './gc-center';
 import {getNextId} from '../util/id-generator';
 
@@ -105,7 +110,7 @@ export class ServiceManager extends ConfigStoreItem {
     return Object.keys(this.#services).map(k => ({name: k, value: this.#services[k]})).sort(sortByPriority);
   }
 
-  createInstance(name: string, serviceName: string, endpoint: APIEndpoint) {
+  createInstance(name: string, serviceName: string, endpoint: APIEndpoint, options?: Partial<WebServiceOptions<WebAPI>>) {
     if (!(serviceName in this.#services))
       throw new Error(`Service with name "${serviceName}" does not exist.`);
     // Do runtime check of API type compatibility.
@@ -116,10 +121,13 @@ export class ServiceManager extends ConfigStoreItem {
     // Create a new instance of service.
     const ids = Object.keys(this.#instances);
     const id = getNextId(name, ids);
+    const serviceOptions = deepAssign({name, api: new apiType(endpoint), icon}, options);
+    if (serviceOptions.icon)
+      serviceOptions.icon = this.#copyIcon(serviceOptions.icon);
     const instance = {
       id,
       serviceName,
-      service: new serviceType({name, api: new apiType(endpoint), icon}),
+      service: new serviceType(serviceOptions),
       viewType,
     };
     this.#instances[id] = instance;
@@ -128,8 +136,14 @@ export class ServiceManager extends ConfigStoreItem {
     return instance;
   }
 
+  setInstanceIcon(instance: Instance, icon: Icon) {
+    this.#removeIcon(instance.service.icon);
+    instance.service.setIcon(this.#copyIcon(icon));
+  }
+
   removeInstanceById(id: string) {
     const instance = this.getInstanceById(id);
+    this.#removeIcon(instance.service.icon);
     instance.service.destructor();
     delete this.#instances[id];
     this.onRemoveInstance.emit(instance);
@@ -145,6 +159,22 @@ export class ServiceManager extends ConfigStoreItem {
 
   getInstances() {
     return Object.values(this.#instances);
+  }
+
+  // If the icon file is located outside app's bundle, copy it to user data dir.
+  #copyIcon(icon: Icon) {
+    if (icon.filePath.startsWith(Icon.builtinIconsPath))
+      return icon;
+    const filename = crypto.randomUUID() + path.extname(icon.filePath);
+    const filePath = path.join(Icon.userIconsPath, filename);
+    fs.copySync(icon.filePath, filePath);
+    return new Icon({filePath});
+  }
+
+  // If the icon file is managed by us, remove it.
+  #removeIcon(icon: Icon) {
+    if (icon.filePath.startsWith(Icon.userIconsPath))
+      fs.remove(icon.filePath);
   }
 }
 

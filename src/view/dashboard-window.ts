@@ -128,6 +128,7 @@ export default class DashboardWindow extends BaseWindow {
   #createViewForInstance(instance: Instance) {
     // Create a button in sidebar.
     const button = new ToggleButton(instance.service.icon.getImage());
+    button.view.setTooltip(instance.service.name);
     button.view.setStyle({
       marginTop: basicStyle.padding,
       width: style.buttonSize,
@@ -144,8 +145,17 @@ export default class DashboardWindow extends BaseWindow {
     this.views.push(view);
     button.onClick = this.#onSelect.bind(this, view);
     button.onContextMenu = this.#onContextMenu.bind(this, view);
-    mainView.connections.add(mainView.onNewTitle.connect(
-      this.#onNewTitle.bind(this, view)));
+    // Update button image and title on change.
+    mainView.connections.add(mainView.onNewTitle.connect(() => {
+      this.#onNewTitle(view);
+    }));
+    mainView.connections.add(instance.service.onChangeName.connect(() => {
+      button.view.setTooltip(instance.service.name);
+      this.#onNewTitle(view);
+    }));
+    mainView.connections.add(instance.service.onChangeIcon.connect(() => {
+      button.setImage(instance.service.icon.getImage());
+    }));
   }
 
   #removeViewForInstance(instance: Instance) {

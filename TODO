@@ -1,9 +1,11 @@
 * chat view
   * show suggestions in blank chat view
 * entry
-  * put small buttons above input
   * flash when sening empty message
   * change background when disabled on mac
   * resize window to increase the entry height
 * bug
   * inactive background color of input on linux
+* optimizations
+  * render markdown in worker
+  * save custom icon to smaller size

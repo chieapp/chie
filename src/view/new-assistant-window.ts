@@ -6,8 +6,10 @@ import BaseWindow from './base-window';
 import ButtonsArea from './buttons-area';
 import DashboardWindow from './dashboard-window';
 import Instance from '../model/instance';
+import Icon from '../model/icon';
 import NewAPIWindow from './new-api-window';
 import ParamsView, {valueMarginLeft} from './params-view';
+import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
 import basicStyle from './basic-style';
 import serviceManager, {ServiceRecord} from '../controller/service-manager';
@@ -29,6 +31,12 @@ export default class NewAssistantWindow extends BaseWindow {
     });
 
     this.serviceSelector = new ParamsView([
+      {
+        name: 'icon',
+        type: 'image',
+        readableName: 'Icon',
+        value: instance?.service.icon,
+      },
       {
         name: 'name',
         type: 'string',
@@ -93,18 +101,22 @@ export default class NewAssistantWindow extends BaseWindow {
     apiButton.setStyle({
       marginBottom: basicStyle.padding / 2,
       marginLeft: valueMarginLeft,
+      alignSelf: 'flex-start',
     });
-    this.serviceSelector.view.addChildViewAt(apiButton, 2);
+    this.serviceSelector.view.addChildViewAt(apiButton, 3);
 
     this.#updateAPIParamsView();
+    this.#updateDefaultIcon();
     if (instance) {
       // We do not allow editing types of instance.
       this.serviceSelector.getView('api').view.setEnabled(false);
       this.serviceSelector.getView('service').view.setEnabled(false);
       this.serviceSelector.getView('view').view.setEnabled(false);
     } else {
+      // Refresh params view when api is changed.
       this.serviceSelector.getView('api').subscribeOnChange(() => {
         this.#updateAPIParamsView();
+        this.#updateDefaultIcon();
       });
       this.serviceSelector.getView('service').subscribeOnChange(() => {
         this.resizeToFitContentView({width: this.contentView.getBounds().width});
@@ -158,6 +170,19 @@ export default class NewAssistantWindow extends BaseWindow {
     this.resizeToFitContentView({width: this.contentView.getBounds().width});
   }
 
+  #updateDefaultIcon() {
+    // Get default icon of endpoint.
+    const endpoint = this.serviceSelector.getValue('api');
+    const icon = apiManager.getAPIRecord(endpoint.type).icon;
+    // Update the icon view.
+    const view = this.serviceSelector.getView('icon');
+    const currentIcon = view.getValue();
+    if (!currentIcon || currentIcon.filePath.startsWith(Icon.builtinIconsPath))
+      view.setValue(icon);
+    // Update the default value.
+    view.param.value = icon;
+  }
+
   #onSubmit() {
     const name = this.serviceSelector.getValue('name') as string;
     if (name.length == 0) {
@@ -168,12 +193,14 @@ export default class NewAssistantWindow extends BaseWindow {
     if (this.instance) {
       this.instance.service.setName(name);
       this.instance.service.setParams(this.apiParams.readParams());
+      serviceManager.setInstanceIcon(this.instance, this.serviceSelector.getValue('icon') as Icon);
       serviceManager.saveConfig();
     } else {
       serviceManager.createInstance(
         name,
         (this.serviceSelector.getValue('service') as ServiceRecord).name,
-        (this.serviceSelector.getValue('api') as APIEndpoint));
+        (this.serviceSelector.getValue('api') as APIEndpoint),
+        {icon: this.serviceSelector.getValue('icon') as Icon});
       // Show the added assistant.
       const dashboard = windowManager.showNamedWindow('dashboard') as DashboardWindow;
       dashboard.switchTo(-1);

@@ -1,6 +1,7 @@
 import {Signal} from 'typed-signals';
 
 import ChatService, {ChatServiceSupportedAPIs} from './chat-service';
+import Icon from '../model/icon';
 import WebService, {
   WebServiceData,
   WebServiceOptions,
@@ -72,6 +73,14 @@ export default class MultiChatsService extends WebService<ChatServiceSupportedAP
   setName(name: string) {
     if (super.setName(name)) {
       this.chats.forEach(c => c.setName(name));
+      return true;
+    }
+    return false;
+  }
+
+  setIcon(icon: Icon) {
+    if (super.setIcon(icon)) {
+      this.chats.forEach(c => c.setIcon(icon));
       return true;
     }
     return false;

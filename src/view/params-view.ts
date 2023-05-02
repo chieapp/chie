@@ -1,12 +1,14 @@
 import gui from 'gui';
 import {Signal} from 'typed-signals';
 
+import Icon from '../model/icon';
 import Param from '../model/param';
+import ToggleButton from './toggle-button';
 import basicStyle from './basic-style';
+import {style} from './dashboard-window';
 
-const labelWidth = 100;
-const labelPadding = 8;
-
+export const labelWidth = 100;
+export const labelPadding = 8;
 export const valueMarginLeft = labelWidth + labelPadding;
 
 abstract class ParamRow<T extends gui.View = gui.View> {
@@ -39,7 +41,7 @@ abstract class ParamRow<T extends gui.View = gui.View> {
   }
 
   abstract getValue();
-  abstract setValue(value: string);
+  abstract setValue(value);
   abstract subscribeOnChange(callback: () => void);
 }
 
@@ -196,6 +198,66 @@ class ComboBoxParamRow extends ParamRow<gui.ComboBox> {
   }
 }
 
+class IconParamRow extends ParamRow<gui.Container> {
+  button: ToggleButton;
+  icon?: Icon;
+  callback?: () => void;
+
+  constructor(param: Param, nullable: boolean) {
+    super(param, gui.Container.create(), nullable);
+    this.view.setStyle({flexDirection: 'row'});
+    this.button = new ToggleButton();
+    this.button.setSelected(true);
+    this.button.view.setStyle({
+      width: style.buttonSize,
+      height: style.buttonSize,
+    });
+    this.view.addChildView(this.button.view);
+
+    // Button to revert the icon to the default one in param.
+    const revertButton = gui.Button.create('Use default icon');
+    revertButton.onClick = () => {
+      this.setValue(param.value);
+      if (this.callback)
+        this.callback();
+    };
+    revertButton.setStyle({marginLeft: basicStyle.padding / 2});
+    this.view.addChildView(revertButton);
+
+    // Button to choose an icon from the disk.
+    const editButton = gui.Button.create('Choose from disk...');
+    editButton.onClick = () => this.#chooseIconFromDisk();
+    editButton.setStyle({marginLeft: basicStyle.padding / 2});
+    this.view.addChildView(editButton);
+
+    if (param.value)
+      this.setValue(param.value);
+  }
+
+  getValue() {
+    return this.icon;
+  }
+
+  setValue(value: Icon) {
+    this.icon = value;
+    this.button.setImage(value?.getImage());
+  }
+
+  subscribeOnChange(callback: () => void) {
+    this.callback = callback;
+  }
+
+  #chooseIconFromDisk() {
+    const dialog = gui.FileOpenDialog.create();
+    dialog.setTitle('Choose icon');
+    if (!dialog.runForWindow(this.view.getWindow()))
+      return;
+    this.setValue(new Icon({filePath: dialog.getResult()}));
+    if (this.callback)
+      this.callback();
+  }
+}
+
 export default class ParamsView {
   view = gui.Container.create();
   views: Record<string, ParamRow> = {};
@@ -217,6 +279,8 @@ export default class ParamsView {
         }
       } else if (param.type == 'selection') {
         view = new PickerParamRow(param, constrainedBy, nullable);
+      } else if (param.type == 'image') {
+        view = new IconParamRow(param, nullable);
       }
       view.nullable = nullable;
       view.addToView(this.view);

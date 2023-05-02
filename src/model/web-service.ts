@@ -78,6 +78,14 @@ export default class WebService<T extends WebAPI> implements Serializable {
     return true;
   }
 
+  setIcon(icon: Icon) {
+    if (this.icon == icon)
+      return false;
+    this.icon = icon;
+    this.onChangeIcon.emit();
+    return true;
+  }
+
   setParam(name: string, value: string) {
     if (!this.api.params)
       this.api.params = {};

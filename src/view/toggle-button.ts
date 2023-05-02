@@ -13,6 +13,11 @@ export default class ToggleButton extends Clickable {
     this.image = image;
   }
 
+  setImage(image?: gui.Image) {
+    this.image = image;
+    this.view.schedulePaint();
+  }
+
   setSelected(selected: boolean) {
     if (this.selected == selected)
       return;

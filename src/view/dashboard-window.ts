@@ -1,14 +1,15 @@
 import gui from 'gui';
 
 import AppearanceAware from '../view/appearance-aware';
-import BaseView, {ViewState} from './base-view';
-import BaseWindow, {WindowState} from './base-window';
+import BaseView, {ViewState} from '../view/base-view';
+import BaseWindow, {WindowState} from '../view/base-window';
 import IconButton from '../view/icon-button';
 import Instance from '../model/instance';
-import NewAPIWindow from './new-api-window';
-import NewAssistantWindow from './new-assistant-window';
-import ToggleButton from './toggle-button';
-import basicStyle from './basic-style';
+import NewAPIWindow from '../view/new-api-window';
+import NewAssistantWindow from '../view/new-assistant-window';
+import SplitView, {SplitViewState} from '../view/split-view';
+import ToggleButton from '../view/toggle-button';
+import basicStyle from '../view/basic-style';
 import serviceManager from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
 import {createRoundedCornerPath} from '../util/draw-utils';
@@ -32,12 +33,16 @@ type InstanceView = {
 
 interface DashboardState extends WindowState {
   selected?: string;
+  splitViewState?: SplitViewState;
   views?: ViewState[];
 }
 
 export default class DashboardWindow extends BaseWindow {
   views: InstanceView[] = [];
   selectedView?: InstanceView;
+
+  // Most of the views are SplitView, so improve consistent behaviors for it.
+  #splitViewState?: SplitViewState;
 
   #sidebar: AppearanceAware;
   #addButton: IconButton;
@@ -87,12 +92,14 @@ export default class DashboardWindow extends BaseWindow {
   saveState(): DashboardState {
     return Object.assign(super.saveState(), {
       selected: this.selectedView?.instance.id,
+      splitViewState: this.#splitViewState,
       views: this.views.map(v => v.mainView.saveState()),
     });
   }
 
   restoreState(state: DashboardState) {
     super.restoreState(state);
+    this.#splitViewState = state.splitViewState;
     if (state.views) {
       for (const i in state.views) {
         const view = this.views[i];
@@ -188,20 +195,28 @@ export default class DashboardWindow extends BaseWindow {
     view.button.setSelected(true);
     this.selectedView?.button.setSelected(false);
     this.#sidebar.view.schedulePaint();
+    // Save SplitView state.
+    if (this.selectedView?.mainView instanceof SplitView)
+      this.#splitViewState = SplitView.prototype.saveState.call(this.selectedView.mainView);
     // Switch view.
     this.selectedView?.mainView.view.setVisible(false);
     view.mainView.view.setVisible(true);
     view.mainView.initAsMainView();
     view.mainView.onFocus();
-    // The main view size should keep unchanged when switching.
-    const size = this.selectedView?.mainView.getMainViewSize();
-    if (size) {
-      const oldSize = this.selectedView.mainView.view.getBounds();
-      const newSize = view.mainView.getSizeFromMainViewSize(size);
-      if (newSize.width != oldSize.width) {
-        const bounds = this.window.getBounds();
-        bounds.width += newSize.width - oldSize.width;
-        this.window.setBounds(bounds);
+    // Restore SplitView state.
+    if (this.#splitViewState && view.mainView instanceof SplitView)
+      SplitView.prototype.restoreState.call(view.mainView, this.#splitViewState);
+    // The main view size should keep unchanged when switching views.
+    if (this.selectedView?.mainView.constructor != view.mainView.constructor) {
+      const size = this.selectedView?.mainView.getMainViewSize();
+      if (size) {
+        const oldSize = this.selectedView.mainView.view.getBounds();
+        const newSize = view.mainView.getSizeFromMainViewSize(size);
+        if (newSize.width != oldSize.width) {
+          const bounds = this.window.getBounds();
+          bounds.width += newSize.width - oldSize.width;
+          this.window.setBounds(bounds);
+        }
       }
     }
     this.selectedView = view;

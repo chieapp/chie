@@ -3,6 +3,7 @@ import gui from 'gui';
 import ChatService from '../model/chat-service';
 import IconButton from './icon-button';
 import Param from '../model/param';
+import serviceManager from '../controller/service-manager';
 
 export default class SwitcherButton extends IconButton {
   service: ChatService;
@@ -15,7 +16,7 @@ export default class SwitcherButton extends IconButton {
 
     this.updateTitle();
     this.view.setTooltip(`Switch ${param.readableName}`);
-    this.connections.add(service.onChangeParams.connect(this.updateTitle.bind(this)));
+    this.connections.add(service.onChangeAPIParams.connect(this.updateTitle.bind(this)));
     this.onClick = this.runMenu.bind(this);
   }
 
@@ -32,12 +33,18 @@ export default class SwitcherButton extends IconButton {
     if (this.param.preset) {
       options = this.param.preset.map(str => ({
         label: str,
-        onClick: () => this.service.setParam(this.param.name, str),
+        onClick: () => {
+          this.service.setAPIParam(this.param.name, str);
+          serviceManager.saveConfig();
+        },
       }));
     } else if (this.param.selections) {
       options = this.param.selections.map(selection => ({
         label: selection.name,
-        onClick: () => this.service.setParam(this.param.name, selection.value),
+        onClick: () => {
+          this.service.setAPIParam(this.param.name, selection.value);
+          serviceManager.saveConfig();
+        },
       }));
     } else {
       throw new Error(`Parameter ${this.param.readableName} does not have preset choices.`);

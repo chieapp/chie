@@ -12,7 +12,6 @@ import TextWindow from './text-window';
 import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
 import basicStyle from './basic-style';
-import deepAssign from '../util/deep-assign';
 import {APIError} from '../model/errors';
 import {
   ChatRole,
@@ -20,6 +19,7 @@ import {
   ChatResponse,
   ChatCompletionAPI,
 } from '../model/chat-api';
+import {deepAssign} from '../util/object-utils';
 import {runExportMenu} from './conversation-exporter';
 
 type ButtonMode = 'refresh' | 'send' | 'stop';

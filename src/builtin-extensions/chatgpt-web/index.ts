@@ -43,11 +43,7 @@ export function activate() {
     apiType: ChatGPTWebAPI,
     auth: 'login',
     icon: new Icon({name: 'chatgpt'}),
-    description: `ChatGPT web backend, requires OpenAI account.
-While this is free of charge you will be highly rate limited if you don't have \
-a credit card bound to your account, and even when you have Plus subscription \
-you still have to verify you are a human being every now and then. Also there \
-are less features available compared to the API key backend.`,
+    description: 'ChatGPT web backend, requires OpenAI account.',
     url: 'https://chat.openai.com/backend-api/conversation',
     priority: 9,
     params,

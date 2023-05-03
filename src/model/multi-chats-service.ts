@@ -9,10 +9,12 @@ import WebService, {
 import apiManager from '../controller/api-manager';
 import WebAPI from './web-api';
 import {ChatCompletionAPI, ChatConversationAPI} from './chat-api';
+import {isEmptyObject, shallowEqual} from '../util/object-utils';
 
 interface ChildChatServiceData {
   moment: string;
-  params?: Record<string, string>;
+  apiParams?: Record<string, string>;
+  params?: object;
 }
 
 export interface MultiChatsServiceData extends WebServiceData {
@@ -33,11 +35,12 @@ export default class MultiChatsService extends WebService<ChatServiceSupportedAP
   static deserialize(data: MultiChatsServiceData): MultiChatsServiceOptions {
     const options = WebService.deserialize(data) as MultiChatsServiceOptions;
     if (Array.isArray(data.chats)) {
-      options.chats = data.chats.map(({moment, params}) => new ChatService({
+      options.chats = data.chats.map(({moment, apiParams, params}) => new ChatService({
         moment,
         name: options.name,
         api: cloneAPI<ChatServiceSupportedAPIs>(options.api),
         icon: options.icon,
+        apiParams: apiParams ?? options.apiParams,
         params: params ?? options.params,
       }));
     }
@@ -56,8 +59,14 @@ export default class MultiChatsService extends WebService<ChatServiceSupportedAP
     const data: MultiChatsServiceData = super.serialize();
     data.chats = this.chats.filter(service => service.moment).map(service => {
       const data: ChildChatServiceData = {moment: service.moment};
-      if (service.api.params && Object.keys(service.api.params).length >0)
-        data.params = service.api.params;
+      if (!isEmptyObject(service.api.params) &&
+          !shallowEqual(this.api.params, service.api.params)) {
+        data.apiParams = service.api.params;
+      }
+      if (!isEmptyObject(this.params) &&
+          !shallowEqual(this.params, service.params)) {
+        data.params = service.params;
+      }
       return data;
     });
     return data;
@@ -86,7 +95,23 @@ export default class MultiChatsService extends WebService<ChatServiceSupportedAP
     return false;
   }
 
-  setParam(name: string, value: string) {
+  setAPIParam(name: string, value: string) {
+    if (super.setAPIParam(name, value)) {
+      this.chats.forEach(c => c.setAPIParam(name, value));
+      return true;
+    }
+    return false;
+  }
+
+  setAPIParams(params: Record<string, string>) {
+    if (super.setAPIParams(params)) {
+      this.chats.forEach(c => c.setAPIParams(params));
+      return true;
+    }
+    return false;
+  }
+
+  setParam(name, value) {
     if (super.setParam(name, value)) {
       this.chats.forEach(c => c.setParam(name, value));
       return true;
@@ -94,7 +119,7 @@ export default class MultiChatsService extends WebService<ChatServiceSupportedAP
     return false;
   }
 
-  setParams(params: Record<string, string>) {
+  setParams(params) {
     if (super.setParams(params)) {
       this.chats.forEach(c => c.setParams(params));
       return true;
@@ -106,7 +131,9 @@ export default class MultiChatsService extends WebService<ChatServiceSupportedAP
     const chat = new ChatService({
       name: this.name,
       api: cloneAPI<ChatServiceSupportedAPIs>(this.api),
-      params: this.api.params,
+      apiParams: this.api.params,
+      // FIXME clone the params
+      params: this.params,
       icon: this.icon,
     });
     this.chats.unshift(chat);

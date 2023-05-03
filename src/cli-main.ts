@@ -1,16 +1,16 @@
 import readline from 'node:readline/promises';
 
-import main from './main';
 import apiManager from './controller/api-manager';
 import APIEndpoint from './model/api-endpoint';
 import ChatService from './model/chat-service';
 import {ChatConversationAPI} from './model/chat-api';
 import {config} from './controller/configs';
 
-main();
 cliMain();
 
 async function cliMain() {
+  config.addItem('apis', apiManager);
+
   // The cli interface is stateless.
   config.inMemory = true;
   config.initFromFileSync();

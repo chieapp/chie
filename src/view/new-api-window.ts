@@ -9,9 +9,9 @@ import ParamsView, {valueMarginLeft} from './params-view';
 import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
 import basicStyle from './basic-style';
-import deepAssign from '../util/deep-assign';
 import serviceManager from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
+import {deepAssign} from '../util/object-utils';
 
 export default class NewAPIWindow extends BaseWindow {
   endpoint?: APIEndpoint;
@@ -65,9 +65,9 @@ export default class NewAPIWindow extends BaseWindow {
 
     this.#updateAPIParamsView(endpoint);
     if (endpoint)
-      this.apiSelector.getView('type').view.setEnabled(false);
+      this.apiSelector.getRow('type').editor.setEnabled(false);
     else
-      this.apiSelector.getView('type').subscribeOnChange(this.#updateAPIParamsView.bind(this));
+      this.apiSelector.getRow('type').subscribeOnChange(this.#updateAPIParamsView.bind(this));
 
     const buttonsArea = new ButtonsArea();
     buttonsArea.view.setStyle({flex: 1, paddingTop: basicStyle.padding / 2});
@@ -77,10 +77,16 @@ export default class NewAPIWindow extends BaseWindow {
     this.submitButton.onClick = this.#onSubmit.bind(this);
     buttonsArea.addCloseButton();
 
-    this.apiSelector.getView('name').view.focus();
-    this.resizeToFitContentView({width: 500});
+    this.apiSelector.getRow('name').editor.focus();
+    this.resizeToFitContentView({width: 540});
 
     this.window.setTitle(endpoint ? `Edit API Endpoint: ${endpoint.name}` : 'Add New API Endpoint');
+  }
+
+  destructor() {
+    super.destructor();
+    this.apiSelector.destructor();
+    this.apiParams?.destructor();
   }
 
   saveState() {
@@ -110,7 +116,7 @@ export default class NewAPIWindow extends BaseWindow {
       this.loginButton.onClick = this.#onLogin.bind(this, this.apiParams.apiRecord);
       this.contentView.addChildViewAt(this.loginButton, 1);
     }
-    this.resizeToFitContentView({width: this.contentView.getBounds().width});
+    this.resizeVerticallyToFitContentView();
   }
 
   async #onLogin(apiRecord) {
@@ -119,10 +125,10 @@ export default class NewAPIWindow extends BaseWindow {
     try {
       const info = await apiRecord.login();
       if (info.cookie)
-        this.apiParams.getView('cookie').setValue(info.cookie);
+        this.apiParams.getRow('cookie').setValue(info.cookie);
       if (info.params) {
         for (const name in info.params)
-          this.apiParams.getView(name)?.setValue(info.params[name]);
+          this.apiParams.getRow(name)?.setValue(info.params[name]);
       }
     } catch (error) {
       if (error.name != 'CancelledError')
@@ -171,6 +177,8 @@ export default class NewAPIWindow extends BaseWindow {
           throw new Error('Unable to find a service type for the endpoint.');
         // Create a new assistant.
         serviceManager.createInstance(name, serviceRecord.name, endpoint);
+        // Close new assistant window since it is no longer needed.
+        windowManager.getNamedWindow('newAssistant')?.close();
         // Show the added assistant.
         const dashboard = windowManager.showNamedWindow('dashboard') as DashboardWindow;
         dashboard.switchTo(-1);

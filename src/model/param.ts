@@ -1,4 +1,4 @@
-export type ParamType = 'string' | 'selection' | 'number' | 'image';
+export type ParamType = 'string' | 'paragraph' | 'selection' | 'number' | 'image';
 
 export interface Selection {
   name: string,
@@ -10,6 +10,7 @@ export default class Param {
   name: string;
   type: ParamType;
   readableName?: string;
+  description?: string;
 
   // This param will own a switcher button in toolbar.
   hasSwitcher?: boolean;

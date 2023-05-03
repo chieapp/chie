@@ -37,6 +37,7 @@ describe('ParamsView', () => {
         },
       ]);
       addFinalizer(paramsView, () => collected = true);
+      paramsView.destructor();
     })();
     await gcUntil(() => collected);
   });

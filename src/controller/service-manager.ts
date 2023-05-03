@@ -7,13 +7,14 @@ import APIEndpoint from '../model/api-endpoint';
 import BaseView, {BaseViewType} from '../view/base-view';
 import Icon from '../model/icon';
 import Instance from '../model/instance';
+import Param from '../model/param';
 import WebAPI from '../model/web-api';
 import apiManager, {sortByPriority} from './api-manager';
-import deepAssign from '../util/deep-assign';
 import {ConfigStoreItem} from '../model/config-store';
 import {Selection} from '../model/param';
 import {WebServiceData, WebServiceOptions, WebServiceType} from '../model/web-service';
 import {collectGarbage} from './gc-center';
+import {deepAssign} from '../util/object-utils';
 import {getNextId} from '../util/id-generator';
 
 type ServiceManagerData = Record<string, {
@@ -31,6 +32,7 @@ export type ServiceRecord = {
   viewType: BaseViewType,
   description?: string,
   priority?: number,
+  params?: Param[],
 };
 
 export class ServiceManager extends ConfigStoreItem {

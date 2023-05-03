@@ -1,4 +1,5 @@
 * chat view
+  * synch panel size when switching chats in dashboard
   * show suggestions in blank chat view
 * entry
   * flash when sening empty message
@@ -9,3 +10,4 @@
 * optimizations
   * render markdown in worker
   * save custom icon to smaller size
+  * update yoga to use gap

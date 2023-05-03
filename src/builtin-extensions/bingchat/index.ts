@@ -29,10 +29,7 @@ export function activate() {
     apiType: BingChatAPI,
     auth: 'login',
     icon: new Icon({name: 'bingchat'}),
-    description: `Chat with new Bing, requires Microsoft account.
-Features of Chie are quite limited since Bing does not provide such APIs, and \
-the response is slower than ChatGPT, but it can do web search and does not \
-require a credit card.`,
+    description: 'Chat with new Bing, requires Microsoft account.',
     priority: 8,
     params: [ toneParam ],
     login: login,

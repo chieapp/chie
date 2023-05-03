@@ -4,29 +4,34 @@ import Icon from '../model/icon';
 import Serializable from '../model/serializable';
 import WebAPI from './web-api';
 import apiManager from '../controller/api-manager';
+import {isEmptyObject, shallowEqual} from '../util/object-utils';
 
-export interface WebServiceData {
+export interface WebServiceData<P extends object = object> {
   name: string;
   api: string;
   icon?: string;
-  params?: Record<string, string>;
+  apiParams?: Record<string, string>;
+  params?: P;
 }
 
-export interface WebServiceOptions<T extends WebAPI> {
+export interface WebServiceOptions<T extends WebAPI, P extends object = object> {
   name: string;
   api: T;
   icon?: Icon;
-  params?: Record<string, string>;
+  apiParams?: Record<string, string>;
+  params?: P;
 }
 
-export default class WebService<T extends WebAPI> implements Serializable {
+export default class WebService<T extends WebAPI, P extends object = object> implements Serializable {
   onChangeName: Signal<() => void> = new Signal;
+  onChangeAPIParams: Signal<() => void> = new Signal;
   onChangeParams: Signal<() => void> = new Signal;
   onChangeIcon: Signal<() => void> = new Signal;
 
   name: string;
   api: T;
   icon?: Icon;
+  params?: P;
 
   static deserialize(data: WebServiceData): WebServiceOptions<WebAPI> {
     if (!data ||
@@ -40,18 +45,22 @@ export default class WebService<T extends WebAPI> implements Serializable {
     const options: WebServiceOptions<WebAPI> = {name: data.name, api};
     if (typeof data.icon == 'string')
       options.icon = new Icon({chieURL: data.icon});
+    if (typeof data.apiParams == 'object')
+      options.apiParams = data.apiParams;
     if (typeof data.params == 'object')
       options.params = data.params;
     return options;
   }
 
-  constructor(options: WebServiceOptions<T>) {
+  constructor(options: WebServiceOptions<T, P>) {
     if (!options.name || !options.api)
       throw new Error('Must pass name and api to WebService');
     this.name = options.name;
     this.api = options.api;
     this.icon = options.icon ?? new Icon({name: 'bot'});
-    this.api.params = options.params;
+    // The params are cloned since they may be used to create other instances.
+    this.api.params = Object.assign({}, options.apiParams);
+    this.params = Object.assign({}, options.params);
   }
 
   serialize() {
@@ -61,8 +70,10 @@ export default class WebService<T extends WebAPI> implements Serializable {
     };
     if (this.icon)
       data.icon = this.icon.getChieURL();
-    if (this.api.params && Object.keys(this.api.params).length > 0)
-      data.params = this.api.params;
+    if (!isEmptyObject(this.api.params))
+      data.apiParams = this.api.params;
+    if (!isEmptyObject(this.params))
+      data.params = this.params;
     return data;
   }
 
@@ -86,22 +97,42 @@ export default class WebService<T extends WebAPI> implements Serializable {
     return true;
   }
 
-  setParam(name: string, value: string) {
+  setAPIParam(name: string, value: string) {
     if (!this.api.params)
       this.api.params = {};
     if (this.api.params[name] == value)
       return false;
     this.api.params[name] = value;
+    this.onChangeAPIParams.emit();
+    return true;
+  }
+
+  setAPIParams(params: Record<string, string>) {
+    if (this.api.params == params)
+      return false;
+    if (this.api.params && shallowEqual(this.api.params, params))
+      return false;
+    this.api.params = Object.assign({}, params);
+    this.onChangeAPIParams.emit();
+    return true;
+  }
+
+  setParam(name: string, value) {
+    if (!this.params)
+      this.params = {} as P;
+    if (this.params[name] == value)
+      return false;
+    this.params[name] = value;
     this.onChangeParams.emit();
     return true;
   }
 
-  setParams(params: Record<string, string>) {
-    if (this.api.params == params)
+  setParams(params: P) {
+    if (this.params == params)
       return false;
-    if (this.api.params && deepEqual(this.api.params, params))
+    if (this.params && shallowEqual(this.params, params))
       return false;
-    this.api.params = params;
+    this.params = Object.assign({}, params);
     this.onChangeParams.emit();
     return true;
   }
@@ -110,9 +141,4 @@ export default class WebService<T extends WebAPI> implements Serializable {
 export interface WebServiceType<T extends WebAPI> {
   new (options: WebServiceOptions<T>): WebService<T>;
   deserialize(config: object): WebServiceOptions<T>;
-}
-
-function deepEqual(a: Record<string, string>, b: Record<string, string>) {
-  return Object.keys(a).every(k => Object.prototype.hasOwnProperty.call(b, k) && a[k] == b[k]) &&
-         Object.keys(b).every(k => Object.prototype.hasOwnProperty.call(a, k));
 }

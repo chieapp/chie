@@ -107,4 +107,9 @@ export default class BaseWindow extends SignalsOwner {
     }
     this.window.setContentSize(contentSize);
   }
+
+  // Increase window size automatically to fit all content.
+  resizeVerticallyToFitContentView() {
+    this.resizeToFitContentView({width: this.contentView.getBounds().width});
+  }
 }

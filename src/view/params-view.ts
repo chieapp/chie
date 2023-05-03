@@ -1,53 +1,101 @@
 import gui from 'gui';
 import {Signal} from 'typed-signals';
 
+import AppearanceAware from '../view/appearance-aware';
 import Icon from '../model/icon';
 import Param from '../model/param';
 import ToggleButton from './toggle-button';
 import basicStyle from './basic-style';
+import prompt from '../util/prompt';
 import {style} from './dashboard-window';
 
-export const labelWidth = 100;
+export const labelWidth = 110;
 export const labelPadding = 8;
 export const valueMarginLeft = labelWidth + labelPadding;
 
-abstract class ParamRow<T extends gui.View = gui.View> {
-  param: Param;
-  view: T;
-  nullable: boolean;
+let descriptionFont: gui.Font;
+const descriptionColor = {
+  light: '#444',
+  dark: '#BBB',
+};
 
-  row = gui.Container.create();
+abstract class ParamRow<T extends gui.View = gui.View> extends AppearanceAware {
+  param: Param;
+  label: gui.Label;
+  editor: T;
+  nullable: boolean;
+  description?: gui.Label;
+  onChange?: Signal<() => void>;
+
   affects: ParamRow[] = [];
 
-  constructor(param: Param, view: T, nullable: boolean) {
+  constructor(param: Param, editor: T, nullable: boolean) {
+    super();
     this.param = param;
-    this.view = view;
+    this.editor = editor;
     this.nullable = nullable;
-    this.row.setStyle({flexDirection: 'row', marginBottom: basicStyle.padding / 2});
-    const label = gui.Label.create(`${param.readableName ?? param.name}:`);
-    label.setStyle({width: labelWidth, marginRight: labelPadding});
-    label.setAlign('end');
-    this.row.addChildView(label);
-    view.setStyle({flex: 1});
-    this.row.addChildView(view);
+
+    // Label on the left.
+    this.view.setStyle({flexDirection: 'row', marginBottom: basicStyle.padding / 2});
+    this.label = gui.Label.create(`${param.readableName ?? param.name}:`);
+    this.label.setStyle({width: labelWidth, marginRight: labelPadding});
+    this.label.setAlign('end');
+    this.view.addChildView(this.label);
+
+    // Editor view on the right.
+    editor.setStyle({flex: 1, alignSelf: 'flex-end'});
+    this.view.addChildView(editor);
+
+    // Description view on another line.
+    if (param.description)
+      this.createDescription(param.description);
+  }
+
+  onColorSchemeChange() {
+    super.onColorSchemeChange();
+    this.description?.setColor(descriptionColor[this.darkMode ? 'dark' : 'light']);
   }
 
   addToView(container: gui.Container) {
-    container.addChildView(this.row);
+    container.addChildView(this.view);
+    if (this.description)
+      container.addChildView(this.description);
   }
 
+  // Update the content after controlling view has been changed.
   update() {
     // Nothing to update by default.
   }
 
+  // Helper for rows that do not use standard view.
+  subscribeOnChange(callback: () => void) {
+    if (!this.onChange)
+      this.onChange = new Signal();
+    this.connections.add(this.onChange.connect(callback));
+  }
+
   abstract getValue();
   abstract setValue(value);
-  abstract subscribeOnChange(callback: () => void);
+
+  protected createDescription(text = '') {
+    if (this.description)
+      throw new Error('There is already description for the param.');
+    this.description = gui.Label.create(text);
+    this.description.setAlign('start');
+    this.description.setStyle({
+      marginTop: -4,
+      marginLeft: valueMarginLeft + 2,
+      marginBottom: basicStyle.padding / 2,
+    });
+    if (!descriptionFont)
+      descriptionFont = gui.Font.default().derive(-2, 'normal', 'normal');
+    this.description.setFont(descriptionFont);
+    this.onColorSchemeChange();
+  }
 }
 
-class PickerParamRow extends ParamRow<gui.Picker> {
+export class PickerParamRow extends ParamRow<gui.Picker> {
   constrainedBy?: ParamRow;
-  description?: gui.Label;
 
   constructor(param: Param, constrainedBy?: ParamRow, nullable = false) {
     if (!param.selections)
@@ -68,24 +116,11 @@ class PickerParamRow extends ParamRow<gui.Picker> {
     if (param.selections.length > 0 &&
         typeof param.selections[0].value == 'object' &&
         'description' in param.selections[0].value) {
-      // Note that creating an empty Label will trigger a bug that draws the
-      // text always with black color.
-      this.description = gui.Label.create('(description)');
-      this.description.setAlign('start');
-      this.description.setStyle({
-        marginLeft: valueMarginLeft + 2,
-        marginBottom: basicStyle.padding / 2,
-      });
+      this.createDescription();
       this.subscribeOnChange(() => this.#updateDescription());
     }
     // Fill the picker with selections.
     this.update();
-  }
-
-  addToView(container: gui.Container) {
-    super.addToView(container);
-    if (this.description)
-      container.addChildView(this.description);
   }
 
   update() {
@@ -94,11 +129,11 @@ class PickerParamRow extends ParamRow<gui.Picker> {
       const controllingValue = this.constrainedBy.getValue();
       selections = selections.filter(s => this.param.constrain(controllingValue, s.value));
     }
-    this.view.clear();
+    this.editor.clear();
     if (this.nullable)
-      this.view.addItem('');
+      this.editor.addItem('');
     for (const selection of selections)
-      this.view.addItem(selection.name);
+      this.editor.addItem(selection.name);
     if (this.param.selection)
       this.#setSelection(this.param.selection);
     else if (this.param.value)
@@ -107,14 +142,18 @@ class PickerParamRow extends ParamRow<gui.Picker> {
       this.#updateDescription();
   }
 
+  subscribeOnChange(callback: () => void) {
+    this.connectYueSignal(this.editor.onSelectionChange, callback);
+  }
+
   getValue() {
-    const name = this.view.getSelectedItem();
+    const name = this.editor.getSelectedItem();
     return this.param.selections.find(s => s.name == name)?.value;
   }
 
   setValue(value) {
     if (this.nullable && !value) {
-      this.view.selectItemAt(0);
+      this.editor.selectItemAt(0);
       return;
     }
     const selection = this.param.selections.find(s => s.value == value)?.name;
@@ -122,15 +161,11 @@ class PickerParamRow extends ParamRow<gui.Picker> {
       this.#setSelection(selection);
   }
 
-  subscribeOnChange(callback: () => void) {
-    this.view.onSelectionChange = callback;
-  }
-
   #setSelection(name: string) {
-    const index = this.view.getItems().indexOf(name);
+    const index = this.editor.getItems().indexOf(name);
     if (index == -1)
       return;
-    this.view.selectItemAt(index);
+    this.editor.selectItemAt(index);
     this.affects.forEach(p => p.update());
   }
 
@@ -140,15 +175,19 @@ class PickerParamRow extends ParamRow<gui.Picker> {
   }
 }
 
-class EntryParamRow extends ParamRow<gui.Entry> {
+export class EntryParamRow extends ParamRow<gui.Entry> {
   constructor(param: Param, nullable: boolean) {
     super(param, gui.Entry.create(), nullable);
     if (param.value)
       this.setValue(param.value);
   }
 
+  subscribeOnChange(callback: () => void) {
+    this.connectYueSignal(this.editor.onTextChange, callback);
+  }
+
   getValue() {
-    const value = this.view.getText().trim();
+    const value = this.editor.getText().trim();
     if (this.param.type == 'string')
       return value;
     if (this.param.type == 'number') {
@@ -160,75 +199,71 @@ class EntryParamRow extends ParamRow<gui.Entry> {
 
   setValue(value: string | number) {
     if (this.nullable && !value) {
-      this.view.setText('');
+      this.editor.setText('');
       return;
     }
     if (typeof value != this.param.type)
       throw new Error(`Type of param "${this.param.name}" is ${this.param.type} but got ${typeof value}.`);
     if (typeof value == 'string')
-      this.view.setText(value ?? '');
+      this.editor.setText(value ?? '');
     else if (typeof value == 'number')
-      this.view.setText(String(value));
-  }
-
-  subscribeOnChange(callback: () => void) {
-    this.view.onTextChange = callback;
+      this.editor.setText(String(value));
   }
 }
 
-class ComboBoxParamRow extends ParamRow<gui.ComboBox> {
+export class ComboBoxParamRow extends ParamRow<gui.ComboBox> {
   constructor(param: Param, nullable: boolean) {
     super(param, gui.ComboBox.create(), nullable);
     if (param.value && typeof param.value == 'string')
       this.setValue(param.value);
     if (param.preset)
-      param.preset.forEach(p => this.view.addItem(p));
-  }
-
-  getValue() {
-    return this.view.getText().trim();
-  }
-
-  setValue(value: string) {
-    this.view.setText(value ?? '');
+      param.preset.forEach(p => this.editor.addItem(p));
   }
 
   subscribeOnChange(callback: () => void) {
-    this.view.onTextChange = callback;
+    this.connectYueSignal(this.editor.onTextChange, callback);
+  }
+
+  getValue() {
+    return this.editor.getText().trim();
+  }
+
+  setValue(value: string) {
+    this.editor.setText(value ?? '');
   }
 }
 
-class IconParamRow extends ParamRow<gui.Container> {
-  button: ToggleButton;
+export class IconParamRow extends ParamRow<gui.Container> {
+  imageView: ToggleButton;
+  revertButton: gui.Button;
   icon?: Icon;
-  callback?: () => void;
 
   constructor(param: Param, nullable: boolean) {
     super(param, gui.Container.create(), nullable);
-    this.view.setStyle({flexDirection: 'row'});
-    this.button = new ToggleButton();
-    this.button.setSelected(true);
-    this.button.view.setStyle({
+    this.editor.setStyle({flexDirection: 'row'});
+    this.imageView = new ToggleButton();
+    this.imageView.setSelected(true);
+    this.imageView.view.setStyle({
       width: style.buttonSize,
       height: style.buttonSize,
     });
-    this.view.addChildView(this.button.view);
-
-    // Button to revert the icon to the default one in param.
-    const revertButton = gui.Button.create('Use default icon');
-    revertButton.onClick = () => {
-      this.setValue(param.value);
-      if (this.callback)
-        this.callback();
-    };
-    revertButton.setStyle({marginLeft: basicStyle.padding / 2});
-    this.view.addChildView(revertButton);
+    this.editor.addChildView(this.imageView.view);
 
     // Button to choose an icon from the disk.
     const editButton = gui.Button.create('Choose from disk...');
     editButton.onClick = () => this.#chooseIconFromDisk();
     editButton.setStyle({marginLeft: basicStyle.padding / 2});
-    this.view.addChildView(editButton);
+    this.editor.addChildView(editButton);
+
+    // Button to revert the icon to the default one in param.
+    this.revertButton = gui.Button.create('Use default icon');
+    this.revertButton.onClick = () => {
+      this.setValue(param.value);
+      this.onChange?.emit();
+    };
+    this.revertButton.setVisible(false);
+    this.revertButton.setStyle({marginLeft: basicStyle.padding / 2});
+    this.editor.addChildView(this.revertButton);
 
     if (param.value)
       this.setValue(param.value);
@@ -238,65 +273,150 @@ class IconParamRow extends ParamRow<gui.Container> {
     return this.icon;
   }
 
-  setValue(value: Icon) {
+  setValue(value: Icon | null) {
     this.icon = value;
-    this.button.setImage(value?.getImage());
+    this.revertButton.setVisible(this.hasCustomIcon());
+    this.imageView.setImage(value?.getImage());
   }
 
-  subscribeOnChange(callback: () => void) {
-    this.callback = callback;
+  hasCustomIcon() {
+    return this.icon && !this.icon.filePath.startsWith(Icon.builtinIconsPath);
   }
 
   #chooseIconFromDisk() {
     const dialog = gui.FileOpenDialog.create();
     dialog.setTitle('Choose icon');
-    if (!dialog.runForWindow(this.view.getWindow()))
+    if (!dialog.runForWindow(this.editor.getWindow()))
       return;
     this.setValue(new Icon({filePath: dialog.getResult()}));
-    if (this.callback)
-      this.callback();
+    this.onChange?.emit();
+  }
+}
+
+export class ParagraphParamRow extends ParamRow<gui.Container> {
+  paragraph: gui.Label;
+  editButton: gui.Button;
+  text?: string;
+
+  constructor(param: Param, nullable: boolean) {
+    super(param, gui.Container.create(), nullable);
+    // Edit button on the first line.
+    this.editButton = gui.Button.create(`Add ${param.readableName}...`);
+    this.editButton.onClick = async () => {
+      const options = {width: 400, height: 300, multiLines: true};
+      const result = await prompt(`Edit ${this.param.readableName}`, this.getValue() ?? '', options);
+      if (result === null)  // cancelled
+        return;
+      this.setValue(result);
+      this.onChange?.emit();
+    };
+    this.editButton.setStyle({alignSelf: 'flex-start'});
+    this.editor.addChildView(this.editButton);
+    // The paragraph will be added on second line.
+    this.paragraph = gui.Label.create('');
+    this.paragraph.setStyle({
+      marginTop: -4,
+      marginLeft: valueMarginLeft + 2,
+      marginBottom: basicStyle.padding / 2,
+    });
+    this.paragraph.setAlign('start');
+    this.paragraph.setVisible(false);
+    if (param.value)
+      this.setValue(param.value);
+  }
+
+  addToView(container: gui.Container) {
+    super.addToView(container);
+    container.addChildView(this.paragraph);
+  }
+
+  getValue() {
+    return this.text;
+  }
+
+  setValue(value: string) {
+    if (value) {
+      this.text = value;
+      this.paragraph.setText(value.length > 100 ? value.substring(0, 100) + '...' : value);
+      this.paragraph.setVisible(true);
+      this.editButton.setTitle(`Edit ${this.param.readableName}...`);
+    } else {
+      this.text = null;
+      this.paragraph.setText('');
+      this.paragraph.setVisible(false);
+      this.editButton.setTitle(`Add ${this.param.readableName}...`);
+    }
   }
 }
 
 export default class ParamsView {
   view = gui.Container.create();
-  views: Record<string, ParamRow> = {};
+  rows: Record<string, ParamRow> = {};
 
   onActivate: Signal<() => void> = new Signal;
 
   constructor(params: Param[], nullable = false) {
     for (const param of params) {
-      let view: ParamRow;
+      let row: ParamRow;
       let constrainedBy: ParamRow;
       if (param.constrainedBy)
-        constrainedBy = this.views[param.constrainedBy];
+        constrainedBy = this.rows[param.constrainedBy];
       if (param.type == 'string' || param.type == 'number') {
         if (param.preset) {
-          view = new ComboBoxParamRow(param, nullable);
+          row = new ComboBoxParamRow(param, nullable);
         } else {
-          view = new EntryParamRow(param, nullable);
-          (view as EntryParamRow).view.onActivate = () => this.onActivate.emit();
+          row = new EntryParamRow(param, nullable);
+          (row as EntryParamRow).editor.onActivate = () => this.onActivate.emit();
         }
       } else if (param.type == 'selection') {
-        view = new PickerParamRow(param, constrainedBy, nullable);
+        row = new PickerParamRow(param, constrainedBy, nullable);
       } else if (param.type == 'image') {
-        view = new IconParamRow(param, nullable);
+        row = new IconParamRow(param, nullable);
+      } else if (param.type == 'paragraph') {
+        row = new ParagraphParamRow(param, nullable);
       }
-      view.nullable = nullable;
-      view.addToView(this.view);
-      this.views[param.name] = view;
+      row.nullable = nullable;
+      row.addToView(this.view);
+      this.rows[param.name] = row;
     }
   }
 
-  getView(name: string) {
-    return this.views[name];
+  destructor() {
+    for (const name in this.rows)
+      this.rows[name].destructor();
+  }
+
+  fillParams(params: object) {
+    for (const name in params)
+      this.getRow(name)?.setValue(params[name]);
+  }
+
+  clearParams() {
+    for (const name in this.rows)
+      this.getRow(name).setValue('');
+  }
+
+  readParams(): object {
+    if (!this.rows)
+      return null;
+    const params: object = {};
+    for (const name in this.rows) {
+      const value = this.getValue(name);
+      if (value)
+        params[name] = value;
+    }
+    return params;
+  }
+
+  getRow(name: string) {
+    return this.rows[name];
   }
 
   getValue(name: string) {
-    return this.getView(name)?.getValue();
+    return this.getRow(name)?.getValue();
   }
 
   requestAttention(name: string) {
-    return this.getView(name)?.view.focus();
+    return this.getRow(name)?.editor.focus();
   }
 }

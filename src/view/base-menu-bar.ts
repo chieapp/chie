@@ -106,7 +106,7 @@ export default class BaseMenuBar extends SignalsOwner {
     const DashboardWindow = require('./dashboard-window').default;
     this.#viewMenu.append(gui.MenuItem.create('separator'));
     this.#assistantsMenuInView = new AssistantsMenu(this.#viewMenu, -1, 'CmdOrCtrl', (instance) => ({
-      label: `Switch to ${instance.service.name}...`,
+      label: `Switch to ${instance.service.name}`,
       validate: () => windowManager.getCurrentWindow() instanceof DashboardWindow,
       onClick: () => {
         const win = windowManager.getCurrentWindow() as typeof DashboardWindow;

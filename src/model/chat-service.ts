@@ -4,6 +4,9 @@ import WebService, {
   WebServiceData,
   WebServiceOptions,
 } from './web-service';
+import apiManager from '../controller/api-manager';
+import serviceManager from '../controller/service-manager';
+import historyKeeper from '../controller/history-keeper';
 import {
   ChatRole,
   ChatMessage,
@@ -12,10 +15,7 @@ import {
   ChatConversationAPI,
   ChatConversationAPIType,
 } from './chat-api';
-import apiManager from '../controller/api-manager';
-import serviceManager from '../controller/service-manager';
-import historyKeeper from '../controller/history-keeper';
-import deepAssign from '../util/deep-assign';
+import {deepAssign} from '../util/object-utils';
 
 export type ChatServiceSupportedAPIs = ChatConversationAPI | ChatCompletionAPI;
 
@@ -34,7 +34,12 @@ interface ChatHistoryData {
   history?: ChatMessage[];
 }
 
-export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
+interface ChatServiceParams {
+  systemPrompt?: string;
+  contextLength?: number;
+}
+
+export default class ChatService extends WebService<ChatServiceSupportedAPIs, ChatServiceParams> {
   static services: Record<number, ChatService> = {};
   static nextId = 0;
   static fromId = (id: number) => ChatService.services[id];
@@ -262,6 +267,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
   setCustomTitle(title: string) {
     this.customTitle = title;
     this.onNewTitle.emit(title);
+    this.#saveMoment();
   }
 
   // Call the API.
@@ -285,7 +291,12 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
         onMessageDelta: this.#handleMessageDelta.bind(this),
       };
       if (this.api instanceof ChatCompletionAPI) {
-        await this.api.sendConversation(this.history, apiOptions);
+        let conversation = this.history;
+        if (this.params?.contextLength)
+          conversation = conversation.slice(-this.params.contextLength);
+        if (this.params?.systemPrompt)
+          conversation = [{role: ChatRole.System, content: this.params.systemPrompt}, ...conversation];
+        await this.api.sendConversation(conversation, apiOptions);
       } else if (this.api instanceof ChatConversationAPI) {
         await this.api.sendMessage(this.history[this.history.length - 1].content, apiOptions);
       }
@@ -374,16 +385,17 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs> {
 
   // Generate a name for the conversation.
   async #generateTitle() {
-    const prompt =
-      `
-        Name the conversation based on following chat records:
-        '''
-        ${this.history.map(m => m.content.length > 100 ? m.content.substring(0, 100) + '...' : m.content).join('\n\n------\n\n')}
-        '''
-        Provide a concise name, within 15 characters and without quotation marks,
-        use the speak language used in the conversation.
-        The conversation is named:
-      `;
+    let conversation = this.history.map(m => m.content.length > 100 ? m.content.substring(0, 100) + '...' : m.content);
+    if (this.params?.systemPrompt)
+      conversation = [this.params.systemPrompt, ...conversation];
+    const prompt = `Name the conversation based on following chat records:
+'''
+${conversation.join('\n\n------\n\n')}
+'''
+Provide a concise name, within 15 characters and without quotation marks,
+use the speak language used in the conversation.
+The conversation is named:
+`;
     let title = '';
     if (this.api instanceof ChatCompletionAPI) {
       if (this.history.length > 10)

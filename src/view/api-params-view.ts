@@ -53,23 +53,13 @@ export default class APIParamsView extends ParamsView {
 
   fillEndpoint(endpoint: APIEndpoint) {
     if (endpoint.url)
-      this.getView('url').setValue(endpoint.url);
+      this.getRow('url').setValue(endpoint.url);
     if (endpoint.key)
-      this.getView('key').setValue(endpoint.key);
+      this.getRow('key').setValue(endpoint.key);
     if (endpoint.cookie)
-      this.getView('cookie').setValue(endpoint.cookie);
+      this.getRow('cookie').setValue(endpoint.cookie);
     if (endpoint.params)
       this.fillParams(endpoint.params);
-  }
-
-  fillParams(params: Record<string, string>) {
-    for (const name in params)
-      this.getView(name)?.setValue(params[name]);
-  }
-
-  clearParams() {
-    for (const name in this.views)
-      this.getView(name).setValue('');
   }
 
   readEndpoint(): Partial<APIEndpoint> {
@@ -83,19 +73,7 @@ export default class APIParamsView extends ParamsView {
         result.cookie = this.getValue('cookie');
     }
     if (this.apiRecord.params)
-      result.params = this.readParams();
+      result.params = this.readParams() as Record<string, string>;
     return result;
-  }
-
-  readParams(): Record<string, string> | null {
-    if (!this.apiRecord.params)
-      return null;
-    const params: Record<string, string> = {};
-    for (const p of this.apiRecord.params) {
-      const value = this.getValue(p.name);
-      if (value)
-        params[p.name] = value;
-    }
-    return params;
   }
 }

@@ -7,10 +7,7 @@ export function activate() {
     apiType: ChatGPTAPI,
     auth: 'key',
     icon: new Icon({name: 'openai'}),
-    description: `Use OpenAI API key for chat.
-Note that if you don't have a credit card bound to your OpenAI account, the \
-response might be very slow and rate limited. You get all features of Chie \
-under this mode, but GPT-4 API access is quite hard to get.`,
+    description: 'Use OpenAI API key for chat.',
     url: 'https://api.openai.com/v1/chat/completions',
     priority: 10,
     params: [
@@ -27,23 +24,26 @@ under this mode, but GPT-4 API access is quite hard to get.`,
         ],
       },
       {
-        name: 'temperature',
-        type: 'number',
-        readableName: 'Temperature',
-        range: [0, 2],
-        value: 1,
-      },
-      {
-        name: 'top_p',
-        type: 'number',
-        readableName: 'Top P',
-        range: [0, 2],
-        value: 1,
-      },
-      {
         name: 'max_tokens',
         type: 'number',
         readableName: 'Max Tokens',
+        description: 'The maximum number of tokens to generate.',
+      },
+      {
+        name: 'temperature',
+        type: 'number',
+        readableName: 'Temperature',
+        description: 'Higher values will make the output more random.',
+        range: [0, 2],
+        value: 1,
+      },
+      {
+        name: 'presence_penalty',
+        type: 'number',
+        readableName: 'Presence Penalty',
+        description: 'A higher value increases the likelihood to talk about new topics.',
+        range: [-2, 2],
+        value: 0,
       },
     ],
   });

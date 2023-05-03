@@ -1,13 +1,21 @@
 import gui from 'gui';
 
+import ChatService from './model/chat-service';
+import ChatView from './view/chat-view';
+import DashboardWindow from './view/dashboard-window';
+import MultiChatsService from './model/multi-chats-service';
+import MultiChatsView from './view/multi-chats-view';
 import NewAPIWindow from './view/new-api-window';
 import NewAssistantWindow from './view/new-assistant-window';
-import DashboardWindow from './view/dashboard-window';
+import Param from './model/param';
 import SettingsWindow from './view/settings-window';
+import apiManager from './controller/api-manager';
 import app from './controller/app';
-import main from './main';
+import extensionManager from './controller/extension-manager';
+import serviceManager from './controller/service-manager';
 import windowManager from './controller/window-manager';
 import * as singleInstance from './util/single-instance';
+import {ChatConversationAPI, ChatCompletionAPI} from './model/chat-api';
 import {config, windowConfig} from './controller/configs';
 import {setQuitOnException} from './controller/exception-handler';
 
@@ -25,9 +33,49 @@ if (process.platform == 'darwin') {
 }
 
 function guiMain() {
-  main();
+  // Register builtin views.
+  serviceManager.registerView(MultiChatsView);
+  serviceManager.registerView(ChatView);
 
-  // Trays and app menus.
+  // Register builtin services.
+  const chatServiceParams: Param[] = [
+    {
+      name: 'systemPrompt',
+      type: 'paragraph',
+      readableName: 'System Prompt',
+    },
+    {
+      name: 'contextLength',
+      type: 'number',
+      readableName: 'Context Length',
+      description: 'Maximum number of messages to send per request, default is no limit.',
+    },
+  ];
+  serviceManager.registerService({
+    name: 'MultiChatsService',
+    serviceType: MultiChatsService,
+    viewType: MultiChatsView,
+    apiTypes: [ChatConversationAPI, ChatCompletionAPI],
+    description: 'Chat interface supporting multiple conversations.',
+    priority: 10,
+    params: chatServiceParams,
+  });
+  serviceManager.registerService({
+    name: 'ChatService',
+    serviceType: ChatService,
+    viewType: ChatView,
+    apiTypes: [ChatConversationAPI, ChatCompletionAPI],
+    description: 'Simple chat interface.',
+    priority: 9,
+    params: chatServiceParams,
+  });
+
+  // Activate extensions.
+  extensionManager.activate();
+
+  // Read config and initialize.
+  config.addItem('apis', apiManager);
+  config.addItem('services', serviceManager);
   config.addItem('app', app);
   config.initFromFileSync();
 

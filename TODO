@@ -11,3 +11,4 @@
   * render markdown in worker
   * save custom icon to smaller size
   * update yoga to use gap
+  * lazy main view creation / reuse same type of view in dashboard

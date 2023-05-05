@@ -29,7 +29,7 @@ type SessionData = {
 };
 
 export default class BingChatAPI extends ChatConversationAPI<SessionData> {
-  #lastContent: string;
+  #lastContentLength: number;
   #lastLinks: {name: string, url: string}[];
 
   constructor(endpoint: APIEndpoint) {
@@ -41,7 +41,7 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
   async sendMessage(text: string, options: ChatAPIOptions) {
     if (!this.session)
       await this.#createConversation(options);
-    this.#lastContent = '';
+    this.#lastContentLength = 0;
     this.#lastLinks = null;
 
     const ws = new WebSocket(sydneyWebSocketURL);
@@ -172,10 +172,16 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
         return;
     } else {
       // Parse normal message.
-      if (payload['text']) {
+      if ('text' in payload) {
+        if (typeof payload.text != 'string')
+          throw new Error(`Unrecognized text field: ${payload.text}`);
+        // If the message ends with "[^1^", the API may change the tail of
+        // message later, so we skip this payload and wait for next one.
+        if (payload.text.match(/\[\^\d+\^$/))
+          return;
         // BingChat always return full text, while we want only deltas.
-        delta.content = payload['text'].substr(this.#lastContent.length);
-        this.#lastContent = payload['text'];
+        delta.content = payload.text.substr(this.#lastContentLength);
+        this.#lastContentLength = payload.text.length;
       }
       // Parse the links attached to the message.
       const sourceAttributions = payload['sourceAttributions'];

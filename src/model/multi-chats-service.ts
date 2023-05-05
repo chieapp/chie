@@ -132,7 +132,6 @@ export default class MultiChatsService extends WebService<ChatServiceSupportedAP
       name: this.name,
       api: cloneAPI<ChatServiceSupportedAPIs>(this.api),
       apiParams: this.api.params,
-      // FIXME clone the params
       params: this.params,
       icon: this.icon,
     });

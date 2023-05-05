@@ -178,7 +178,7 @@ export class PickerParamRow extends ParamRow<gui.Picker> {
 export class EntryParamRow extends ParamRow<gui.Entry> {
   constructor(param: Param, nullable: boolean) {
     super(param, gui.Entry.create(), nullable);
-    if (param.value)
+    if (param.value != null)
       this.setValue(param.value);
   }
 

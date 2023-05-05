@@ -8,9 +8,9 @@ import {Link} from '../model/chat-api';
 const bingReference = {
   name: 'bingReference',
   level: 'inline',
-  start: (src) => src.match(/\[\^\d\^\]/)?.index,
+  start: (src) => src.match(/\[\^\d+\^\]/)?.index,
   tokenizer(src) {
-    const match = src.match(/^\[\^(\d)\^\]([^[(]*)/);
+    const match = src.match(/^\[\^(\d+)\^\]([^[(]*)/);
     if (match) {
       return {
         type: 'bingReference',

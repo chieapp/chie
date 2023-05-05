@@ -41,7 +41,7 @@ export default class DashboardWindow extends BaseWindow {
   views: InstanceView[] = [];
   selectedView?: InstanceView;
 
-  // Most of the views are SplitView, so improve consistent behaviors for it.
+  // Most of the views are SplitView, make them have same panel width.
   #splitViewState?: SplitViewState;
 
   #sidebar: AppearanceAware;

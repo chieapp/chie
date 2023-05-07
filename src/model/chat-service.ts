@@ -59,30 +59,30 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs, Ch
   // Auto increasing ID.
   id: number = ++ChatService.nextId;
 
-  // Current chat messages.
-  history: ChatMessage[] = [];
-
   // Whether the chat messages have be recovered from disk.
   isLoaded = false;
 
   // ID of the chat history kept on disk.
   moment?: string;
 
+  // Current chat messages.
+  protected history: ChatMessage[] = [];
+
   // Title of the chat.
-  customTitle?: string;
-  title?: string;
+  protected customTitle?: string;
+  protected title?: string;
 
   // Error is set if last message failed to send.
-  lastError?: Error;
+  protected lastError?: Error;
 
   // Whether there is a message being sent.
-  isPending = false;
+  protected pending = false;
 
   // Saves concatenated content of all the received partial messages.
-  pendingMessage?: Partial<ChatMessage>;
+  protected pendingMessage?: Partial<ChatMessage>;
 
   // The aborter that can be used to abort current call.
-  aborter: AbortController;
+  protected aborter: AbortController;
 
   // Track generation of title.
   #titlePromise?: Promise<string | void>;
@@ -147,13 +147,19 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs, Ch
     };
     this.history.push(senderMessage);
     this.onUserMessage.emit(senderMessage);
-    this.#saveMoment();
+    this.saveHistory();
     // Start sending.
-    this.isPending = true;
+    this.pending = true;
     try {
-      await this.#invokeChatAPI(options);
+      await this.invokeChatAPI(options);
     } finally {
-      this.isPending = false;
+      this.pending = false;
+      // Generate a title for the conversation.
+      if (!this.customTitle && !this.#titlePromise && !this.aborter?.signal.aborted) {
+        this.#titlePromise = this.#generateTitle()
+          .catch(() => { /* ignore error */ })
+          .finally(() => this.#titlePromise = null);
+      }
     }
   }
 
@@ -163,11 +169,11 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs, Ch
       throw new Error('Unable to regenerate last response.');
     // If last message is from user, then we just need to resend.
     if (this.history[this.history.length - 1].role == ChatRole.User) {
-      this.isPending = true;
+      this.pending = true;
       try {
-        await this.#invokeChatAPI(options);
+        await this.invokeChatAPI(options);
       } finally {
-        this.isPending = false;
+        this.pending = false;
       }
       return;
     }
@@ -182,7 +188,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs, Ch
   async regenerateFrom(index: number = -1, options: object = {}) {
     if (this.history.length == 0)
       throw new Error('Unable to regenerate when there is no message.');
-    if (this.isPending)
+    if (this.pending)
       throw new Error('Can not regenerate when there is pending message being received.');
     if (index < 0)  // support negative index
       index += this.history.length;
@@ -199,7 +205,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs, Ch
     // Remove the messages from history.
     this.history.splice(index);
     this.onRemoveMessagesAfter.emit(index);
-    this.isPending = true;
+    this.pending = true;
     try {
       // Tell ChatConversationAPI to remove message records.
       // Note that we are removing one more message (which is guaranteed to be
@@ -207,9 +213,9 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs, Ch
       // user message again and we don't want it to be duplicated in server.
       if (this.api instanceof ChatConversationAPI)
         await this.api.removeMessagesAfter(index - 1);
-      await this.#invokeChatAPI(options);
+      await this.invokeChatAPI(options);
     } finally {
-      this.isPending = false;
+      this.pending = false;
     }
   }
 
@@ -239,7 +245,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs, Ch
   canRegenerateLastResponse() {
     if (this.history.length == 0)
       return false;
-    if (this.isPending)
+    if (this.pending)
       return false;
     if (this.history[this.history.length - 1].role == ChatRole.User)
       return true;
@@ -259,6 +265,11 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs, Ch
     return false;
   }
 
+  // Conversation history, used for rendering.
+  getHistory() {
+    return this.history;
+  }
+
   // Titles.
   getTitle() {
     return this.customTitle ?? this.title;
@@ -267,18 +278,58 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs, Ch
   setCustomTitle(title: string) {
     this.customTitle = title;
     this.onNewTitle.emit(title);
-    this.#saveMoment();
+    this.saveHistory();
+  }
+
+  // Return last error happened.
+  getLastError() {
+    return this.lastError;
+  }
+
+  // Return the message that being received.
+  getPendingMessage() {
+    return this.pendingMessage;
+  }
+
+  isPending() {
+    return this.pending;
+  }
+
+  // Abort current message.
+  abort() {
+    this.aborter?.abort();
+  }
+
+  isAborted() {
+    return this.aborter?.signal.aborted;
+  }
+
+  // Methods that dispatch events.
+  protected notifyMessageBegin() {
+    this.onMessageBegin.emit();
+  }
+
+  protected notifyMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
+    this.onMessageDelta.emit(delta, response);
+  }
+
+  protected notifyMessageError(error: Error) {
+    this.onMessageError.emit(error);
+  }
+
+  protected notifyMessage(message: ChatMessage) {
+    this.onMessage.emit(message);
   }
 
   // Call the API.
-  async #invokeChatAPI(options: object) {
+  protected async invokeChatAPI(options: object) {
     // Clear error and pending message when sending new message.
     if (this.lastError)
       this.onClearError.emit();
     this.lastError = null;
     this.pendingMessage = null;
     this.aborter = new AbortController();
-    this.onMessageBegin.emit();
+    this.notifyMessageBegin();
     // ChatConversationAPI usually don't like sending multiple conversations
     // at the same time, so wait for title generation to end.
     if (this.api instanceof ChatConversationAPI && this.#titlePromise)
@@ -304,7 +355,7 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs, Ch
       // Interrupting a pending message is not treated as error.
       if (!(this.pendingMessage?.content && error.name == 'AbortError')) {
         this.lastError = error;
-        this.onMessageError.emit(error);
+        this.notifyMessageError(error);
         return;
       }
     }
@@ -314,27 +365,36 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs, Ch
       // received, if there is no such signal and the partial message has been
       // left after API call ends (for example aborted), send an end signal here.
       this.#handleMessageDelta({}, {pending: false});
-    } else if (this.isPending) {
+    } else if (this.pending) {
       // If we have never received any message, then it is likely the server
       // refused our connection for some reason.
       this.lastError = new Error('Server closed connection.');
-      this.onMessageError.emit(this.lastError);
+      this.notifyMessageError(this.lastError);
       return;
     }
 
-    // Generate a title for the conversation.
-    if (!this.customTitle && !this.#titlePromise && !this.aborter?.signal.aborted) {
-      this.#titlePromise = this.#generateTitle()
-        .catch(() => { /* ignore error */ })
-        .finally(() => this.#titlePromise = null);
-    }
+    this.saveHistory();
+  }
 
-    this.#saveMoment();
+  // Write history to disk.
+  protected saveHistory() {
+    if (!this.moment) {
+      this.moment = historyKeeper.newMoment();
+      serviceManager.saveConfig();
+    }
+    const data: ChatHistoryData = {history: this.history};
+    if (this.customTitle)
+      data.customTitle = this.customTitle;
+    else if (this.title)
+      data.title = this.title;
+    if (this.api instanceof ChatConversationAPI && this.api.session)
+      data.session = this.api.session;
+    historyKeeper.save(this.moment, data);
   }
 
   // Called by sub-classes when there is message delta available.
   #handleMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
-    this.onMessageDelta.emit(delta, response);
+    this.notifyMessageDelta(delta, response);
 
     // Concatenate to the pendingMessage.
     if (!this.pendingMessage) {
@@ -361,26 +421,21 @@ export default class ChatService extends WebService<ChatServiceSupportedAPIs, Ch
         this.pendingMessage.links = delta.links;
     }
 
-    // Send onMessage when all pending messages have been received.
-    if (!response.pending) {
-      if (!this.pendingMessage.role || !this.pendingMessage.content)
-        throw new Error('Incomplete delta received from API');
-      const message = {
-        role: this.pendingMessage.role,
-        content: this.pendingMessage.content.trim(),
-      };
-      // Should clear pendingMessage before emitting onMessage.
-      this.#responseEnded();
-      this.onMessage.emit(message);
-    }
-  }
+    if (response.pending)
+      return;
+    if (!this.pendingMessage.role || !this.pendingMessage.content)
+      throw new Error('Incomplete delta received from API');
 
-  // End of response.
-  #responseEnded() {
-    if (this.pendingMessage)
-      this.history.push(this.pendingMessage as ChatMessage);
-    this.isPending = false;
+    // Send onMessage when all pending messages have been received.
+    const message = {
+      role: this.pendingMessage.role,
+      content: this.pendingMessage.content.trim(),
+    };
+    // Should clear pendingMessage before emitting onMessage.
+    this.history.push(this.pendingMessage as ChatMessage);
+    this.pending = false;
     this.pendingMessage = null;
+    this.notifyMessage(message);
   }
 
   // Generate a name for the conversation.
@@ -445,7 +500,7 @@ The conversation is named:
       title = title.slice(1, -1);
     this.title = title;
     this.onNewTitle.emit(title);
-    this.#saveMoment();
+    this.saveHistory();
   }
 
   #clearResources() {
@@ -456,21 +511,5 @@ The conversation is named:
     }
     if (this.moment)
       historyKeeper.forget(this.moment);
-  }
-
-  // Write history to disk.
-  #saveMoment() {
-    if (!this.moment) {
-      this.moment = historyKeeper.newMoment();
-      serviceManager.saveConfig();
-    }
-    const data: ChatHistoryData = {history: this.history};
-    if (this.customTitle)
-      data.customTitle = this.customTitle;
-    else if (this.title)
-      data.title = this.title;
-    if (this.api instanceof ChatConversationAPI && this.api.session)
-      data.session = this.api.session;
-    historyKeeper.save(this.moment, data);
   }
 }

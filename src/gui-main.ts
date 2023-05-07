@@ -42,12 +42,12 @@ function guiMain() {
     {
       name: 'systemPrompt',
       type: 'paragraph',
-      readableName: 'System Prompt',
+      displayName: 'System Prompt',
     },
     {
       name: 'contextLength',
       type: 'number',
-      readableName: 'Context Length',
+      displayName: 'Context Length',
       description: 'Maximum number of messages to send per request, default is no limit.',
     },
   ];

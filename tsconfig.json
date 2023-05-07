@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "declaration": true,
-    "baseUrl": "./src",
+    "declarationDir": "types",
+    "baseUrl": "src",
     "paths": {
       "chie": ["exports/chie"]
     },

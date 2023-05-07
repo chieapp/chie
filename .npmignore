@@ -2,6 +2,7 @@
 /src/
 /test/
 /test-ui/
+/types/
 .eslintrc.json
 .github
 tsconfig.json

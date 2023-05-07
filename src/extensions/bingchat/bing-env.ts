@@ -16,6 +16,7 @@ export const chatArgument = {
     'cricinfo',
     'cricinfov2',
     'dv3sugg',
+    'gencontentv3',
   ],
   allowedMessageTypes: [
     'Chat',

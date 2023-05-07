@@ -36,13 +36,13 @@ export default class NewAPIWindow extends BaseWindow {
       {
         name: 'name',
         type: 'string',
-        readableName: 'Name',
+        displayName: 'Name',
         value: endpoint?.name,
       },
       {
         name: 'type',
         type: 'selection',
-        readableName: 'API Type',
+        displayName: 'API Type',
         selection: endpoint?.type,
         selections: apiManager.getAPISelections(),
       },

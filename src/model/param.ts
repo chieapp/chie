@@ -9,7 +9,7 @@ export interface Selection {
 export default class Param {
   name: string;
   type: ParamType;
-  readableName?: string;
+  displayName?: string;
   description?: string;
 
   // This param will own a switcher button in toolbar.

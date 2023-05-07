@@ -1,10 +1,10 @@
-import {Icon, LoginWindow, Param, apiManager} from 'chie';
+import {Icon, BrowserWindow, Param, apiManager} from 'chie';
 import BingChatAPI from './bingchat-api';
 
 const toneParam: Param = {
   name: 'tone',
   type: 'selection',
-  readableName: 'Tone',
+  displayName: 'Tone',
   hasSwitcher: true,
   selection: 'Balanced',
   selections: [
@@ -38,7 +38,7 @@ export function activate() {
 }
 
 async function login() {
-  const win = new LoginWindow();
+  const win = new BrowserWindow();
   win.window.activate();
   const requrl = encodeURIComponent('https://www.bing.com/?wlexpsignin=1');
   win.browser.loadURL(`https://login.live.com/login.srf?wa=wsignin1.0&wreply=${requrl}&aadredir=1`);

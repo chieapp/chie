@@ -37,7 +37,7 @@ abstract class ParamRow<T extends gui.View = gui.View> extends AppearanceAware {
 
     // Label on the left.
     this.view.setStyle({flexDirection: 'row', marginBottom: basicStyle.padding / 2});
-    this.label = gui.Label.create(`${param.readableName ?? param.name}:`);
+    this.label = gui.Label.create(`${param.displayName ?? param.name}:`);
     this.label.setStyle({width: labelWidth, marginRight: labelPadding});
     this.label.setAlign('end');
     this.view.addChildView(this.label);
@@ -301,10 +301,10 @@ export class ParagraphParamRow extends ParamRow<gui.Container> {
   constructor(param: Param, nullable: boolean) {
     super(param, gui.Container.create(), nullable);
     // Edit button on the first line.
-    this.editButton = gui.Button.create(`Add ${param.readableName}...`);
+    this.editButton = gui.Button.create(`Add ${param.displayName}...`);
     this.editButton.onClick = async () => {
       const options = {width: 400, height: 300, multiLines: true};
-      const result = await prompt(`Edit ${this.param.readableName}`, this.getValue() ?? '', options);
+      const result = await prompt(`Edit ${this.param.displayName}`, this.getValue() ?? '', options);
       if (result === null)  // cancelled
         return;
       this.setValue(result);
@@ -339,12 +339,12 @@ export class ParagraphParamRow extends ParamRow<gui.Container> {
       this.text = value;
       this.paragraph.setText(value.length > 100 ? value.substring(0, 100) + '...' : value);
       this.paragraph.setVisible(true);
-      this.editButton.setTitle(`Edit ${this.param.readableName}...`);
+      this.editButton.setTitle(`Edit ${this.param.displayName}...`);
     } else {
       this.text = null;
       this.paragraph.setText('');
       this.paragraph.setVisible(false);
-      this.editButton.setTitle(`Add ${this.param.readableName}...`);
+      this.editButton.setTitle(`Add ${this.param.displayName}...`);
     }
   }
 }

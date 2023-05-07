@@ -1,23 +1,23 @@
-import {Icon, LoginWindow, Param, apiManager} from 'chie';
+import {Icon, BrowserWindow, Param, apiManager} from 'chie';
 import ChatGPTWebAPI from './chatgpt-web-api';
 
 const params: Param[] = [
   {
     name: 'token',
     type: 'string',
-    readableName: 'Token',
+    displayName: 'Token',
     authOnly: true,
   },
   {
     name: 'userAgent',
     type: 'string',
-    readableName: 'UA',
+    displayName: 'UA',
     authOnly: true,
   },
   {
     name: 'model',
     type: 'selection',
-    readableName: 'Model',
+    displayName: 'Model',
     hasSwitcher: true,
     selection: 'Default',
     selections: [
@@ -53,7 +53,7 @@ export function activate() {
 }
 
 async function login(firstURL) {
-  const win = new LoginWindow({browserOptions: {webview2Support: true}});
+  const win = new BrowserWindow({browserOptions: {webview2Support: true}});
   win.window.activate();
   try {
     win.browser.loadURL(firstURL);

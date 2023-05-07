@@ -1,5 +1,5 @@
-import {Icon, apiManager} from 'chie';
 import ChatGPTAPI from './chatgpt-api';
+import {Icon, apiManager} from 'chie';
 
 export function activate() {
   apiManager.registerAPI({
@@ -14,7 +14,7 @@ export function activate() {
       {
         name: 'model',
         type: 'string',
-        readableName: 'Model',
+        displayName: 'Model',
         hasSwitcher: true,
         value: 'gpt-3.5-turbo',
         preset: [
@@ -26,13 +26,13 @@ export function activate() {
       {
         name: 'max_tokens',
         type: 'number',
-        readableName: 'Max Tokens',
+        displayName: 'Max Tokens',
         description: 'The maximum number of tokens to generate.',
       },
       {
         name: 'temperature',
         type: 'number',
-        readableName: 'Temperature',
+        displayName: 'Temperature',
         description: 'Higher values will make the output more random.',
         range: [0, 2],
         value: 1,
@@ -40,7 +40,7 @@ export function activate() {
       {
         name: 'presence_penalty',
         type: 'number',
-        readableName: 'Presence Penalty',
+        displayName: 'Presence Penalty',
         description: 'A higher value increases the likelihood to talk about new topics.',
         range: [-2, 2],
         value: 0,

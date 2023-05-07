@@ -51,7 +51,7 @@ export default class MessagesView extends BrowserView {
       throw new Error('Can not append message while there is pending message.');
     this.pushTask(async () => {
       const html = getTemplate('message')({
-        message: messageToJSON(service, message, service.history.length - 1),
+        message: messageToJSON(service, message, service.getHistory().length - 1),
         response: {pending: false},
       });
       await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
@@ -65,9 +65,9 @@ export default class MessagesView extends BrowserView {
     this.hasPendingMessage = true;
     this.pushTask(async () => {
       const html = getTemplate('message')({
-        // A pending message is not added to service.history yet, so we use one
+        // A pending message is not added to service.getHistory() yet, so we use one
         // pass end as its index.
-        message: messageToJSON(service, message, service.history.length),
+        message: messageToJSON(service, message, service.getHistory().length),
         response: {pending: true},
       });
       await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
@@ -189,7 +189,7 @@ gui.Browser.registerProtocol('chie', (url) => {
     // Render chat service.
     const html = getTemplate('page')({
       style: Object.assign({}, style, basicStyle),
-      messages: service.history.map(messageToJSON.bind(this, service)),
+      messages: service.getHistory().map(messageToJSON.bind(this, service)),
     });
     return gui.ProtocolStringJob.create('text/html', html);
   } else {

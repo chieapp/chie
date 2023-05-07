@@ -15,7 +15,7 @@ export default class SwitcherButton extends IconButton {
     this.param = param;
 
     this.updateTitle();
-    this.view.setTooltip(`Switch ${param.readableName}`);
+    this.view.setTooltip(`Switch ${param.displayName}`);
     this.connections.add(service.onChangeAPIParams.connect(this.updateTitle.bind(this)));
     this.onClick = this.runMenu.bind(this);
   }
@@ -47,7 +47,7 @@ export default class SwitcherButton extends IconButton {
         },
       }));
     } else {
-      throw new Error(`Parameter ${this.param.readableName} does not have preset choices.`);
+      throw new Error(`Parameter ${this.param.displayName} does not have preset choices.`);
     }
     gui.Menu.create(options).popup();
   }

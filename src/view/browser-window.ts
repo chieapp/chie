@@ -2,7 +2,7 @@ import BaseWindow from './base-window';
 import BrowserView, {BrowserViewOptions} from './browser-view';
 import {CancelledError} from '../model/errors';
 
-export default class LoginWindow extends BaseWindow {
+export default class BrowserWindow extends BaseWindow {
   browser: BrowserView;
 
   constructor(options?: BrowserViewOptions) {
@@ -26,6 +26,10 @@ export default class LoginWindow extends BaseWindow {
       this.connectYueSignal(this.window.onClose, () => {
         this.connections.disconnectAll();
         reject(new CancelledError('Window is closed.'));
+      });
+      this.connectYueSignal(this.browser.browser.onFailNavigation, () => {
+        this.connections.disconnectAll();
+        reject(new Error('Navigation failed.'));
       });
       this.connectYueSignal(this.browser.browser.onFinishNavigation, (browser, url) => {
         if (target.test(url)) {

@@ -1,5 +1,6 @@
 # TypeScript compiled files
 /dist/
+/types/**/*.d.ts
 
 # Everything else should keep same with .npmignore
 *.swp

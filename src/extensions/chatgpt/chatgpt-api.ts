@@ -7,7 +7,6 @@ import {
   ChatMessage,
   ChatResponse,
   ChatRole,
-  NetworkError,
 } from 'chie';
 
 export default class ChatGPTAPI extends ChatCompletionAPI {
@@ -46,7 +45,7 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
       const body = await response.json();
       if (!body.error)
         throw new APIError(`Unexpected open from ChatGPT API: ${body}`);
-      throw new NetworkError(body.error.message);
+      throw new APIError(body.error.message);
     }
 
     // Parse server sent event (SSE).

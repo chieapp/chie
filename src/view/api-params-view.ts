@@ -20,7 +20,7 @@ export default class APIParamsView extends ParamsView {
         params.push({
           name: 'url',
           type: 'string',
-          readableName: 'URL',
+          displayName: 'URL',
           value: nullable ? undefined : apiRecord.url,
         });
       }
@@ -28,14 +28,14 @@ export default class APIParamsView extends ParamsView {
         params.push({
           name: 'key',
           type: 'string',
-          readableName: 'API Key',
+          displayName: 'API Key',
         });
       }
       if (apiRecord.auth == 'login') {
         params.push({
           name: 'cookie',
           type: 'string',
-          readableName: 'Cookie',
+          displayName: 'Cookie',
         });
       }
     }

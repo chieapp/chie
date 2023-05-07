@@ -2,12 +2,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {Module} from 'node:module';
 
-type Extension = {
-  activate(): void;
-};
+import {getNextId} from '../util/id-generator';
+
+interface ExtensionRecord {
+  name: string;
+  displayName: string;
+  path: string;
+}
 
 export class ExtensionManager {
-  #builtinExtensions: Extension[] = [];
+  #extensions: Record<string, ExtensionRecord> = {};
 
   constructor() {
     // Make it possible to do require('chie').
@@ -18,18 +22,30 @@ export class ExtensionManager {
         return paths.concat(path.join(__dirname, '..', 'exports'));
       return paths;
     };
-
-    // Load builtin extensions.
-    const extensionsDir = path.join(__dirname, '..', 'builtin-extensions');
-    const extensions = fs.readdirSync(extensionsDir);
-    for (const name of extensions)
-      this.#builtinExtensions.push(require(path.join(extensionsDir, name)));
   }
 
   // Activate extensions.
   activate() {
-    for (const extension of this.#builtinExtensions)
-      extension.activate();
+    // Load builtin extensions.
+    const extensionsDir = path.join(__dirname, '..', 'extensions');
+    const extensions = fs.readdirSync(extensionsDir);
+    for (const name of extensions)
+      require(path.join(extensionsDir, name)).activate();
+    // Load third party extensions.
+    for (const id in this.#extensions)
+      require(this.#extensions[id].path).activate();
+  }
+
+  registerExternalExtension(dirPath: string) {
+    // Read package and add to records.
+    const packageJson = require(path.join(dirPath, 'package.json'));
+    const id = getNextId(packageJson.name, Object.keys(this.#extensions));
+    this.#extensions[id] = {
+      name: packageJson.name,
+      displayName: packageJson.displayName ?? packageJson.name,
+      path: dirPath,
+    };
+    return id;
   }
 }
 

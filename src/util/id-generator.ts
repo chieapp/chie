@@ -1,6 +1,6 @@
 // Create an unique readable id from |name| different from |existings|.
 export function getNextId(name: string, existings: string[]) {
-  const prefix = name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() + '-';
+  const prefix = name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase() + '-';
   const ids = existings
     .filter(k => k.startsWith(prefix))  // id is in the form of "name-1"
     .map(n => parseInt(n.substr(prefix.length)))  // get the number part

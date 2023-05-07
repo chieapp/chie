@@ -20,12 +20,12 @@ describe('ChatService', () => {
   });
 
   it('Write history to disk', async () => {
-    service.title = 'Test Conversation';
+    service.setCustomTitle('Test Conversation');
     await service.sendMessage({content: 'Message'});
     assert.isString(service.moment);
     await historyKeeper.flush();
     assert.deepEqual(await historyKeeper.remember(service.moment), {
-      title: service.title,
+      customTitle: service.getTitle(),
       history: [
         { role: 'User', content: 'Message' },
         { role: 'Assistant', content: 'Reply' },
@@ -47,7 +47,7 @@ describe('ChatService', () => {
     assert.deepEqual(record, await historyKeeper.remember(moment));
     service = new ChatService({name: 'Test', api: service.api, moment});
     await new Promise<void>((resolve) => service.onLoad.connect(resolve));
-    assert.equal(record.title, service.title);
-    assert.deepEqual(record.history, service.history);
+    assert.equal(record.title, service.getTitle());
+    assert.deepEqual(record.history, service.getHistory());
   });
 });

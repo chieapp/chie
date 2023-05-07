@@ -1,6 +1,6 @@
 {
   "name": "chieapp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "dist/gui-main.js",
   "description": "Extensive desktop client for ChatGPT",
   "build": {
@@ -44,7 +44,7 @@
     "eventsource-parser": "0.1.0",
     "fetch-yode": "1.x",
     "fs-extra": "11.1.0",
-    "gui": "0.13.7",
+    "gui": "0.13.8",
     "highlight.js": "11.7.0",
     "html-escaper": "3.0.3",
     "marked": "4.3.0",

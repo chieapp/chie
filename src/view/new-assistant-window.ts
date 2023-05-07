@@ -38,26 +38,26 @@ export default class NewAssistantWindow extends BaseWindow {
       {
         name: 'name',
         type: 'string',
-        readableName: 'Name',
+        displayName: 'Name',
         value: instance?.service.name,
       },
       {
         name: 'icon',
         type: 'image',
-        readableName: 'Icon',
+        displayName: 'Icon',
         value: instance?.service.icon,
       },
       {
         name: 'api',
         type: 'selection',
-        readableName: 'API',
+        displayName: 'API',
         selection: instance?.service.api.endpoint.name,
         selections: apiManager.getEndpointSelections(),
       },
       {
         name: 'service',
         type: 'selection',
-        readableName: 'Service',
+        displayName: 'Service',
         selection: instance?.serviceName,
         selections: serviceManager.getServiceSelections(),
         constrainedBy: 'api',
@@ -73,7 +73,7 @@ export default class NewAssistantWindow extends BaseWindow {
       {
         name: 'view',
         type: 'selection',
-        readableName: 'View',
+        displayName: 'View',
         selection: instance?.viewType.name,
         selections: serviceManager.getViewSelections(),
         constrainedBy: 'service',
@@ -121,6 +121,7 @@ export default class NewAssistantWindow extends BaseWindow {
         this.#updateDefaultIcon();
       });
       this.serviceSelector.getRow('service').subscribeOnChange(() => {
+        this.#updateServiceParamsView();
         this.resizeVerticallyToFitContentView();
       });
     }

@@ -49,8 +49,8 @@ describe('MultiChatsService', () => {
     };
     service = new MultiChatsService(MultiChatsService.deserialize(data));
     await new Promise<void>((resolve) => service.chats[0].onLoad.connect(resolve));
-    assert.equal(service.chats[0].title, record.title);
-    assert.deepEqual(service.chats[0].history, record.history);
+    assert.equal(service.chats[0].getTitle(), record.title);
+    assert.deepEqual(service.chats[0].getHistory(), record.history);
     assert.deepEqual(service.serialize(), data);
   });
 });

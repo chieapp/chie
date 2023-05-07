@@ -29,7 +29,7 @@ export function runExportMenu(win: gui.Window, service: ChatService) {
 function chatToJSON(service: ChatService) {
   return JSON.stringify({
     title: service.getTitle(),
-    conversation: service.history.map(m => ({
+    conversation: service.getHistory().map(m => ({
       role: m.role.toString(),
       content: m.content,
     })),
@@ -38,7 +38,7 @@ function chatToJSON(service: ChatService) {
 
 function chatToText(service: ChatService) {
   const separator = '\n\n-------------------\n\n';
-  return `Title: ${service.getTitle()}` + separator + service.history.map(m => `${m.role.toString()}:\n${m.content.trim()}`).join(separator);
+  return `Title: ${service.getTitle()}` + separator + service.getHistory().map(m => `${m.role.toString()}:\n${m.content.trim()}`).join(separator);
 }
 
 async function exportToFile(win: gui.Window, filename: string, content: string) {

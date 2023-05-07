@@ -75,8 +75,11 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
     const body = await response.json();
     if (!body.result)
       throw new APIError(`Invalid response when creating conversation: ${body}`);
-    if (body.result.value != 'Success')
+    if (body.result.value != 'Success') {
+      if (body.result.value == 'UnauthorizedRequest')
+        throw new APIError(body.result.message, 'refresh');
       throw new APIError(`Unable to create conversation: ${body.result.value} - ${body.result.message}`);
+    }
     this.session = body as SessionData;
     this.session.invocationId = 0;
   }

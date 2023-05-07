@@ -39,7 +39,7 @@ export default class ChatView extends BaseView<ChatService> {
       {
         label: 'Clear Conversation',
         accelerator: 'Shift+CmdOrCtrl+C',
-        validate: (view: ChatView) => view.service?.history.length > 0,
+        validate: (view: ChatView) => view.service?.getHistory().length > 0,
         onClick: (view: ChatView) => view.service?.clear(),
       },
     ];
@@ -207,17 +207,17 @@ export default class ChatView extends BaseView<ChatService> {
       this.messagesView.clearMessages();
       this.#resetUIState();
     }));
-    if (this.service.isPending) {
+    if (this.service.isPending()) {
       // Load pending message.
       this.#onMessageBegin();
-      if (this.service.pendingMessage)
-        this.#onMessageDelta(this.service.pendingMessage, {pending: true});
-      if (this.service.lastError)
-        this.#onMessageError(this.service.lastError);
+      if (this.service.getPendingMessage())
+        this.#onMessageDelta(this.service.getPendingMessage(), {pending: true});
+      if (this.service.getLastError())
+        this.#onMessageError(this.service.getLastError());
     } else {
       // If last message is from user, add a resend button.
-      if (this.service.history.length > 0 &&
-          this.service.history[this.service.history.length - 1].role == ChatRole.User)
+      if (this.service.getHistory().length > 0 &&
+          this.service.getHistory()[this.service.getHistory().length - 1].role == ChatRole.User)
         this.messagesView.setReplyActions(['resend']);
     }
   }
@@ -242,7 +242,7 @@ export default class ChatView extends BaseView<ChatService> {
     this.replyButton.view.setTooltip(getTooltipForMode(mode));
     this.#buttonMode = mode;
     // Disable send button when there is error happened.
-    if (mode == 'send' && this.service.lastError)
+    if (mode == 'send' && this.service.getLastError())
       this.replyButton.setEnabled(false);
   }
 
@@ -269,20 +269,20 @@ export default class ChatView extends BaseView<ChatService> {
   #resetUIState() {
     this.onFocus();
     // Button states.
-    if (this.service.history.length > 0) {
-      this.clearButton.setEnabled(!this.service.isPending);
+    if (this.service.getHistory().length > 0) {
+      this.clearButton.setEnabled(!this.service.isPending());
       this.exportButton.setEnabled(true);
     } else {
       this.clearButton.setEnabled(false);
       this.exportButton.setEnabled(false);
     }
     // Can only refresh if there was error.
-    if (this.service.lastError) {
+    if (this.service.getLastError()) {
       this.#setButtonMode('refresh');
       return;
     }
     // Can only stop if there is pending message.
-    if (this.service.isPending) {
+    if (this.service.isPending()) {
       this.#setButtonMode('stop');
       return;
     }
@@ -294,8 +294,8 @@ export default class ChatView extends BaseView<ChatService> {
     }
     // Show refresh button if last message is from user, this usually means
     // the last message failed to send.
-    if (this.service.history.length > 0 &&
-        this.service.history[this.service.history.length - 1].role == ChatRole.User) {
+    if (this.service.getHistory().length > 0 &&
+        this.service.getHistory()[this.service.getHistory().length - 1].role == ChatRole.User) {
       this.#setButtonMode('refresh');
       return;
     }
@@ -330,7 +330,7 @@ export default class ChatView extends BaseView<ChatService> {
       this.#onEnter();
     } else if (this.#buttonMode == 'stop') {
       this.replyButton.setEnabled(false);
-      this.service.aborter.abort();
+      this.service.abort();
     } else if (this.#buttonMode == 'refresh') {
       this.replyButton.setEnabled(false);
       this.service.regenerateLastResponse();
@@ -340,7 +340,7 @@ export default class ChatView extends BaseView<ChatService> {
   // Recover current state of chat.
   #onDomReady() {
     this.input.setEntryEnabled(true);
-    if (!this.service.isPending)
+    if (!this.service.isPending())
       this.#resetUIState();
   }
 
@@ -362,7 +362,7 @@ export default class ChatView extends BaseView<ChatService> {
 
   // Last error has been cleared for regeneration.
   #onClearError() {
-    this.messagesView.removeMessagesAfter(this.service.history.length);
+    this.messagesView.removeMessagesAfter(this.service.getHistory().length);
   }
 
   // Begin receving response.
@@ -383,7 +383,7 @@ export default class ChatView extends BaseView<ChatService> {
       this.#markdown = new StreamedMarkdown();
     if (delta.links) {
       this.#markdown.appendLinks(delta.links);
-      this.messagesView.appendLinks(this.service.pendingMessage?.links?.length ?? 0, delta.links);
+      this.messagesView.appendLinks(this.service.getPendingMessage()?.links?.length ?? 0, delta.links);
     }
     if (delta.content) {
       // Update the message when receiving deltas.
@@ -396,7 +396,7 @@ export default class ChatView extends BaseView<ChatService> {
       return;
     // Reset after message is received.
     this.#resetUIState();
-    if (this.service.aborter?.signal.aborted)
+    if (this.service.isAborted())
       this.messagesView.abortPending();
     this.messagesView.endPending();
   }
@@ -405,8 +405,10 @@ export default class ChatView extends BaseView<ChatService> {
   #onMessageError(error: Error | APIError) {
     if (error.name == 'AbortError')
       this.messagesView.abortPending();
-    else
+    else if (error.name == 'APIError' || error.name == 'NetworkError')
       this.messagesView.appendError(error.message);
+    else
+      this.messagesView.appendError(error.stack);
     // Append refresh button.
     if (error.name == 'APIError') {
       const code = (error as APIError).code;
@@ -424,7 +426,7 @@ export default class ChatView extends BaseView<ChatService> {
       this.#textWindows[index].window.activate();
       return;
     }
-    const message = this.service.history[index];
+    const message = this.service.getHistory()[index];
     if (!message)
       throw new Error(`Can not find message with index "${index}".`);
     // Determine the capacity of the text window.
@@ -455,7 +457,7 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   #copyTextAt(index: number) {
-    gui.Clipboard.get().setText(this.service.history[index].content);
+    gui.Clipboard.get().setText(this.service.getHistory()[index].content);
   }
 
   #sendReply(content: string) {

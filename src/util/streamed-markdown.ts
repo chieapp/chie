@@ -2,7 +2,7 @@ import hljs from 'highlight.js';
 import {escape, unescape} from 'html-escaper';
 import {marked} from 'marked';
 
-import {Link} from '../model/chat-api';
+import {ChatLink} from '../model/chat-api';
 
 // Custom extension to support Bing links like [^1^].
 const bingReference = {
@@ -46,11 +46,11 @@ export default class StreamedMarkdown {
   text: string = '';
   isMarkdown: boolean = false;
   html: string;
-  links: Link[];
+  links: ChatLink[];
 
   renderer: marked.Renderer;
 
-  constructor(options: {highlight?: boolean, links?: Link[]} = {}) {
+  constructor(options: {highlight?: boolean, links?: ChatLink[]} = {}) {
     if (options.links)
       this.links = options.links;
     this.renderer = new marked.Renderer();
@@ -73,7 +73,7 @@ export default class StreamedMarkdown {
     this.renderer.html = escape;
   }
 
-  appendLinks(links: Link[]) {
+  appendLinks(links: ChatLink[]) {
     if (!this.links)
       this.links = [];
     this.links.push(...links);

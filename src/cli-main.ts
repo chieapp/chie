@@ -41,17 +41,16 @@ async function cliMain() {
     state = 'waitUser';
   });
   // Quite on EOF.
-  const ac = new AbortController();
-  rl.once('close', () => ac.abort());
+  rl.once('close', () => chat.abort());
   // Make user ask question infinitely.
-  while (!ac.signal.aborted) {
+  while (!chat.isAborted()) {
     if (state != 'waitUser')
       throw new Error('Did not receive an answer.');
     try {
-      const content = await rl.question('You> ', {signal: ac.signal});
+      const content = await rl.question('You> ', {signal: chat.aborter.signal});
       state = 'waitAnswer';
       process.stdout.write(`${chat.name}> `);
-      await chat.sendMessage({content}, {signal: ac.signal});
+      await chat.sendMessage({content});
     } catch (error) {
       // Ignore abort error.
       if (error.name != 'AbortError')

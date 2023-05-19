@@ -5,11 +5,11 @@ import open from 'open';
 import path from 'node:path';
 import {realpathSync} from 'node:fs';
 
+import BaseChatService from '../model/base-chat-service';
 import BrowserView, {style} from './browser-view';
-import ChatService from '../model/chat-service';
 import StreamedMarkdown, {escapeText, highlightCode} from '../util/streamed-markdown';
 import basicStyle from './basic-style';
-import {ChatRole, ChatMessage, Link} from '../model/chat-api';
+import {ChatRole, ChatMessage, ChatLink, ChatStep} from '../model/chat-api';
 import {config} from '../controller/configs';
 
 const actionsMap = {
@@ -40,18 +40,18 @@ export default class MessagesView extends BrowserView {
   }
 
   // Load a chat service.
-  loadChatService(service: ChatService) {
+  loadChatService(service: BaseChatService) {
     this.hasPendingMessage = false;
     this.loadURL(`chie://chat/${service.id}/${encodeURIComponent(service.getTitle())}`);
   }
 
   // Append a message.
-  appendMessage(service: ChatService, message: Partial<ChatMessage>) {
+  appendMessage(service: BaseChatService, message: Partial<ChatMessage>) {
     if (this.hasPendingMessage)
       throw new Error('Can not append message while there is pending message.');
     this.pushTask(async () => {
       const html = getTemplate('message')({
-        message: messageToJSON(service, message, service.getHistory().length - 1),
+        message: messageToJSON(service, message, service.history.length - 1),
         response: {pending: false},
       });
       await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
@@ -59,15 +59,15 @@ export default class MessagesView extends BrowserView {
   }
 
   // Add a pending message.
-  appendPendingMessage(service: ChatService, message: Partial<ChatMessage>) {
+  appendPendingMessage(service: BaseChatService, message: Partial<ChatMessage>) {
     if (this.hasPendingMessage)
       throw new Error('Can not append message while there is pending message.');
     this.hasPendingMessage = true;
     this.pushTask(async () => {
       const html = getTemplate('message')({
-        // A pending message is not added to service.getHistory() yet, so we use one
+        // A pending message is not added to service.history yet, so we use one
         // pass end as its index.
-        message: messageToJSON(service, message, service.getHistory().length),
+        message: messageToJSON(service, message, service.history.length),
         response: {pending: true},
       });
       await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
@@ -82,12 +82,12 @@ export default class MessagesView extends BrowserView {
   }
 
   // Append internal steps.
-  appendSteps(steps: string[]) {
-    this.pushJavaScript(`window.appendSteps(${JSON.stringify(steps)})`);
+  appendSteps(steps: (ChatStep | string)[]) {
+    this.pushJavaScript(`window.appendSteps(${JSON.stringify(steps.map(parseStep))})`);
   }
 
   // Add links to references.
-  appendLinks(index: number, links: Link[]) {
+  appendLinks(index: number, links: ChatLink[]) {
     this.pushJavaScript(`window.appendLinks(${index}, ${JSON.stringify(links)})`);
   }
 
@@ -135,7 +135,7 @@ export default class MessagesView extends BrowserView {
   }
 
   // Re-render a message.
-  updateMessage(service: ChatService, message: ChatMessage, index: number) {
+  updateMessage(service: BaseChatService, message: ChatMessage, index: number) {
     this.pushTask(async () => {
       const html = getTemplate('message')({
         message: messageToJSON(service, message, index),
@@ -183,13 +183,13 @@ gui.Browser.registerProtocol('chie', (url) => {
   } else if (u.host == 'chat') {
     // Recieve chat service from URL.
     const [, chatServiceId, title] = u.pathname.split('/');
-    const service = ChatService.fromId(parseInt(chatServiceId));
+    const service = BaseChatService.fromId(parseInt(chatServiceId));
     if (!service)
       return gui.ProtocolStringJob.create('text/plain', `Can not find chat with id "${chatServiceId}" and title "${decodeURIComponent(title)}".`);
     // Render chat service.
     const html = getTemplate('page')({
       style: Object.assign({}, style, basicStyle),
-      messages: service.getHistory().map(messageToJSON.bind(this, service)),
+      messages: service.history.map(messageToJSON.bind(this, service)),
     });
     return gui.ProtocolStringJob.create('text/html', html);
   } else {
@@ -205,11 +205,11 @@ interface MessageRenderJSON {
   canEdit?: boolean;
   avatar?: string;
   steps?: string[];
-  links?: Link[];
+  links?: ChatLink[];
 }
 
 // Translate the message into data to be parsed by EJS template.
-function messageToJSON(service: ChatService, message: Partial<ChatMessage>, index: number): MessageRenderJSON {
+function messageToJSON(service: BaseChatService, message: Partial<ChatMessage>, index: number): MessageRenderJSON {
   if (!message.role)  // should not happen
     throw new Error('Role of message expected for serialization.');
   let content = message.content;
@@ -223,12 +223,12 @@ function messageToJSON(service: ChatService, message: Partial<ChatMessage>, inde
     [ChatRole.System]: 'System',
   }[message.role];
   const json: MessageRenderJSON = {index, role: message.role, sender, content};
-  if (service.canEditMessages())
+  if (service.canRegenerateFrom())
     json.canEdit = true;
   if (message.role == ChatRole.Assistant)
     json.avatar = service.icon.getChieURL();
   if (message.steps)
-    json.steps = message.steps;
+    json.steps = message.steps.map(parseStep);
   if (message.links)
     json.links = message.links;
   return json;
@@ -243,4 +243,13 @@ function getTemplate(name: string) {
     templates[name] = ejs.compile(html.toString(), {filename});
   }
   return templates[name];
+}
+
+// Parse the steps.
+function parseStep(step: ChatStep | string) {
+  if (typeof step == 'string')
+    return step;
+  if (step.toHTML)
+    return step.toHTML();
+  return step.toString();
 }

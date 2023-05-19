@@ -70,6 +70,8 @@ function guiMain() {
     params: chatServiceParams,
   });
 
+  extensionManager.registerExternalExtension('/Users/zcbenz/codes/chie-extension-agent-service');
+
   // Activate extensions.
   extensionManager.activate();
 

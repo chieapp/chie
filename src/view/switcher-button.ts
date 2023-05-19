@@ -1,15 +1,15 @@
 import gui from 'gui';
 
-import ChatService from '../model/chat-service';
-import IconButton from './icon-button';
+import BaseChatService from '../model/base-chat-service';
+import IconButton from '../view/icon-button';
 import Param from '../model/param';
 import serviceManager from '../controller/service-manager';
 
 export default class SwitcherButton extends IconButton {
-  service: ChatService;
+  service: BaseChatService;
   param: Param;
 
-  constructor(service: ChatService, param: Param) {
+  constructor(service: BaseChatService, param: Param) {
     super('switch');
     this.service = service;
     this.param = param;

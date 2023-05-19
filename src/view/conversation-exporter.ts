@@ -1,9 +1,9 @@
 import fs from 'fs-extra';
 import gui from 'gui';
 
-import ChatService from '../model/chat-service';
+import BaseChatService from '../model/base-chat-service';
 
-export function runExportMenu(win: gui.Window, service: ChatService) {
+export function runExportMenu(win: gui.Window, service: BaseChatService) {
   const menu = gui.Menu.create([
     {
       label: 'Copy JSON',
@@ -26,19 +26,19 @@ export function runExportMenu(win: gui.Window, service: ChatService) {
   menu.popup();
 }
 
-function chatToJSON(service: ChatService) {
+function chatToJSON(service: BaseChatService) {
   return JSON.stringify({
     title: service.getTitle(),
-    conversation: service.getHistory().map(m => ({
+    conversation: service.history.map(m => ({
       role: m.role.toString(),
       content: m.content,
     })),
   }, null, 2);
 }
 
-function chatToText(service: ChatService) {
+function chatToText(service: BaseChatService) {
   const separator = '\n\n-------------------\n\n';
-  return `Title: ${service.getTitle()}` + separator + service.getHistory().map(m => `${m.role.toString()}:\n${m.content.trim()}`).join(separator);
+  return `Title: ${service.getTitle()}` + separator + service.history.map(m => `${m.role.toString()}:\n${m.content.trim()}`).join(separator);
 }
 
 async function exportToFile(win: gui.Window, filename: string, content: string) {

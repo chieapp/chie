@@ -29,6 +29,8 @@ type SessionData = {
 };
 
 export default class BingChatAPI extends ChatConversationAPI<SessionData> {
+  static isHighlyRateLimited = true;
+
   #lastContentLength: number;
   #lastLinks: {name: string, url: string}[];
 
@@ -180,7 +182,7 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
           throw new Error(`Unrecognized text field: ${payload.text}`);
         // If the message ends with "[^1^", the API may change the tail of
         // message later, so we skip this payload and wait for next one.
-        if (payload.text.match(/\[\^\d+\^$/))
+        if (payload.text.endsWith('[') || payload.text.match(/\[\^\d+\^$/))
           return;
         // BingChat always return full text, while we want only deltas.
         delta.content = payload.text.substr(this.#lastContentLength);

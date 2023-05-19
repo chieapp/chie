@@ -14,7 +14,7 @@ export interface WebServiceData<P extends object = object> {
   params?: P;
 }
 
-export interface WebServiceOptions<T extends WebAPI, P extends object = object> {
+export interface WebServiceOptions<T extends WebAPI = WebAPI, P extends object = object> {
   name: string;
   api: T;
   icon?: Icon;

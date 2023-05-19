@@ -1,8 +1,8 @@
 import gui from 'gui';
 import {SignalConnections} from 'typed-signals';
 
+import BaseChatService from '../model/base-chat-service';
 import BaseView from './base-view';
-import ChatService from '../model/chat-service';
 import IconButton from './icon-button';
 import InputView from './input-view';
 import MessagesView from './messages-view';
@@ -24,7 +24,7 @@ import {runExportMenu} from './conversation-exporter';
 
 type ButtonMode = 'refresh' | 'send' | 'stop';
 
-export default class ChatView extends BaseView<ChatService> {
+export default class ChatView extends BaseView<BaseChatService> {
   // Font in entry.
   static font?: gui.Font;
 
@@ -39,7 +39,7 @@ export default class ChatView extends BaseView<ChatService> {
       {
         label: 'Clear Conversation',
         accelerator: 'Shift+CmdOrCtrl+C',
-        validate: (view: ChatView) => view.service?.getHistory().length > 0,
+        validate: (view: ChatView) => view.service?.history.length > 0,
         onClick: (view: ChatView) => view.service?.clear(),
       },
     ];
@@ -61,7 +61,7 @@ export default class ChatView extends BaseView<ChatService> {
   #buttonMode: ButtonMode = 'send';
   #textWindows: Record<number, TextWindow> = {};
 
-  constructor(service?: ChatService) {
+  constructor(service?: BaseChatService) {
     super();
 
     this.view.setStyle({flex: 1});
@@ -163,11 +163,11 @@ export default class ChatView extends BaseView<ChatService> {
     return this.service.getTitle() ?? this.service.name;
   }
 
-  async loadChatService(service: ChatService) {
+  async loadChatService(service: BaseChatService) {
     if (this.service == service)
       return;
-    if (!(service instanceof ChatService))
-      throw new Error('ChatView can only be used with ChatService');
+    if (!(service instanceof BaseChatService))
+      throw new Error('ChatView can only be used with BaseChatService.');
     // Clear previous load.
     this.unload();
     // Delay loading until the service is ready.
@@ -207,17 +207,17 @@ export default class ChatView extends BaseView<ChatService> {
       this.messagesView.clearMessages();
       this.#resetUIState();
     }));
-    if (this.service.isPending()) {
+    if (this.service.pending) {
       // Load pending message.
       this.#onMessageBegin();
-      if (this.service.getPendingMessage())
-        this.#onMessageDelta(this.service.getPendingMessage(), {pending: true});
-      if (this.service.getLastError())
-        this.#onMessageError(this.service.getLastError());
+      if (this.service.pendingMessage)
+        this.#onMessageDelta(this.service.pendingMessage, {pending: true});
+      if (this.service.lastError)
+        this.#onMessageError(this.service.lastError);
     } else {
       // If last message is from user, add a resend button.
-      if (this.service.getHistory().length > 0 &&
-          this.service.getHistory()[this.service.getHistory().length - 1].role == ChatRole.User)
+      if (this.service.history.length > 0 &&
+          this.service.history[this.service.history.length - 1].role == ChatRole.User)
         this.messagesView.setReplyActions(['resend']);
     }
   }
@@ -242,7 +242,7 @@ export default class ChatView extends BaseView<ChatService> {
     this.replyButton.view.setTooltip(getTooltipForMode(mode));
     this.#buttonMode = mode;
     // Disable send button when there is error happened.
-    if (mode == 'send' && this.service.getLastError())
+    if (mode == 'send' && this.service.lastError)
       this.replyButton.setEnabled(false);
   }
 
@@ -269,20 +269,20 @@ export default class ChatView extends BaseView<ChatService> {
   #resetUIState() {
     this.onFocus();
     // Button states.
-    if (this.service.getHistory().length > 0) {
-      this.clearButton.setEnabled(!this.service.isPending());
+    if (this.service.history.length > 0) {
+      this.clearButton.setEnabled(!this.service.pending);
       this.exportButton.setEnabled(true);
     } else {
       this.clearButton.setEnabled(false);
       this.exportButton.setEnabled(false);
     }
     // Can only refresh if there was error.
-    if (this.service.getLastError()) {
+    if (this.service.lastError) {
       this.#setButtonMode('refresh');
       return;
     }
     // Can only stop if there is pending message.
-    if (this.service.isPending()) {
+    if (this.service.pending) {
       this.#setButtonMode('stop');
       return;
     }
@@ -294,8 +294,8 @@ export default class ChatView extends BaseView<ChatService> {
     }
     // Show refresh button if last message is from user, this usually means
     // the last message failed to send.
-    if (this.service.getHistory().length > 0 &&
-        this.service.getHistory()[this.service.getHistory().length - 1].role == ChatRole.User) {
+    if (this.service.history.length > 0 &&
+        this.service.history[this.service.history.length - 1].role == ChatRole.User) {
       this.#setButtonMode('refresh');
       return;
     }
@@ -340,7 +340,7 @@ export default class ChatView extends BaseView<ChatService> {
   // Recover current state of chat.
   #onDomReady() {
     this.input.setEntryEnabled(true);
-    if (!this.service.isPending())
+    if (!this.service.pending)
       this.#resetUIState();
   }
 
@@ -362,7 +362,7 @@ export default class ChatView extends BaseView<ChatService> {
 
   // Last error has been cleared for regeneration.
   #onClearError() {
-    this.messagesView.removeMessagesAfter(this.service.getHistory().length);
+    this.messagesView.removeMessagesAfter(this.service.history.length);
   }
 
   // Begin receving response.
@@ -383,7 +383,7 @@ export default class ChatView extends BaseView<ChatService> {
       this.#markdown = new StreamedMarkdown();
     if (delta.links) {
       this.#markdown.appendLinks(delta.links);
-      this.messagesView.appendLinks(this.service.getPendingMessage()?.links?.length ?? 0, delta.links);
+      this.messagesView.appendLinks(this.service.pendingMessage?.links?.length ?? 0, delta.links);
     }
     if (delta.content) {
       // Update the message when receiving deltas.
@@ -426,7 +426,7 @@ export default class ChatView extends BaseView<ChatService> {
       this.#textWindows[index].window.activate();
       return;
     }
-    const message = this.service.getHistory()[index];
+    const message = this.service.history[index];
     if (!message)
       throw new Error(`Can not find message with index "${index}".`);
     // Determine the capacity of the text window.
@@ -437,7 +437,7 @@ export default class ChatView extends BaseView<ChatService> {
         mode = 'edit-regenerate';
       else
         mode = 'edit';
-    } else if (this.service.canEditMessages() && message.role == ChatRole.User) {
+    } else if (this.service.canRegenerateFrom() && message.role == ChatRole.User) {
       // Others may only do regeneration.
       mode = 'regenerate';
     }
@@ -457,7 +457,7 @@ export default class ChatView extends BaseView<ChatService> {
   }
 
   #copyTextAt(index: number) {
-    gui.Clipboard.get().setText(this.service.getHistory()[index].content);
+    gui.Clipboard.get().setText(this.service.history[index].content);
   }
 
   #sendReply(content: string) {

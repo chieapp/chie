@@ -1,22 +1,22 @@
 import gui from 'gui';
 
-import BaseWindow from './base-window';
-import ButtonsArea from './buttons-area';
-import ChatView from './chat-view';
-import ChatService from '../model/chat-service';
-import InputView from './input-view';
-import basicStyle from './basic-style';
+import BaseChatService from '../model/base-chat-service';
+import BaseWindow from '../view/base-window';
+import ButtonsArea from '../view/buttons-area';
+import ChatView from '../view/chat-view';
+import InputView from '../view/input-view';
+import basicStyle from '../view/basic-style';
 
 export default class TextWindow extends BaseWindow {
   mode: 'prompt' | 'show' | 'edit' | 'regenerate' | 'edit-regenerate';
   text: string;
-  service?: ChatService;
+  service?: BaseChatService;
   index?: number;
 
   input: InputView;
   defaultButton: gui.Button;
 
-  constructor(mode, text: string, index?: number, service?: ChatService) {
+  constructor(mode, text: string, index?: number, service?: BaseChatService) {
     super({pressEscToClose: true});
     this.mode = mode;
     this.text = text;

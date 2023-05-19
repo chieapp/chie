@@ -7,16 +7,21 @@ export enum ChatRole {
   System = 'System',
 }
 
-export interface Link {
+export interface ChatLink {
   name: string;
   url: string;
+}
+
+export interface ChatStep {
+  toString(): string;
+  toHTML?(): string;
 }
 
 export interface ChatMessage {
   role: ChatRole;
   content: string;
-  steps?: string[];
-  links?: Link[];
+  steps?: (ChatStep | string)[];
+  links?: ChatLink[];
 }
 
 export interface ChatResponse {
@@ -71,7 +76,8 @@ export abstract class ChatConversationAPI<T = object> extends WebAPI {
 // Defines static properties on ChatConversationAPI.
 type ChatConversationAPIConstructorType<T> = new (endpoint: APIEndpoint) => ChatConversationAPI<T>;
 
-export interface ChatConversationAPIType<T> extends ChatConversationAPIConstructorType<T> {
+export interface ChatConversationAPIType<T = object> extends ChatConversationAPIConstructorType<T> {
+  isHighlyRateLimited?: boolean;
   canRemoveFromServer?: boolean;
   canRemoveMessagesAfter?: boolean;
 }

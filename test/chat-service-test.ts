@@ -48,6 +48,6 @@ describe('ChatService', () => {
     service = new ChatService({name: 'Test', api: service.api, moment});
     await new Promise<void>((resolve) => service.onLoad.connect(resolve));
     assert.equal(record.title, service.getTitle());
-    assert.deepEqual(record.history, service.getHistory());
+    assert.deepEqual(record.history, service.history);
   });
 });

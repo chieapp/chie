@@ -1,5 +1,4 @@
 import WebAPI from '../model/web-api';
-import apiManager from '../controller/api-manager';
 import {
   ChatCompletionAPI,
   ChatConversationAPI,
@@ -35,7 +34,7 @@ The conversation is named:
     } else if (api instanceof ChatConversationAPI &&
                !(api.constructor as ChatConversationAPIType).isHighlyRateLimited) {
       // Spawn a new conversation to ask for title generation,
-      const newapi = apiManager.createAPIForEndpoint(api.endpoint) as ChatConversationAPI;
+      const newapi = api.clone() as ChatConversationAPI;
       await newapi.sendMessage(promptText, {
         signal,
         onMessageDelta(delta) { title += delta.content ?? ''; }

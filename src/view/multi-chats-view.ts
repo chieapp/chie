@@ -1,8 +1,8 @@
 import gui from 'gui';
 
+import BaseMultiChatsService from '../model/base-multi-chats-service';
 import ChatListItem from '../view/chat-list-item';
 import ChatView from '../view/chat-view';
-import MultiChatsService from '../model/multi-chats-service';
 import SplitView, {SplitViewState, resizeHandleWidth} from '../view/split-view';
 import basicStyle from '../view/basic-style';
 import {config} from '../controller/configs';
@@ -29,7 +29,7 @@ export interface MultiChatsViewState extends SplitViewState {
   selected?: number;
 }
 
-export default class MultiChatsView extends SplitView<MultiChatsService> {
+export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
   static getMenuItems() {
     return [
       {
@@ -68,8 +68,8 @@ export default class MultiChatsView extends SplitView<MultiChatsService> {
   #chatListScroll: gui.Scroll;
   #chatList: gui.Container;
 
-  constructor(service: MultiChatsService) {
-    if (!(service instanceof MultiChatsService))
+  constructor(service: BaseMultiChatsService) {
+    if (!(service instanceof BaseMultiChatsService))
       throw new Error('MultiChatsView can only be used with MultiChatsService');
     super(service);
 
@@ -128,6 +128,8 @@ export default class MultiChatsView extends SplitView<MultiChatsService> {
       this.#items.push(item);
       this.#chatList.addChildView(item.view);
     }
+    if (this.#items.length > 0)
+      this.#items[0].setSelected(true);
     this.connections.add(service.onNewChat.connect(this.#onNewChat.bind(this)));
     this.connections.add(service.onRemoveChat.connect(this.#onRemoveChat.bind(this)));
     this.connections.add(service.onClearChats.connect(this.#onClearChats.bind(this)));
@@ -160,8 +162,6 @@ export default class MultiChatsView extends SplitView<MultiChatsService> {
     super.restoreState(state);
     if (state?.selected)
       this.#items[state.selected]?.setSelected(true);
-    else if (this.#items.length > 0)
-      this.#items[0].setSelected(true);
     // The bounds of views are not changed immediately, so delay update a
     // tick to wait for resize.
     setImmediate(() => this.onResize());

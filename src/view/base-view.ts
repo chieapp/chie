@@ -19,11 +19,15 @@ export default abstract class BaseView<T extends WebService<WebAPI> = WebService
   }
 
   // The view has been added as the content view of a window.
-  abstract initAsMainView();
+  initAsMainView() {
+    // Do nothing by default.
+  }
 
   // Parent window gets focus.
   // This is where the input entry should get focus.
-  abstract onFocus();
+  onFocus() {
+    // Do nothing by default.
+  }
 
   // Save and restore states.
   saveState(): ViewState | null {

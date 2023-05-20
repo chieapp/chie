@@ -16,4 +16,9 @@ export default abstract class WebAPI {
       return this.endpoint.params[name];
     return undefined;
   }
+
+  clone() {
+    const apiManager = require('../controller/api-manager').default;
+    return apiManager.createAPIForEndpoint(this.endpoint);
+  }
 }

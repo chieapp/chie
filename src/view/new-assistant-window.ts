@@ -1,22 +1,24 @@
 import gui from 'gui';
 
 import APIEndpoint from '../model/api-endpoint';
-import APIParamsView from './api-params-view';
-import BaseWindow from './base-window';
-import ButtonsArea from './buttons-area';
-import DashboardWindow from './dashboard-window';
+import APIParamsView from '../view/api-params-view';
+import BaseWindow from '../view/base-window';
+import ButtonsArea from '../view/buttons-area';
+import DashboardWindow from '../view/dashboard-window';
 import Instance from '../model/instance';
 import Icon from '../model/icon';
-import NewAPIWindow from './new-api-window';
-import ParamsView, {IconParamRow, valueMarginLeft} from './params-view';
+import NewAPIWindow from '../view/new-api-window';
+import ParamsView, {IconParamRow, valueMarginLeft} from '../view/params-view';
 import WebAPI from '../model/web-api';
 import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
-import basicStyle from './basic-style';
+import basicStyle from '../view/basic-style';
 import serviceManager, {ServiceRecord} from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
+import {BaseViewType} from '../view/base-view';
 import {ChatCompletionAPI} from '../model/chat-api';
 import {WebServiceOptions} from '../model/web-service';
+import {matchClass} from '../util/object-utils';
 
 export default class NewAssistantWindow extends BaseWindow {
   instance?: Instance;
@@ -64,7 +66,7 @@ export default class NewAssistantWindow extends BaseWindow {
         constrain: (endpoint: APIEndpoint, record: ServiceRecord) => {
           const apiType = apiManager.getAPIRecord(endpoint.type).apiType;
           for (const A of record.apiTypes) {
-            if (apiType == A || apiType.prototype instanceof A)
+            if (matchClass(A, apiType))
               return true;
           }
           return false;
@@ -78,7 +80,11 @@ export default class NewAssistantWindow extends BaseWindow {
         selections: serviceManager.getViewSelections(),
         constrainedBy: 'service',
         constrain: (record: ServiceRecord, viewType) => {
-          return viewType == record.viewType || viewType.prototype instanceof record.viewType;
+          for (const V of record.viewTypes) {
+            if (matchClass(V, viewType))
+              return true;
+          }
+          return false;
         },
       },
     ]);
@@ -166,7 +172,7 @@ export default class NewAssistantWindow extends BaseWindow {
     // TODO(zcbenz): Add validate property to Param to make this automatic.
     const endpoint = this.serviceSelector.getValue('api');
     const apiType = apiManager.getAPIRecord(endpoint.type).apiType;
-    if (!Object.prototype.isPrototypeOf.call(ChatCompletionAPI, apiType))
+    if (!matchClass(ChatCompletionAPI, apiType))
       return;
 
     // Create services view.
@@ -257,6 +263,7 @@ export default class NewAssistantWindow extends BaseWindow {
         name,
         (this.serviceSelector.getValue('service') as ServiceRecord).name,
         (this.serviceSelector.getValue('api') as APIEndpoint),
+        (this.serviceSelector.getValue('view') as BaseViewType),
         options);
       // Show the added assistant.
       const dashboard = windowManager.showNamedWindow('dashboard') as DashboardWindow;

@@ -1,4 +1,5 @@
 import BaseWindow from '../src/view/base-window';
+import ChatView from '../src/view/chat-view';
 import WindowMenuBar from '../src/view/window-menu-bar';
 import apiManager from '../src/controller/api-manager';
 import serviceManager from '../src/controller/service-manager';
@@ -23,7 +24,7 @@ describe('WindowMenuBar', () => {
       const win = new BaseWindow();
       const menubar = new WindowMenuBar(win);
       const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const instance = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint);
+      const instance = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint, ChatView);
       addFinalizer(menubar, () => collected = true);
       serviceManager.removeInstanceById(instance.id);
       menubar.destructor();

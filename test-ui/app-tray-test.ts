@@ -1,4 +1,5 @@
 import AppTray from '../src/view/app-tray';
+import ChatView from '../src/view/chat-view';
 import apiManager from '../src/controller/api-manager';
 import serviceManager from '../src/controller/service-manager';
 import {addFinalizer, gcUntil} from './util';
@@ -19,7 +20,7 @@ describe('AppTray', () => {
     (() => {
       const tray = new AppTray();
       const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const instance = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint);
+      const instance = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint, ChatView);
       addFinalizer(tray, () => collected = true);
       serviceManager.removeInstanceById(instance.id);
       tray.destructor();

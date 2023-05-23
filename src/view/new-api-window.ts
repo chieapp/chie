@@ -11,7 +11,7 @@ import apiManager from '../controller/api-manager';
 import basicStyle from './basic-style';
 import serviceManager from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
-import {deepAssign} from '../util/object-utils';
+import {deepAssign, matchClass} from '../util/object-utils';
 
 export default class NewAPIWindow extends BaseWindow {
   endpoint?: APIEndpoint;
@@ -166,9 +166,9 @@ export default class NewAPIWindow extends BaseWindow {
       apiManager.addEndpoint(endpoint);
       if (this.createCheckbox?.isChecked()) {
         // Find a service type supporting the API.
-        const serviceRecord = serviceManager.getServiceSelections().find(s => {
-          for (const apiType of s.value.apiTypes) {
-            if (apiRecord.apiType == apiType || apiRecord.apiType.prototype instanceof apiType)
+        const serviceRecord = serviceManager.getRegisteredServices().find(service => {
+          for (const A of service.apiTypes) {
+            if (matchClass(A, apiRecord.apiType))
               return true;
           }
           return false;
@@ -176,7 +176,7 @@ export default class NewAPIWindow extends BaseWindow {
         if (!serviceRecord)
           throw new Error('Unable to find a service type for the endpoint.');
         // Create a new assistant.
-        serviceManager.createInstance(name, serviceRecord.name, endpoint);
+        serviceManager.createInstance(name, serviceRecord.name, endpoint, serviceRecord.viewTypes[0]);
         // Close new assistant window since it is no longer needed.
         windowManager.getNamedWindow('newAssistant')?.close();
         // Show the added assistant.

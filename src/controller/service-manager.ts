@@ -14,7 +14,7 @@ import {ConfigStoreItem} from '../model/config-store';
 import {Selection} from '../model/param';
 import {WebServiceData, WebServiceOptions, WebServiceType} from '../model/web-service';
 import {collectGarbage} from './gc-center';
-import {deepAssign} from '../util/object-utils';
+import {deepAssign, matchClass} from '../util/object-utils';
 import {getNextId} from '../util/id-generator';
 
 type ServiceManagerData = Record<string, {
@@ -29,7 +29,7 @@ export type ServiceRecord = {
   name: string,
   serviceType: WebServiceType<WebAPI>,
   apiTypes: WebAPIType[],
-  viewType: BaseViewType,
+  viewTypes: BaseViewType[],
   description?: string,
   priority?: number,
   params?: Param[],
@@ -85,7 +85,7 @@ export class ServiceManager extends ConfigStoreItem {
   }
 
   registerView(viewType: BaseViewType) {
-    if (!(viewType.prototype instanceof BaseView))
+    if (!Object.prototype.isPrototypeOf.call(BaseView, viewType))
       throw new Error('Registered View must inherit from BaseView.');
     if (this.#views.find(v => v.name == viewType.name))
       throw new Error(`View "${viewType.name}" has already been registered.`);
@@ -103,23 +103,33 @@ export class ServiceManager extends ConfigStoreItem {
   registerService(record: ServiceRecord) {
     if (record.name in this.#services)
       throw new Error(`Service "${record.name}" has already been registered.`);
-    if (!this.#views.includes(record.viewType))
-      throw new Error(`View "${record.viewType.name}" is not registered`);
+    if (record.viewTypes.length < 1)
+      throw new Error(`Found no view when registering service "${record.name}".`);
+    for (const viewType of record.viewTypes) {
+      if (!this.#views.includes(viewType))
+        throw new Error(`View "${viewType.name}" is not registered.`);
+    }
     this.#services[record.name] = record;
+  }
+
+  getRegisteredServices() {
+    return Object.values(this.#services);
   }
 
   getServiceSelections(): Selection[] {
     return Object.keys(this.#services).map(k => ({name: k, value: this.#services[k]})).sort(sortByPriority);
   }
 
-  createInstance(name: string, serviceName: string, endpoint: APIEndpoint, options?: Partial<WebServiceOptions<WebAPI>>) {
+  createInstance(name: string, serviceName: string, endpoint: APIEndpoint, viewType: BaseViewType, options?: Partial<WebServiceOptions<WebAPI>>) {
     if (!(serviceName in this.#services))
       throw new Error(`Service with name "${serviceName}" does not exist.`);
     // Do runtime check of API type compatibility.
     const {icon, apiType} = apiManager.getAPIRecord(endpoint.type);
-    const {apiTypes, serviceType, viewType} = this.#services[serviceName];
-    if (!apiTypes.find(A => apiType == A || apiType.prototype instanceof A))
+    const {apiTypes, serviceType, viewTypes} = this.#services[serviceName];
+    if (!apiTypes.find(A => matchClass(A, apiType)))
       throw new Error(`Service "${serviceName}" does not support API type "${endpoint.type}".`);
+    if (!viewTypes.find(V => matchClass(V, viewType)))
+      throw new Error(`Service "${serviceName}" does not support View type "${viewType.name}".`);
     // Create a new instance of service.
     const ids = Object.keys(this.#instances);
     const id = getNextId(name, ids);

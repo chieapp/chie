@@ -1,4 +1,5 @@
 import ChatService from '../src/model/chat-service';
+import ChatView from '../src/view/chat-view';
 import ChatWindow from '../src/view/chat-window';
 import apiManager from '../src/controller/api-manager';
 import serviceManager from '../src/controller/service-manager';
@@ -15,7 +16,7 @@ describe('ChatWindow', () => {
     let collected = false;
     (() => {
       const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const instance = serviceManager.createInstance('TestChat', 'DummyConversationChatService', endpoint);
+      const instance = serviceManager.createInstance('TestChat', 'DummyConversationChatService', endpoint, ChatView);
       const chatWindow = new ChatWindow(instance);
       addFinalizer(chatWindow, () => collected = true);
       chatWindow.window.close();
@@ -27,7 +28,7 @@ describe('ChatWindow', () => {
     let collected = false;
     await (async () => {
       const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const instance = serviceManager.createInstance('TestChat', 'DummyConversationChatService', endpoint);
+      const instance = serviceManager.createInstance('TestChat', 'DummyConversationChatService', endpoint, ChatView);
       const chatWindow = new ChatWindow(instance);
       await (instance.service as ChatService).sendMessage({role: ChatRole.User, content: 'message'});
       addFinalizer(chatWindow, () => collected = true);

@@ -1,6 +1,4 @@
-import BaseMultiChatsService, {
-  BaseMultiChatsServiceOptions,
-} from '../model/base-multi-chats-service';
+import BaseMultiChatsService from '../model/base-multi-chats-service';
 import ChatService, {
   ChatServiceParams,
   ChatServiceSupportedAPIs,

@@ -1,5 +1,6 @@
 import {assert} from 'chai';
 
+import ChatView from '../src/view/chat-view';
 import DashboardWindow from '../src/view/dashboard-window';
 import MultiChatsService from '../src/model/multi-chats-service';
 import apiManager from '../src/controller/api-manager';
@@ -18,8 +19,8 @@ describe('DashboardWindow', async () => {
     let collected = false;
     (() => {
       const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint);
-      serviceManager.createInstance('TestChat 2', 'DummyCompletionChatService', endpoint);
+      serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint, ChatView);
+      serviceManager.createInstance('TestChat 2', 'DummyCompletionChatService', endpoint, ChatView);
       const dashboard = new DashboardWindow();
       addFinalizer(dashboard, () => collected = true);
       dashboard.switchTo(1);
@@ -32,7 +33,7 @@ describe('DashboardWindow', async () => {
     let collected = false;
     await (async () => {
       const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const instance = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint);
+      const instance = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint, ChatView);
       const dashboard = new DashboardWindow();
       dashboard.restoreState({});
       await (instance.service as MultiChatsService).chats[0].sendMessage({role: ChatRole.User, content: 'message'});
@@ -46,9 +47,9 @@ describe('DashboardWindow', async () => {
     const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
     const dashboard = new DashboardWindow();
     assert.equal(dashboard.views.length, 0);
-    const i1 = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint);
-    const i2 = serviceManager.createInstance('TestChat 2', 'DummyCompletionChatService', endpoint);
-    const i3 = serviceManager.createInstance('TestChat 3', 'DummyCompletionChatService', endpoint);
+    const i1 = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint, ChatView);
+    const i2 = serviceManager.createInstance('TestChat 2', 'DummyCompletionChatService', endpoint, ChatView);
+    const i3 = serviceManager.createInstance('TestChat 3', 'DummyCompletionChatService', endpoint, ChatView);
     assert.equal(dashboard.views.length, 3);
     assert.equal(dashboard.selectedView, dashboard.views[2]);
     serviceManager.removeInstanceById(i2.id);
@@ -67,7 +68,7 @@ describe('DashboardWindow', async () => {
     const dashboard = new DashboardWindow();
     (() => {
       const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const instance = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint);
+      const instance = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint, ChatView);
       addFinalizer(instance.service, () => collected = true);
       serviceManager.removeInstanceById(instance.id);
     })();

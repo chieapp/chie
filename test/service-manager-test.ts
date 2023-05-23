@@ -17,7 +17,7 @@ describe('ServiceManager', () => {
       name: 'Chat',
       serviceType: ChatService,
       apiTypes: [ChatConversationAPI],
-      viewType: ChatView,
+      viewTypes: [ChatView],
     });
   });
 
@@ -34,13 +34,13 @@ describe('ServiceManager', () => {
       url: '',
     });
     assert.throws(
-      () => serviceManager.createInstance('TestChat', 'Chat', endpoint),
+      () => serviceManager.createInstance('TestChat', 'Chat', endpoint, ChatView),
       'Service "Chat" does not support API type "DummyCompletionAPI".');
   });
 
   it('serialize and restore instances', () => {
     const endpoint = apiManager.getEndpointsByType('DummyConversationAPI')[0];
-    const instance = serviceManager.createInstance('TestChat', 'Chat', endpoint);
+    const instance = serviceManager.createInstance('TestChat', 'Chat', endpoint, ChatView);
     assert.equal(instance, serviceManager.getInstances()[0]);
     // Force a re-initialization by deserializing from serialized data.
     serviceManager.deserialize(serviceManager.serialize());

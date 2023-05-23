@@ -54,8 +54,8 @@ function guiMain() {
   serviceManager.registerService({
     name: 'MultiChatsService',
     serviceType: MultiChatsService,
-    viewType: MultiChatsView,
     apiTypes: [ChatConversationAPI, ChatCompletionAPI],
+    viewTypes: [MultiChatsView],
     description: 'Chat interface supporting multiple conversations.',
     priority: 10,
     params: chatServiceParams,
@@ -63,8 +63,8 @@ function guiMain() {
   serviceManager.registerService({
     name: 'ChatService',
     serviceType: ChatService,
-    viewType: ChatView,
     apiTypes: [ChatConversationAPI, ChatCompletionAPI],
+    viewTypes: [ChatView],
     description: 'Simple chat interface.',
     priority: 9,
     params: chatServiceParams,

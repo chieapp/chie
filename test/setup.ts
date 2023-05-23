@@ -60,13 +60,13 @@ export const mochaHooks = {
       name: 'DummyCompletionChatService',
       serviceType: MultiChatsService,
       apiTypes: [ChatCompletionAPI],
-      viewType: MultiChatsView,
+      viewTypes: [ChatView, MultiChatsView],
     });
     serviceManager.registerService({
       name: 'DummyConversationChatService',
       serviceType: ChatService,
       apiTypes: [ChatCompletionAPI, ChatConversationAPI],
-      viewType: ChatView,
+      viewTypes: [ChatView],
     });
     apiManager.addEndpoint(new APIEndpoint({
       name: 'API 1',

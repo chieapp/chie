@@ -9,10 +9,14 @@ import Icon from '../model/icon';
 import Instance from '../model/instance';
 import Param from '../model/param';
 import WebAPI from '../model/web-api';
+import WebService, {
+  WebServiceData,
+  WebServiceOptions,
+  WebServiceType,
+} from '../model/web-service';
 import apiManager, {sortByPriority} from './api-manager';
 import {ConfigStoreItem} from '../model/config-store';
 import {Selection} from '../model/param';
-import {WebServiceData, WebServiceOptions, WebServiceType} from '../model/web-service';
 import {collectGarbage} from './gc-center';
 import {deepAssign, matchClass} from '../util/object-utils';
 import {getNextId} from '../util/id-generator';
@@ -64,8 +68,12 @@ export class ServiceManager extends ConfigStoreItem {
       const viewType = this.#views.find(v => v.name == item.view);
       if (!viewType)
         throw new Error(`Unknown View "${item.view}".`);
+      // Find out a deserialize method in the prototype chain.
+      let baseType = record.serviceType;
+      while (!baseType.deserialize && baseType != WebService)
+        baseType = baseType.prototype;
       // Deserialize using the service type's method.
-      const options = record.serviceType.deserialize(item.service);
+      const options = baseType.deserialize(item.service);
       const service = new record.serviceType(options);
       this.#instances[id] = {id, serviceName, service, viewType};
     }
@@ -105,6 +113,8 @@ export class ServiceManager extends ConfigStoreItem {
       throw new Error(`Service "${record.name}" has already been registered.`);
     if (record.viewTypes.length < 1)
       throw new Error(`Found no view when registering service "${record.name}".`);
+    if (!matchClass(WebService, record.serviceType))
+      throw new Error('The serviceType must inherit from WebService.');
     for (const viewType of record.viewTypes) {
       if (!this.#views.includes(viewType))
         throw new Error(`View "${viewType.name}" is not registered.`);

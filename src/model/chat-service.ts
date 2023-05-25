@@ -18,10 +18,6 @@ export interface ChatServiceParams {
 }
 
 export default class ChatService extends BaseChatService<ChatServiceSupportedAPIs, ChatServiceParams> {
-  static deserialize(data) {
-    return BaseChatService.deserialize(data);
-  }
-
   constructor(options) {
     if (!(options.api instanceof ChatCompletionAPI) &&
         !(options.api instanceof ChatConversationAPI))

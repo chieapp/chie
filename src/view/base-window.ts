@@ -12,7 +12,7 @@ export interface WindowState {
 export interface BaseWindowOptions extends gui.WindowOptions {
   showMenuBar?: boolean;
   pressEscToClose?: boolean;
-  viewType?: BaseViewType;
+  viewClass?: BaseViewType;
   // On modern macOS apps the NSVisualEffectView is usually used as the content
   // view, this option provides a way to disable it.
   useClassicBackground?: boolean;
@@ -31,7 +31,7 @@ export default class BaseWindow extends SignalsOwner {
     if (process.platform == 'win32')
       this.window.setBackgroundColor('#F5F5F5');
     if (process.platform != 'darwin') {
-      this.menuBar = new WindowMenuBar(this, options.viewType);
+      this.menuBar = new WindowMenuBar(this, options.viewClass);
       this.window.setMenuBar(this.menuBar.menu);
       if (!options.showMenuBar)
         this.window.setMenuBarVisible(false);

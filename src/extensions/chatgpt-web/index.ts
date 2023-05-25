@@ -40,7 +40,7 @@ const params: Param[] = [
 export function activate() {
   apiManager.registerAPI({
     name: 'ChatGPT Web',
-    apiType: ChatGPTWebAPI,
+    apiClass: ChatGPTWebAPI,
     auth: 'login',
     icon: new Icon({name: 'chatgpt'}),
     description: 'ChatGPT web backend, requires OpenAI account.',

@@ -12,7 +12,7 @@ type WebAPIType = new (endpoint: APIEndpoint) => WebAPI;
 
 export type APIRecord = {
   name: string,
-  apiType: WebAPIType,
+  apiClass: WebAPIType,
   auth: 'none' | 'key' | 'login',
   icon?: Icon,
   url?: string,
@@ -70,7 +70,7 @@ export class APIManager extends ConfigStoreItem {
   createAPIForEndpoint(endpoint: APIEndpoint) {
     if (!(endpoint.type in this.#apis))
       throw new Error(`Unable to find API implementation for endpoint ${endpoint.type}.`);
-    return new (this.#apis[endpoint.type].apiType)(endpoint);
+    return new (this.#apis[endpoint.type].apiClass)(endpoint);
   }
 
   addEndpoint(endpoint: APIEndpoint) {

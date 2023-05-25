@@ -131,11 +131,11 @@ export default class BaseMenuBar extends SignalsOwner {
     return items;
   }
 
-  // Wrap the menu items of |viewType| by doing auto validation.
-  protected getViewMenuItems(viewType: BaseViewType) {
-    if (!viewType.getMenuItems)
+  // Wrap the menu items of |viewClass| by doing auto validation.
+  protected getViewMenuItems(viewClass: BaseViewType) {
+    if (!viewClass.getMenuItems)
       return null;
-    const viewItems = viewType.getMenuItems();
+    const viewItems = viewClass.getMenuItems();
     if (viewItems.length == 0)
       return null;
     const validateAndGetView = () => {
@@ -143,9 +143,9 @@ export default class BaseMenuBar extends SignalsOwner {
       if (!view)
         return null;
       // Some view (like MultiChatsView) may have a main view inside it.
-      if (view.getMainView() instanceof viewType)
+      if (view.getMainView() instanceof viewClass)
         view = view.getMainView();
-      else if (!(view instanceof viewType))
+      else if (!(view instanceof viewClass))
         return null;
       return view;
     };

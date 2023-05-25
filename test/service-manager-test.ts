@@ -15,9 +15,9 @@ describe('ServiceManager', () => {
     serviceManager.registerView(ChatView);
     serviceManager.registerService({
       name: 'Chat',
-      serviceType: ChatService,
-      apiTypes: [ChatConversationAPI],
-      viewTypes: [ChatView],
+      serviceClass: ChatService,
+      apiClasses: [ChatConversationAPI],
+      viewClasses: [ChatView],
     });
   });
 

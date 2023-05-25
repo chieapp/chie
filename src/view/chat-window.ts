@@ -14,7 +14,7 @@ export default class ChatWindow extends BaseWindow {
 
   constructor(instance: Instance) {
     super({
-      viewType: instance.viewType,
+      viewClass: instance.viewClass,
       useClassicBackground: true,
     });
     this.instance = instance;
@@ -22,7 +22,7 @@ export default class ChatWindow extends BaseWindow {
     this.window.setTitle(instance.service.name);
     this.window.onFocus = () => this.chatView.onFocus();
 
-    this.chatView = new instance.viewType(instance.service);
+    this.chatView = new instance.viewClass(instance.service);
     this.chatView.view.setStyle({flex: 1});
     this.contentView.addChildView(this.chatView.view);
     this.window.setContentSize(this.chatView.getSizeFromMainViewSize({width: 400, height: 400}));

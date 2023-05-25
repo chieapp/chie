@@ -64,9 +64,9 @@ export default class NewAssistantWindow extends BaseWindow {
         selections: serviceManager.getServiceSelections(),
         constrainedBy: 'api',
         constrain: (endpoint: APIEndpoint, record: ServiceRecord) => {
-          const apiType = apiManager.getAPIRecord(endpoint.type).apiType;
-          for (const A of record.apiTypes) {
-            if (matchClass(A, apiType))
+          const apiClass = apiManager.getAPIRecord(endpoint.type).apiClass;
+          for (const A of record.apiClasses) {
+            if (matchClass(A, apiClass))
               return true;
           }
           return false;
@@ -76,12 +76,12 @@ export default class NewAssistantWindow extends BaseWindow {
         name: 'view',
         type: 'selection',
         displayName: 'View',
-        selection: instance?.viewType.name,
+        selection: instance?.viewClass.name,
         selections: serviceManager.getViewSelections(),
         constrainedBy: 'service',
-        constrain: (record: ServiceRecord, viewType) => {
-          for (const V of record.viewTypes) {
-            if (matchClass(V, viewType))
+        constrain: (record: ServiceRecord, viewClass) => {
+          for (const V of record.viewClasses) {
+            if (matchClass(V, viewClass))
               return true;
           }
           return false;
@@ -171,8 +171,8 @@ export default class NewAssistantWindow extends BaseWindow {
     // There are only options for ChatCompletionAPI for now.
     // TODO(zcbenz): Add validate property to Param to make this automatic.
     const endpoint = this.serviceSelector.getValue('api');
-    const apiType = apiManager.getAPIRecord(endpoint.type).apiType;
-    if (!matchClass(ChatCompletionAPI, apiType))
+    const apiClass = apiManager.getAPIRecord(endpoint.type).apiClass;
+    if (!matchClass(ChatCompletionAPI, apiClass))
       return;
 
     // Create services view.

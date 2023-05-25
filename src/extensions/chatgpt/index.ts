@@ -4,7 +4,7 @@ import {Icon, apiManager} from 'chie';
 export function activate() {
   apiManager.registerAPI({
     name: 'ChatGPT API',
-    apiType: ChatGPTAPI,
+    apiClass: ChatGPTAPI,
     auth: 'key',
     icon: new Icon({name: 'openai'}),
     description: 'Use OpenAI API key for chat.',

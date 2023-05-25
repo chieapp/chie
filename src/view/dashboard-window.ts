@@ -143,7 +143,7 @@ export default class DashboardWindow extends BaseWindow {
     });
     this.#sidebar.view.addChildViewAt(button.view, this.#sidebar.view.childCount() - 1);
     // Create the service's view.
-    const mainView = new (instance.viewType)(instance.service);
+    const mainView = new (instance.viewClass)(instance.service);
     mainView.view.setVisible(false);
     mainView.view.setStyle({flex: 1});
     this.contentView.addChildView(mainView.view);

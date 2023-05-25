@@ -46,27 +46,27 @@ export const mochaHooks = {
     // Register some APIs for testing.
     apiManager.registerAPI({
       name: 'DummyCompletionAPI',
-      apiType: DummyCompletionAPI,
+      apiClass: DummyCompletionAPI,
       auth: 'none',
     });
     apiManager.registerAPI({
       name: 'DummyConversationAPI',
-      apiType: DummyConversationAPI,
+      apiClass: DummyConversationAPI,
       auth: 'none',
     });
     serviceManager.registerView(ChatView);
     serviceManager.registerView(MultiChatsView);
     serviceManager.registerService({
       name: 'DummyCompletionChatService',
-      serviceType: MultiChatsService,
-      apiTypes: [ChatCompletionAPI],
-      viewTypes: [ChatView, MultiChatsView],
+      serviceClass: MultiChatsService,
+      apiClasses: [ChatCompletionAPI],
+      viewClasses: [ChatView, MultiChatsView],
     });
     serviceManager.registerService({
       name: 'DummyConversationChatService',
-      serviceType: ChatService,
-      apiTypes: [ChatCompletionAPI, ChatConversationAPI],
-      viewTypes: [ChatView],
+      serviceClass: ChatService,
+      apiClasses: [ChatCompletionAPI, ChatConversationAPI],
+      viewClasses: [ChatView],
     });
     apiManager.addEndpoint(new APIEndpoint({
       name: 'API 1',

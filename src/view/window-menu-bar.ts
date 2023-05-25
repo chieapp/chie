@@ -3,7 +3,7 @@ import BaseWindow from './base-window';
 import {BaseViewType} from './base-view';
 
 export default class WindowMenuBar extends BaseMenuBar {
-  constructor(win: BaseWindow, viewType?: BaseViewType) {
+  constructor(win: BaseWindow, viewClass?: BaseViewType) {
     const template = [
       // File menu.
       {
@@ -23,20 +23,20 @@ export default class WindowMenuBar extends BaseMenuBar {
     }
 
     // For other windows add items for view type.
-    if (!viewType)
+    if (!viewClass)
       return;
     // Create "Assistants" menu.
     this.createAssistantsMenu();
     // For "View" menu, get the items for the main view first.
     const items = [
       {type: 'separator'},
-      ...this.getViewMenuItems(viewType),
+      ...this.getViewMenuItems(viewClass),
     ];
     // If the main view includes a sub main view, get its items too.
-    if (viewType.getSubViewType) {
+    if (viewClass.getSubViewType) {
       items.push(
         {type: 'separator'},
-        ...this.getViewMenuItems(viewType.getSubViewType()));
+        ...this.getViewMenuItems(viewClass.getSubViewType()));
     }
     this.createViewMenu(items);
   }

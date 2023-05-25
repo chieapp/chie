@@ -167,8 +167,8 @@ export default class NewAPIWindow extends BaseWindow {
       if (this.createCheckbox?.isChecked()) {
         // Find a service type supporting the API.
         const serviceRecord = serviceManager.getRegisteredServices().find(service => {
-          for (const A of service.apiTypes) {
-            if (matchClass(A, apiRecord.apiType))
+          for (const A of service.apiClasses) {
+            if (matchClass(A, apiRecord.apiClass))
               return true;
           }
           return false;
@@ -176,7 +176,7 @@ export default class NewAPIWindow extends BaseWindow {
         if (!serviceRecord)
           throw new Error('Unable to find a service type for the endpoint.');
         // Create a new assistant.
-        serviceManager.createInstance(name, serviceRecord.name, endpoint, serviceRecord.viewTypes[0]);
+        serviceManager.createInstance(name, serviceRecord.name, endpoint, serviceRecord.viewClasses[0]);
         // Close new assistant window since it is no longer needed.
         windowManager.getNamedWindow('newAssistant')?.close();
         // Show the added assistant.

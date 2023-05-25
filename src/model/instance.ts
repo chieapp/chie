@@ -7,5 +7,5 @@ export default interface Instance {
   id?: string;
   serviceName: string;
   service: WebService<WebAPI>;
-  viewType: BaseViewType;
+  viewClass: BaseViewType;
 }

@@ -26,7 +26,7 @@ const toneParam: Param = {
 export function activate() {
   apiManager.registerAPI({
     name: 'BingChat',
-    apiType: BingChatAPI,
+    apiClass: BingChatAPI,
     auth: 'login',
     icon: new Icon({name: 'bingchat'}),
     description: 'Chat with new Bing, requires Microsoft account.',

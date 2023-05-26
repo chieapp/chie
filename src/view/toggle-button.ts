@@ -31,6 +31,8 @@ export default class ToggleButton extends Clickable {
     painter.clip();
 
     if (this.image) {
+      painter.setFillColor('#FFF');
+      painter.fillRect(bounds);
       painter.drawImage(this.image, bounds);
     } else {
       painter.setFillColor('#A3A3A3');

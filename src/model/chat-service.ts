@@ -17,7 +17,7 @@ export interface ChatServiceParams {
   contextLength?: number;
 }
 
-export default class ChatService extends BaseChatService<ChatServiceSupportedAPIs, ChatServiceParams> {
+export default class ChatService<P extends ChatServiceParams = ChatServiceParams> extends BaseChatService<ChatServiceSupportedAPIs, P> {
   constructor(options) {
     if (!(options.api instanceof ChatCompletionAPI) &&
         !(options.api instanceof ChatConversationAPI))

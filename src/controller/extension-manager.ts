@@ -14,12 +14,34 @@ export class ExtensionManager {
   #extensions: Record<string, ExtensionRecord> = {};
 
   constructor() {
-    // Make it possible to do require('chie').
+    const sourceRootDir = path.resolve(__dirname, '..', '..');
+    const exportsDir = path.resolve(__dirname, '..', 'exports');
+    // Override how Node searches modules.
     const nodeModulePaths = Module['_nodeModulePaths'];
     Module['_nodeModulePaths'] = function(p) {
-      const paths = nodeModulePaths.call(this, p);
-      if (p.indexOf('node_modules') === -1)
-        return paths.concat(path.join(__dirname, '..', 'exports'));
+      const fromNodeModule = p.indexOf('node_modules') > -1;
+      const fromInternal = p.startsWith(sourceRootDir + path.sep);
+      const paths = nodeModulePaths.call(this, p)
+        .filter(mp => {
+          if (fromInternal) {
+            // Avoid using modules from outside the app bundle.
+            if (!mp.startsWith(sourceRootDir))
+              return false;
+          }
+          return true;
+        });
+      // Make it possible to do require('chie') when request does not come from
+      // a npm module.
+      if (!fromNodeModule) {
+        // For extensions the exportsDir is preferred, while for inside app
+        // bundle it is used as last resort. This is to make require('gui') use
+        // the actual module inside app bundle, and use the fake one in the
+        // extensions.
+        if (fromInternal)
+          paths.push(exportsDir);
+        else
+          paths.unshift(exportsDir);
+      }
       return paths;
     };
   }

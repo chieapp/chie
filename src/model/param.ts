@@ -6,7 +6,7 @@ export interface Selection {
   value: any,
 }
 
-export default class Param {
+export default interface Param {
   name: string;
   type: ParamType;
   displayName?: string;
@@ -38,10 +38,4 @@ export default class Param {
   constrainedBy?: string;
   // Filter function used to determine whether a selection is usable.
   constrain?: (controllingValue, value) => boolean;
-
-  constructor(init: Partial<Param>) {
-    if (!init.name || !init.type)
-      throw new Error('The "name" and "type" are required in Param.');
-    Object.assign(this, init);
-  }
 }

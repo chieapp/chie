@@ -7,7 +7,7 @@ interface PromptOptions {
   multiLines?: boolean;
 }
 
-export default async function prompt(message: string, value: string, options: PromptOptions = {}) {
+export default async function prompt(message: string, value: string = '', options: PromptOptions = {}) {
   const win = new TextWindow('prompt', value);
   win.window.setTitle(message);
   const width = options?.width ?? 200;

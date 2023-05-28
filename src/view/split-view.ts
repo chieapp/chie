@@ -22,8 +22,8 @@ export default abstract class SplitView<T extends WebService<WebAPI>> extends Ba
   #resizeHandle: gui.Container;
   #resizeOrigin?: {x: number, width: number};
 
-  constructor(...args) {
-    super(...args);
+  constructor() {
+    super();
     this.view.setStyle({flexDirection: 'row'});
 
     this.panel = new AppearanceAware();

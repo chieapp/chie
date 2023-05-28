@@ -143,9 +143,10 @@ export default class DashboardWindow extends BaseWindow {
     });
     this.#sidebar.view.addChildViewAt(button.view, this.#sidebar.view.childCount() - 1);
     // Create the service's view.
-    const mainView = new (instance.viewClass)(instance.service);
+    const mainView = new instance.viewClass();
     mainView.view.setVisible(false);
     mainView.view.setStyle({flex: 1});
+    mainView.loadService(instance.service);
     this.contentView.addChildView(mainView.view);
     // Save them.
     const view = {instance, button, mainView};
@@ -201,7 +202,6 @@ export default class DashboardWindow extends BaseWindow {
     // Switch view.
     this.selectedView?.mainView.view.setVisible(false);
     view.mainView.view.setVisible(true);
-    view.mainView.initAsMainView();
     view.mainView.onFocus();
     // Restore SplitView state.
     if (this.#splitViewState && view.mainView instanceof SplitView)

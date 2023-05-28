@@ -21,8 +21,8 @@ describe('MultiChatsView', function() {
   it('can be garbage collected', async () => {
     let collected = false;
     (() => {
-      const chatView = new MultiChatsView(service);
-      chatView.initAsMainView();
+      const chatView = new MultiChatsView();
+      chatView.loadService(service);
       addFinalizer(chatView, () => collected = true);
       chatView.destructor();
     })();
@@ -32,8 +32,8 @@ describe('MultiChatsView', function() {
   it('can be garbage collected after sending message', async () => {
     let collected = false;
     await (async () => {
-      const chatView = new MultiChatsView(service);
-      chatView.initAsMainView();
+      const chatView = new MultiChatsView();
+      chatView.loadService(service);
       const chat = service.createChat();
       await chat.sendMessage({role: ChatRole.User, content: 'message'});
       addFinalizer(chatView, () => collected = true);
@@ -45,8 +45,8 @@ describe('MultiChatsView', function() {
   it('can be garbage collected after adding and remove chats', async () => {
     let collected = false;
     (() => {
-      const chatView = new MultiChatsView(service);
-      chatView.initAsMainView();
+      const chatView = new MultiChatsView();
+      chatView.loadService(service);
       service.createChat();
       service.createChat();
       service.createChat();
@@ -74,8 +74,8 @@ describe('MultiChatsView', function() {
   it('does not reference removed chat', async () => {
     let collected = false;
     (() => {
-      const chatView = new MultiChatsView(service);
-      chatView.initAsMainView();
+      const chatView = new MultiChatsView();
+      chatView.loadService(service);
       const chat = service.createChat();
       assert.equal(chat, service.chats[0]);
       service.removeChatAt(0);

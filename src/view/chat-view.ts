@@ -1,5 +1,4 @@
 import gui from 'gui';
-import {SignalConnections} from 'typed-signals';
 
 import BaseChatService from '../model/base-chat-service';
 import BaseView from '../view/base-view';
@@ -56,13 +55,12 @@ export default class ChatView extends BaseView<BaseChatService> {
   input: InputView;
   replyButton: IconButton;
 
-  #serviceConnections: SignalConnections = new SignalConnections();
   #markdown?: StreamedMarkdown;
 
   #buttonMode: ButtonMode = 'send';
   #textWindows: Record<number, TextWindow> = {};
 
-  constructor(service?: BaseChatService) {
+  constructor() {
     super();
 
     this.view.setStyle({flex: 1});
@@ -133,24 +131,16 @@ export default class ChatView extends BaseView<BaseChatService> {
     this.exportButton.setEnabled(false);
     this.input.setEntryEnabled(false);
     this.replyButton.setEnabled(false);
-
-    if (service)
-      this.loadChatService(service);
   }
 
   destructor() {
     super.destructor();
-    this.unload();
     this.messagesView.destructor();
     this.clearButton.destructor();
     this.exportButton.destructor();
     for (const switcher of this.switchers)
       switcher.destructor();
     this.input.destructor();
-  }
-
-  initAsMainView() {
-    this.loadChatService(this.service);
   }
 
   onFocus() {
@@ -164,7 +154,7 @@ export default class ChatView extends BaseView<BaseChatService> {
     return this.service.getTitle() ?? this.service.name;
   }
 
-  async loadChatService(service: BaseChatService) {
+  async loadService(service: BaseChatService) {
     if (this.service == service)
       return;
     if (!(service instanceof BaseChatService))
@@ -173,38 +163,38 @@ export default class ChatView extends BaseView<BaseChatService> {
     this.unload();
     // Delay loading until the service is ready.
     if (!service.isLoaded) {
-      this.#serviceConnections.add(service.onLoad.connect(this.loadChatService.bind(this, service)));
+      this.serviceConnections.add(service.onLoad.connect(this.loadService.bind(this, service)));
       return;
     }
     // Load messages.
     this.messagesView.loadChatService(service);
-    this.service = service;
+    super.loadService(service);
     this.onNewTitle.emit();
     this.#updateSwitchButton();
     // Connect signals.
-    this.#serviceConnections.add(service.onNewTitle.connect(
+    this.serviceConnections.add(service.onNewTitle.connect(
       this.onNewTitle.emit.bind(this.onNewTitle)));
-    this.#serviceConnections.add(service.onChangeName.connect(
+    this.serviceConnections.add(service.onChangeName.connect(
       this.#onChangeName.bind(this)));
-    this.#serviceConnections.add(service.onChangeIcon.connect(
+    this.serviceConnections.add(service.onChangeIcon.connect(
       this.#onChangeIcon.bind(this)));
-    this.#serviceConnections.add(service.onUserMessage.connect(
+    this.serviceConnections.add(service.onUserMessage.connect(
       this.#onUserMessage.bind(this)));
-    this.#serviceConnections.add(service.onClearError.connect(
+    this.serviceConnections.add(service.onClearError.connect(
       this.#onClearError.bind(this)));
-    this.#serviceConnections.add(service.onMessageBegin.connect(
+    this.serviceConnections.add(service.onMessageBegin.connect(
       this.#onMessageBegin.bind(this)));
-    this.#serviceConnections.add(service.onMessageDelta.connect(
+    this.serviceConnections.add(service.onMessageDelta.connect(
       this.#onMessageDelta.bind(this)));
-    this.#serviceConnections.add(service.onMessageError.connect(
+    this.serviceConnections.add(service.onMessageError.connect(
       this.#onMessageError.bind(this)));
-    this.#serviceConnections.add(service.onMessage.connect(
+    this.serviceConnections.add(service.onMessage.connect(
       this.#resetUIState.bind(this)));
-    this.#serviceConnections.add(service.onRemoveMessagesAfter.connect(
+    this.serviceConnections.add(service.onRemoveMessagesAfter.connect(
       this.messagesView.removeMessagesAfter.bind(this.messagesView)));
-    this.#serviceConnections.add(service.onUpdateMessage.connect(
+    this.serviceConnections.add(service.onUpdateMessage.connect(
       this.messagesView.updateMessage.bind(this.messagesView, this.service)));
-    this.#serviceConnections.add(service.onClearMessages.connect(() => {
+    this.serviceConnections.add(service.onClearMessages.connect(() => {
       this.messagesView.clearMessages();
       this.#resetUIState();
     }));
@@ -224,9 +214,9 @@ export default class ChatView extends BaseView<BaseChatService> {
   }
 
   unload() {
+    super.unload();
     for (const win of Object.values(this.#textWindows))
       win.window.close();
-    this.#serviceConnections.disconnectAll();
   }
 
   getDraft(): string | null {

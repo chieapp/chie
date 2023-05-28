@@ -68,11 +68,8 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
   #chatListScroll: gui.Scroll;
   #chatList: gui.Container;
 
-  constructor(service: BaseMultiChatsService) {
-    if (!(service instanceof BaseMultiChatsService))
-      throw new Error('MultiChatsView can only be used with MultiChatsService');
-    super(service);
-
+  constructor() {
+    super();
     this.panel.setBackgroundColor(style.light.columnBgColor, style.dark.columnBgColor);
 
     // A scroll view with scrollbar hidden.
@@ -105,7 +102,7 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
       button.setControlSize('large');
     else
       button.setStyle({height: 28});
-    button.onClick = service.createChat.bind(service);
+    button.onClick = () => this.service.createChat();
     this.addToPanel(button);
 
     const clear = gui.Button.create('Clear chats');
@@ -114,25 +111,13 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
     else
       clear.setStyle({height: 28});
     clear.setStyle({marginTop: 0});
-    clear.onClick = service.clearChats.bind(service);
+    clear.onClick = () => this.service.clearChats();
     this.addToPanel(clear);
 
     this.chatView = new ChatView();
     this.setMainView(this.chatView);
     this.connections.add(this.chatView.onNewTitle.connect(
       this.onNewTitle.emit.bind(this.onNewTitle)));
-
-    // Load existing chats.
-    for (const chat of service.chats) {
-      const item = this.#createItemForChat(chat);
-      this.#items.push(item);
-      this.#chatList.addChildView(item.view);
-    }
-    if (this.#items.length > 0)
-      this.#items[0].setSelected(true);
-    this.connections.add(service.onNewChat.connect(this.#onNewChat.bind(this)));
-    this.connections.add(service.onRemoveChat.connect(this.#onRemoveChat.bind(this)));
-    this.connections.add(service.onClearChats.connect(this.#onClearChats.bind(this)));
   }
 
   destructor() {
@@ -141,9 +126,35 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
       item.destructor();
   }
 
-  initAsMainView() {
+  loadService(service: BaseMultiChatsService) {
+    if (this.service == service)
+      return;
+    if (!(service instanceof BaseMultiChatsService))
+      throw new Error('MultiChatsView can only be used with MultiChatsService');
+    this.unload();
+    super.loadService(service);
+
+    // Load existing chats.
     if (this.service.chats.length == 0)
       this.service.createChat();
+    for (const chat of service.chats) {
+      const item = this.#createItemForChat(chat);
+      this.#items.push(item);
+      this.#chatList.addChildView(item.view);
+    }
+    this.#items[0].setSelected(true);
+    this.connections.add(service.onNewChat.connect(this.#onNewChat.bind(this)));
+    this.connections.add(service.onRemoveChat.connect(this.#onRemoveChat.bind(this)));
+    this.connections.add(service.onClearChats.connect(this.#onClearChats.bind(this)));
+  }
+
+  unload() {
+    super.unload();
+    for (const item of this.#items) {
+      this.#chatList.removeChildView(item.view);
+      item.destructor();
+    }
+    this.#items = [];
   }
 
   onResize() {
@@ -196,7 +207,7 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
     if (this.#selectedItem && this.#selectedItem != item)
       this.#selectedItem.setSelected(false);
     this.#selectedItem = item;
-    await this.chatView.loadChatService(this.#selectedItem.service);
+    await this.chatView.loadService(this.#selectedItem.service);
   }
 
   #onCloseItem(item: ChatListItem) {

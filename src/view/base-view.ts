@@ -1,5 +1,5 @@
 import gui from 'gui';
-import {Signal} from 'typed-signals';
+import {Signal, SignalConnections} from 'typed-signals';
 
 import AppearanceAware from '../view/appearance-aware';
 import WebAPI from '../model/web-api';
@@ -10,17 +10,22 @@ export interface ViewState {
 
 export default abstract class BaseView<T extends WebService<WebAPI> = WebService<WebAPI>> extends AppearanceAware {
   service?: T;
+  protected serviceConnections: SignalConnections = new SignalConnections();
 
   onNewTitle: Signal<() => void> = new Signal;
 
-  constructor(service?: T) {
-    super();
+  destructor() {
+    super.destructor();
+    this.unload();
+  }
+
+  loadService(service: T) {
     this.service = service;
   }
 
-  // The view has been added as the content view of a window.
-  initAsMainView() {
-    // Do nothing by default.
+  unload() {
+    this.service = null;
+    this.serviceConnections.disconnectAll();
   }
 
   // Parent window gets focus.
@@ -61,7 +66,7 @@ export default abstract class BaseView<T extends WebService<WebAPI> = WebService
 }
 
 // Define the class type of BaseView with optional getMenuItems static method.
-type BaseViewConstructorType = new (service) => BaseView<WebService<WebAPI>>;
+type BaseViewConstructorType = new () => BaseView;
 export type MenuItemOptions<T> = {
   label: string,
   accelerator?: string,

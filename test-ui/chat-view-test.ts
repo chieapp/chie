@@ -20,8 +20,8 @@ describe('ChatView', () => {
   it('can be garbage collected', async () => {
     let collected = false;
     (() => {
-      const chatView = new ChatView(service);
-      chatView.initAsMainView();
+      const chatView = new ChatView();
+      chatView.loadService(service);
       addFinalizer(chatView, () => collected = true);
       chatView.destructor();
     })();
@@ -32,9 +32,9 @@ describe('ChatView', () => {
     let collected = false;
     (() => {
       const win = gui.Window.create({});
-      const chatView = new ChatView(service);
+      const chatView = new ChatView();
       win.setContentView(chatView.view);
-      chatView.initAsMainView();
+      chatView.loadService(service);
       addFinalizer(win, () => collected = true);
       chatView.destructor();
     })();
@@ -44,8 +44,8 @@ describe('ChatView', () => {
   it('can be garbage collected after sending message', async () => {
     let collected = false;
     await (async () => {
-      const chatView = new ChatView(service);
-      chatView.initAsMainView();
+      const chatView = new ChatView();
+      chatView.loadService(service);
       await chatView.service.sendMessage({role: ChatRole.User, content: 'message'});
       addFinalizer(chatView, () => collected = true);
       chatView.destructor();

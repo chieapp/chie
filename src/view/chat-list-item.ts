@@ -25,7 +25,7 @@ export default class ChatListItem extends Clickable {
   constructor(service: ChatService) {
     super();
     this.service = service;
-    this.connections.add(service.onNewTitle.connect(this.setTitle.bind(this)));
+
     this.view.setStyle({width: '100%', height: 32, marginBottom: 2});
     this.view.onMouseEnter = () => this.closeButton.view.setVisible(true);
     this.view.onMouseLeave = () => this.closeButton.view.setVisible(false);
@@ -44,12 +44,8 @@ export default class ChatListItem extends Clickable {
     this.closeButton.onClick = () => this.onClose.emit(this);
     this.view.addChildView(this.closeButton.view);
 
-    this.setTitle(service.getTitle());
-    if (!service.isLoaded) {
-      this.connections.add(service.onLoad.connect(() => {
-        this.setTitle(service.getTitle());
-      }));
-    }
+    this.service.load().then(() => this.setTitle(service.getTitle()));
+    this.connections.add(service.onNewTitle.connect(this.setTitle.bind(this)));
   }
 
   destructor() {
@@ -108,6 +104,8 @@ export default class ChatListItem extends Clickable {
   }
 
   onDraw(view, painter: gui.Painter) {
+    if (!this.#titleText)  // no title set yet
+      return;
     // Background color.
     const theme = this.darkMode ? style.dark : style.light;
     if (this.selected)
@@ -129,6 +127,8 @@ export default class ChatListItem extends Clickable {
   }
 
   #updateTooltip() {
+    if (!this.#titleText)  // no title set yet
+      return;
     const bounds = Object.assign(this.view.getBounds(), {x: 0, y: 0});
     // Always consider space for the close button since the tooltip only shows
     // when mouse is hovering on it.

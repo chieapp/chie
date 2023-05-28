@@ -33,7 +33,6 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
   static nextId = 0;
   static fromId = (id: number) => BaseChatService.services[id];
 
-  onLoad: Signal<() => void> = new Signal;
   onNewTitle: Signal<(title: string | null) => void> = new Signal;
   onUserMessage: Signal<(message: ChatMessage) => void> = new Signal;
   onClearError: Signal<() => void> = new Signal;
@@ -49,7 +48,7 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
   id: number = ++BaseChatService.nextId;
 
   // Whether the chat messages have be recovered from disk.
-  isLoaded;
+  isLoaded = false;
 
   // ID of the chat history kept on disk.
   moment?: string;
@@ -69,6 +68,9 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
   // The aborter that can be used to abort current call.
   aborter: AbortController;
 
+  // The promise of current load process.
+  protected loadPromise?: Promise<void>;
+
   // Title of the chat.
   protected customTitle?: string;
   protected title?: string;
@@ -84,20 +86,8 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
 
   constructor(options: BaseChatServiceOptions<T, P>) {
     super(options);
+    this.moment = options.moment;
     BaseChatService.services[this.id] = this;
-    if (options.moment) {
-      // Load from saved history.
-      this.isLoaded = false;
-      this.moment = options.moment;
-      historyKeeper.remember(this.moment).then((data?: BaseChatHistoryData) => {
-        if (data)
-          this.deserializeHistory(data);
-        this.isLoaded = true;
-        this.onLoad.emit();
-      });
-    } else {
-      this.isLoaded = true;
-    }
   }
 
   serialize() {
@@ -113,6 +103,17 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
     this.aborter?.abort();
     this.removeTrace();
     delete BaseChatService.services[this.id];
+  }
+
+  // Load chat history.
+  async load() {
+    if (this.isLoaded)
+      return;
+    if (this.loadPromise)
+      return await this.loadPromise;
+    this.loadPromise = this.loadHistory();
+    await this.loadPromise;
+    this.isLoaded = true;
   }
 
   // Restore from serialized history data.
@@ -381,6 +382,16 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
     this.pending = false;
     this.pendingMessage = null;
     this.onMessage.emit(message);
+  }
+
+  // Load history from disk.
+  protected async loadHistory() {
+    if (!this.moment)
+      return;
+    // Load from saved history.
+    const data = await historyKeeper.remember(this.moment);
+    if (data)
+      this.deserializeHistory(data);
   }
 
   // Write history to disk.

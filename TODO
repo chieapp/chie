@@ -1,5 +1,4 @@
 * chat view
-  * synch panel size when switching chats in dashboard
   * show suggestions in blank chat view
 * entry
   * flash when sening empty message
@@ -12,3 +11,4 @@
   * save custom icon to smaller size
   * update yoga to use gap
   * lazy main view creation / reuse same type of view in dashboard
+  * load service history lazily

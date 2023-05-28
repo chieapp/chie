@@ -126,13 +126,11 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
       item.destructor();
   }
 
-  loadService(service: BaseMultiChatsService) {
-    if (this.service == service)
-      return;
+  async loadService(service: BaseMultiChatsService) {
     if (!(service instanceof BaseMultiChatsService))
       throw new Error('MultiChatsView can only be used with MultiChatsService');
-    this.unload();
-    super.loadService(service);
+    if (!await super.loadService(service))
+      return false;
 
     // Load existing chats.
     if (this.service.chats.length == 0)
@@ -146,6 +144,7 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
     this.connections.add(service.onNewChat.connect(this.#onNewChat.bind(this)));
     this.connections.add(service.onRemoveChat.connect(this.#onRemoveChat.bind(this)));
     this.connections.add(service.onClearChats.connect(this.#onClearChats.bind(this)));
+    return true;
   }
 
   unload() {

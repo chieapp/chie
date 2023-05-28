@@ -155,22 +155,18 @@ export default class ChatView extends BaseView<BaseChatService> {
   }
 
   async loadService(service: BaseChatService) {
-    if (this.service == service)
-      return;
     if (!(service instanceof BaseChatService))
       throw new Error('ChatView can only be used with BaseChatService.');
-    // Clear previous load.
-    this.unload();
+    if (!await super.loadService(service))
+      return false;
+
     // Delay loading until the service is ready.
-    if (!service.isLoaded) {
-      this.serviceConnections.add(service.onLoad.connect(this.loadService.bind(this, service)));
-      return;
-    }
+    await service.load();
     // Load messages.
     this.messagesView.loadChatService(service);
-    super.loadService(service);
     this.onNewTitle.emit();
     this.#updateSwitchButton();
+
     // Connect signals.
     this.serviceConnections.add(service.onNewTitle.connect(
       this.onNewTitle.emit.bind(this.onNewTitle)));
@@ -211,6 +207,7 @@ export default class ChatView extends BaseView<BaseChatService> {
           this.service.history[this.service.history.length - 1].role == ChatRole.User)
         this.messagesView.setReplyActions(['resend']);
     }
+    return true;
   }
 
   unload() {

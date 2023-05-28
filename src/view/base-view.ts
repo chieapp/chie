@@ -19,10 +19,16 @@ export default abstract class BaseView<T extends WebService<WebAPI> = WebService
     this.unload();
   }
 
-  loadService(service: T) {
+  // Load service, return false if there is nothing to do in sub-classes.
+  async loadService(service: T) {
+    if (this.service == service)
+      return false;
+    this.unload();
     this.service = service;
+    return true;
   }
 
+  // Disconnect from the service.
   unload() {
     this.service = null;
     this.serviceConnections.disconnectAll();

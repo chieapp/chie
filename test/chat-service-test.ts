@@ -46,7 +46,7 @@ describe('ChatService', () => {
     await historyKeeper.flush();
     assert.deepEqual(record, await historyKeeper.remember(moment));
     service = new ChatService({name: 'Test', api: service.api, moment});
-    await new Promise<void>((resolve) => service.onLoad.connect(resolve));
+    await service.load();
     assert.equal(record.title, service.getTitle());
     assert.deepEqual(record.history, service.history);
   });

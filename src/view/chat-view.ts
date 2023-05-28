@@ -2,16 +2,17 @@ import gui from 'gui';
 import {SignalConnections} from 'typed-signals';
 
 import BaseChatService from '../model/base-chat-service';
-import BaseView from './base-view';
-import IconButton from './icon-button';
-import InputView from './input-view';
-import MessagesView from './messages-view';
+import BaseView from '../view/base-view';
+import IconButton from '../view/icon-button';
+import InputView from '../view/input-view';
+import MessagesView from '../view/messages-view';
 import StreamedMarkdown from '../util/streamed-markdown';
-import SwitcherButton from './switcher-button';
-import TextWindow from './text-window';
+import SwitcherButton from '../view/switcher-button';
+import TextWindow from '../view/text-window';
 import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
-import basicStyle from './basic-style';
+import basicStyle from '../view/basic-style';
+import serviceManager from '../controller/service-manager';
 import {APIError} from '../model/errors';
 import {
   ChatRole,
@@ -102,7 +103,7 @@ export default class ChatView extends BaseView<BaseChatService> {
 
     this.exportButton = new IconButton('export');
     this.exportButton.view.setTooltip('Export conversation');
-    this.exportButton.onClick = () => runExportMenu(this.view.getWindow(), this.service);
+    this.exportButton.onClick = () => runExportMenu(this.exportButton.view, this.service);
     this.toolbar.addChildView(this.exportButton.view);
 
     this.input = new InputView();
@@ -253,14 +254,24 @@ export default class ChatView extends BaseView<BaseChatService> {
       switcher.destructor();
     }
     this.switchers = [];
-    const record = apiManager.getAPIRecord(this.service.api.endpoint.type);
-    if (!record.params)
-      return;
-    for (const param of record.params) {
-      if (param.hasSwitcher) {
-        const switcher = new SwitcherButton(this.service, param);
-        this.toolbar.addChildView(switcher.view);
-        this.switchers.push(switcher);
+    const serviceRecord = serviceManager.getRegisteredServices().find(record => this.service.constructor == record.serviceClass);
+    if (serviceRecord?.params) {
+      for (const param of serviceRecord.params) {
+        if (param.hasSwitcher) {
+          const switcher = new SwitcherButton(this.service, param, false);
+          this.toolbar.addChildView(switcher.view);
+          this.switchers.push(switcher);
+        }
+      }
+    }
+    const apiRecord = apiManager.getAPIRecord(this.service.api.endpoint.type);
+    if (apiRecord?.params) {
+      for (const param of apiRecord.params) {
+        if (param.hasSwitcher) {
+          const switcher = new SwitcherButton(this.service, param, true);
+          this.toolbar.addChildView(switcher.view);
+          this.switchers.push(switcher);
+        }
       }
     }
   }

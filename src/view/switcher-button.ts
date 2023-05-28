@@ -8,20 +8,26 @@ import serviceManager from '../controller/service-manager';
 export default class SwitcherButton extends IconButton {
   service: BaseChatService;
   param: Param;
+  isAPIParam: boolean;
 
-  constructor(service: BaseChatService, param: Param) {
+  constructor(service: BaseChatService, param: Param, isAPIParam: boolean) {
     super('switch');
     this.service = service;
     this.param = param;
+    this.isAPIParam = isAPIParam;
 
     this.updateTitle();
     this.view.setTooltip(`Switch ${param.displayName}`);
-    this.connections.add(service.onChangeAPIParams.connect(this.updateTitle.bind(this)));
     this.onClick = this.runMenu.bind(this);
+
+    const signal = this.isAPIParam ? service.onChangeAPIParams : service.onChangeParams;
+    this.connections.add(signal.connect(this.updateTitle.bind(this)));
   }
 
   updateTitle() {
-    let title = this.service.api.getParam(this.param.name);
+    let title = this.isAPIParam ?
+      this.service.getAPIParam(this.param.name) :
+      this.service.getParam(this.param.name);
     if (this.param.type == 'selection')
       title = this.param.selections.find(s => s.value == title)?.name;
     if (title)
@@ -34,7 +40,10 @@ export default class SwitcherButton extends IconButton {
       options = this.param.preset.map(str => ({
         label: str,
         onClick: () => {
-          this.service.setAPIParam(this.param.name, str);
+          if (this.isAPIParam)
+            this.service.setAPIParam(this.param.name, str);
+          else
+            this.service.setParam(this.param.name, str);
           serviceManager.saveConfig();
         },
       }));
@@ -42,13 +51,20 @@ export default class SwitcherButton extends IconButton {
       options = this.param.selections.map(selection => ({
         label: selection.name,
         onClick: () => {
-          this.service.setAPIParam(this.param.name, selection.value);
+          if (this.isAPIParam)
+            this.service.setAPIParam(this.param.name, selection.value);
+          else
+            this.service.setParam(this.param.name, selection.value);
           serviceManager.saveConfig();
         },
       }));
     } else {
       throw new Error(`Parameter ${this.param.displayName} does not have preset choices.`);
     }
-    gui.Menu.create(options).popup();
+    const point = this.view.getBoundsInScreen();
+    point.y += point.height;
+    if (process.platform == 'darwin')  // macOS slightly shows menu higher
+      point.y += 8;
+    gui.Menu.create(options).popupAt(point);
   }
 }

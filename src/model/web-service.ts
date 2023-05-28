@@ -117,6 +117,10 @@ export default class WebService<T extends WebAPI, P extends object = object> imp
     return true;
   }
 
+  getAPIParam(name: string) {
+    return this.api.getParam(name);
+  }
+
   setParam(name: string, value) {
     if (!this.params)
       this.params = {} as P;
@@ -135,6 +139,10 @@ export default class WebService<T extends WebAPI, P extends object = object> imp
     this.params = Object.assign({}, params);
     this.onChangeParams.emit();
     return true;
+  }
+
+  getParam(name: string) {
+    return this.params ? this.params[name] : null;
   }
 }
 

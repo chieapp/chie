@@ -3,7 +3,7 @@ import gui from 'gui';
 
 import BaseChatService from '../model/base-chat-service';
 
-export function runExportMenu(win: gui.Window, service: BaseChatService) {
+export function runExportMenu(view: gui.View, service: BaseChatService) {
   const menu = gui.Menu.create([
     {
       label: 'Copy JSON',
@@ -16,14 +16,18 @@ export function runExportMenu(win: gui.Window, service: BaseChatService) {
     {type: 'separator'},
     {
       label: 'Export to JSON',
-      onClick: () => exportToFile(win, `${service.getTitle()}.json`, chatToJSON(service)),
+      onClick: () => exportToFile(view.getWindow(), `${service.getTitle()}.json`, chatToJSON(service)),
     },
     {
       label: 'Export to Text',
-      onClick: () => exportToFile(win, `${service.getTitle()}.txt`, chatToText(service)),
+      onClick: () => exportToFile(view.getWindow(), `${service.getTitle()}.txt`, chatToText(service)),
     },
   ]);
-  menu.popup();
+  const point = view.getBoundsInScreen();
+  point.y += point.height;
+  if (process.platform == 'darwin')  // macOS slightly shows menu higher
+    point.y += 8;
+  menu.popupAt(point);
 }
 
 function chatToJSON(service: BaseChatService) {

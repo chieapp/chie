@@ -44,7 +44,7 @@ export default class ChatListItem extends Clickable {
     this.closeButton.onClick = () => this.onClose.emit(this);
     this.view.addChildView(this.closeButton.view);
 
-    this.service.load().then(() => this.setTitle(service.getTitle()));
+    this.setTitle(service.getTitle());
     this.connections.add(service.onNewTitle.connect(this.setTitle.bind(this)));
   }
 

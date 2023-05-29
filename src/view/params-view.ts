@@ -127,7 +127,10 @@ export class PickerParamRow extends ParamRow<gui.Picker> {
     let selections = this.param.selections;
     if (this.param.constrain && this.constrainedBy) {
       const controllingValue = this.constrainedBy.getValue();
-      selections = selections.filter(s => this.param.constrain(controllingValue, s.value));
+      if (controllingValue)
+        selections = selections.filter(s => this.param.constrain(controllingValue, s.value));
+      else
+        selections = [];
     }
     this.editor.clear();
     if (this.nullable)
@@ -170,8 +173,11 @@ export class PickerParamRow extends ParamRow<gui.Picker> {
   }
 
   #updateDescription() {
-    const text = this.getValue()['description'] ?? '';
-    this.description.setText(text);
+    const value = this.getValue();
+    if (value) {
+      const text = value['description'] ?? '';
+      this.description.setText(text);
+    }
   }
 }
 

@@ -13,6 +13,7 @@ import {isEmptyObject, shallowEqual} from '../util/object-utils';
 
 interface ChildData<P extends object> {
   moment: string;
+  title?: string;
   apiParams?: Record<string, string>;
   params?: P;
 }
@@ -46,8 +47,9 @@ export default class BaseMultiChatsService<T extends WebAPI = WebAPI, P extends 
     super(options);
     this.chatServiceType = chatServiceType;
     if (options.chats) {
-      this.chats = options.chats.map(({moment, apiParams, params}) => new this.chatServiceType({
+      this.chats = options.chats.map(({moment, title, apiParams, params}) => new this.chatServiceType({
         moment,
+        title,
         name: options.name,
         icon: options.icon,
         api: options.api.clone() as T,
@@ -64,6 +66,8 @@ export default class BaseMultiChatsService<T extends WebAPI = WebAPI, P extends 
     const data: BaseMultiChatsServiceData<P> = super.serialize();
     data.chats = this.chats.filter(service => service.moment).map(service => {
       const data: ChildData<P> = {moment: service.moment};
+      if (service.getTitle())
+        data.title = service.getTitle();
       if (!isEmptyObject(service.api.params) &&
           !shallowEqual(this.api.params, service.api.params)) {
         data.apiParams = service.api.params;

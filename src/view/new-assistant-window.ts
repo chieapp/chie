@@ -165,7 +165,7 @@ export default class NewAssistantWindow extends BaseWindow {
 
     // Service may not have params.
     const serviceRecord = this.serviceSelector.getValue('service');
-    if (!serviceRecord.params)
+    if (!serviceRecord?.params)
       return;
 
     // There are only options for ChatCompletionAPI for now.
@@ -195,8 +195,10 @@ export default class NewAssistantWindow extends BaseWindow {
     }
     // Skip if the API does not support custom parameter.
     const endpoint = this.serviceSelector.getValue('api');
+    if (!endpoint)
+      return;
     const apiRecord = apiManager.getAPIRecord(endpoint.type);
-    if (!apiRecord.params || apiRecord.params.length == 0)
+    if (!apiRecord || !apiRecord.params || apiRecord.params.length == 0)
       return;
 
     // Create params view and fill with service.params.
@@ -223,6 +225,8 @@ export default class NewAssistantWindow extends BaseWindow {
   #updateDefaultIcon() {
     // Get default icon of endpoint.
     const endpoint = this.serviceSelector.getValue('api');
+    if (!endpoint)
+      return;
     const icon = apiManager.getAPIRecord(endpoint.type).icon;
     // Update the icon view.
     const row = this.serviceSelector.getRow('icon') as IconParamRow;

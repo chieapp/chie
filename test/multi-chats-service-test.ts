@@ -45,7 +45,7 @@ describe('MultiChatsService', () => {
       name: 'Test',
       api: service.api.endpoint.id,
       icon: 'chie://app-file/assets/icons/bot.png',
-      chats: [ {moment} ],
+      chats: [ {moment, title: 'Test from disk'} ],
     };
     service = new MultiChatsService(MultiChatsService.deserialize(data));
     await service.chats[0].load();

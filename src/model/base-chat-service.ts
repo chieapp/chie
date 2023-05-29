@@ -16,10 +16,12 @@ export interface BaseChatHistoryData {
 
 export interface BaseChatServiceData extends WebServiceData {
   moment?: string;
+  title?: string;
 }
 
 export interface BaseChatServiceOptions<T extends WebAPI = WebAPI, P extends object = object> extends WebServiceOptions<T, P> {
   moment?: string;
+  title?: string;
 }
 
 export interface SendMessageOptions {
@@ -81,12 +83,15 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
     const options = WebService.deserialize(data) as BaseChatServiceOptions;
     if (typeof data.moment == 'string')
       options.moment = data.moment;
+    if (typeof data.title == 'string')
+      options.title = data.title;
     return options;
   }
 
   constructor(options: BaseChatServiceOptions<T, P>) {
     super(options);
     this.moment = options.moment;
+    this.title = options.title;
     BaseChatService.services[this.id] = this;
   }
 
@@ -94,6 +99,8 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
     const data: BaseChatServiceData = super.serialize();
     if (this.moment)
       data.moment = this.moment;
+    if (this.getTitle())
+      data.title = this.title;
     return data;
   }
 
@@ -273,8 +280,7 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
 
   setCustomTitle(title: string) {
     this.customTitle = title;
-    this.onNewTitle.emit(title);
-    this.saveHistory();
+    this.notifyNewTitle(title);
   }
 
   // Abort current message.
@@ -331,8 +337,7 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
     if (title.endsWith('.'))
       title = title.slice(0, -1);
     this.title = title;
-    this.onNewTitle.emit(title);
-    this.saveHistory();
+    this.notifyNewTitle(title);
   }
 
   // Error happened when requesting chat response.
@@ -382,6 +387,15 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
     this.pending = false;
     this.pendingMessage = null;
     this.onMessage.emit(message);
+  }
+
+  // Notify the title of chat has changed.
+  protected notifyNewTitle(title: string | null) {
+    this.onNewTitle.emit(title);
+    // The title is written to both chat history and the main config file, the
+    // latter is used for cache purpose when showing UI.
+    this.saveHistory();
+    serviceManager.saveConfig();
   }
 
   // Load history from disk.

@@ -1,7 +1,8 @@
-import Queue from 'queue';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'fs-extra';
+
+import AtomicWriter from '../util/atomic-writer';
 
 const CONFIG_VERSION = 1;
 
@@ -14,10 +15,6 @@ export abstract class ConfigStoreItem {
   saveConfig() {
     return this.store?.saveToFile();
   }
-
-  saveConfigSync() {
-    this.store?.saveToFileSync();
-  }
 }
 
 export default class ConfigStore extends ConfigStoreItem {
@@ -26,13 +23,13 @@ export default class ConfigStore extends ConfigStoreItem {
 
   dir: string;
   #file: string;
-  #queue: Queue;
+  #writer: AtomicWriter;
 
   constructor(name: string) {
     super();
     this.dir = getConfigDir(require('../../package.json').build.productName);
     this.#file = path.join(this.dir, `${name}.json`);
-    this.#queue = new Queue({concurrency: 1});
+    this.#writer = new AtomicWriter(this.#file);
   }
 
   deserialize(config) {
@@ -66,15 +63,7 @@ export default class ConfigStore extends ConfigStoreItem {
   async saveToFile() {
     if (this.inMemory)
       return;
-    this.#queue.end();
-    await fs.outputJson(this.#file, this.serialize(), {spaces: 2});
-  }
-
-  saveToFileSync() {
-    if (this.inMemory)
-      return;
-    this.#queue.end();
-    fs.outputJsonSync(this.#file, this.serialize(), {spaces: 2});
+    await this.#writer.write(JSON.stringify(this.serialize(), null, 2));
   }
 
   addItem(key: string, item: ConfigStoreItem) {

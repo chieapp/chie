@@ -81,11 +81,11 @@ export class WindowManager extends ConfigStoreItem {
     return this.windows.find(w => w.window.isActive());
   }
 
-  quit() {
+  async quit() {
     // Save states before quitting.
     this.#chatWindows.saveWindowStates();
     this.#namedWindows.saveWindowStates();
-    this.saveConfigSync();
+    await this.saveConfig();
     // Quit.
     if (gui.MessageLoop.quit)
       gui.MessageLoop.quit();

@@ -5,9 +5,14 @@ import AppTray from '../view/app-tray';
 import {ConfigStoreItem} from '../model/config-store';
 import {collectGarbage} from './gc-center';
 
-type AppData = {hideTrayIcon?: boolean, hideDockIcon?: boolean};
+interface AppData {
+  hideTrayIcon?: boolean;
+  hideDockIcon?: boolean;
+  notFirstTime?: boolean;
+}
 
 export class App extends ConfigStoreItem {
+  firstTimeStart = true;
   menuBar?: AppMenuBar;
   tray?: AppTray;
 
@@ -22,6 +27,8 @@ export class App extends ConfigStoreItem {
       this.tray = new AppTray();
     if (process.platform == 'darwin' && data.hideDockIcon)
       this.setDockIconVisible(false);
+    if (data.notFirstTime)
+      this.firstTimeStart = false;
     // There is no config for menuBar but we should only create it after config
     // is read.
     if (process.platform == 'darwin')
@@ -29,7 +36,7 @@ export class App extends ConfigStoreItem {
   }
 
   serialize() {
-    const data: AppData = {};
+    const data: AppData = {notFirstTime: true};
     if (!this.tray)
       data.hideTrayIcon = true;
     if (process.platform == 'darwin' && !this.isDockIconVisible())

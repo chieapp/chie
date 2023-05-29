@@ -9,6 +9,7 @@ import NewAPIWindow from '../view/new-api-window';
 import NewAssistantWindow from '../view/new-assistant-window';
 import SplitView, {SplitViewState} from '../view/split-view';
 import ToggleButton from '../view/toggle-button';
+import WelcomeBoard from '../view/welcome-board';
 import basicStyle from '../view/basic-style';
 import serviceManager from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
@@ -46,11 +47,13 @@ export default class DashboardWindow extends BaseWindow {
 
   #sidebar: AppearanceAware;
   #addButton: IconButton;
+  #welcomeBoard?: WelcomeBoard;
 
   constructor() {
     super({showMenuBar: true, useClassicBackground: true});
 
     this.window.setTitle('Dashboard');
+    this.window.setContentSize({width: 800, height: 600});
     this.window.onFocus = () => this.selectedView?.mainView.onFocus();
     this.contentView.setStyle({flexDirection: 'row'});
 
@@ -69,6 +72,7 @@ export default class DashboardWindow extends BaseWindow {
     this.#addButton.onClick = () => windowManager.showNamedWindow('newAssistant');
     this.#sidebar.view.addChildView(this.#addButton.view);
 
+    // Create views for assistants.
     for (const instance of serviceManager.getInstances())
       this.#createViewForInstance(instance);
     this.connections.add(serviceManager.onRemoveInstance.connect(
@@ -77,6 +81,10 @@ export default class DashboardWindow extends BaseWindow {
       this.#createViewForInstance(instance);
       this.switchTo(index);
     }));
+
+    // Show welcome board if there is no assistant.
+    if (this.views.length == 0)
+      this.#createWelcomeBoard();
   }
 
   destructor() {
@@ -87,6 +95,8 @@ export default class DashboardWindow extends BaseWindow {
     }
     this.#addButton.destructor();
     this.#sidebar.destructor();
+    if (this.#welcomeBoard)
+      this.#welcomeBoard.destructor();
   }
 
   saveState(): DashboardState {
@@ -187,11 +197,27 @@ export default class DashboardWindow extends BaseWindow {
     this.contentView.removeChildView(view.mainView.view);
     this.#sidebar.view.removeChildView(view.button.view);
     this.#sidebar.view.schedulePaint();
+    // Show welcome board if there is no view.
+    if (!this.selectedView) {
+      this.window.setTitle('Dashboard');
+      this.#createWelcomeBoard();
+    }
+  }
+
+  #createWelcomeBoard() {
+    if (this.#welcomeBoard)
+      return;
+    this.#welcomeBoard = new WelcomeBoard();
+    this.contentView.addChildView(this.#welcomeBoard.view);
   }
 
   #onSelect(view: InstanceView) {
     if (this.selectedView == view)
       return;
+    if (this.#welcomeBoard) {
+      this.contentView.removeChildView(this.#welcomeBoard.view);
+      this.#welcomeBoard = null;
+    }
     // Switch button state.
     view.button.setSelected(true);
     this.selectedView?.button.setSelected(false);

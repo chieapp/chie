@@ -72,8 +72,14 @@ export default class APIParamsView extends ParamsView {
       if (this.apiRecord.auth == 'login')
         result.cookie = this.getValue('cookie');
     }
-    if (this.apiRecord.params)
+    if (this.apiRecord.params) {
       result.params = this.readParams() as Record<string, string>;
+      if (this.showAuthParams) {
+        delete result.params['url'];
+        delete result.params['key'];
+        delete result.params['cookie'];
+      }
+    }
     return result;
   }
 }

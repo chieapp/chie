@@ -9,6 +9,8 @@ import WebService, {
   WebServiceData,
   WebServiceOptions,
 } from '../model/web-service';
+import serviceManager from '../controller/service-manager';
+import {collectGarbage} from '../controller/gc-center';
 import {isEmptyObject, shallowEqual} from '../util/object-utils';
 
 interface ChildData<P extends object> {
@@ -146,6 +148,7 @@ export default class BaseMultiChatsService<T extends WebAPI = WebAPI, P extends 
     });
     this.chats.unshift(chat);
     this.onNewChat.emit(chat);
+    serviceManager.saveConfig();
     return chat;
   }
 
@@ -157,6 +160,8 @@ export default class BaseMultiChatsService<T extends WebAPI = WebAPI, P extends 
     this.onRemoveChat.emit(index);
     if (this.chats.length == 0)
       this.createChat();
+    serviceManager.saveConfig();
+    collectGarbage();
   }
 
   clearChats() {
@@ -165,5 +170,7 @@ export default class BaseMultiChatsService<T extends WebAPI = WebAPI, P extends 
     this.chats = [];
     this.onClearChats.emit();
     this.createChat();
+    serviceManager.saveConfig();
+    collectGarbage();
   }
 }

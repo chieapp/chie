@@ -5,8 +5,6 @@ import ChatListItem from '../view/chat-list-item';
 import ChatView from '../view/chat-view';
 import SplitView, {SplitViewState, resizeHandleWidth} from '../view/split-view';
 import basicStyle from '../view/basic-style';
-import {config} from '../controller/configs';
-import {collectGarbage} from '../controller/gc-center';
 
 export const style = {
   light: {
@@ -63,7 +61,7 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
   chatView: ChatView;
 
   #items: ChatListItem[] = [];
-  #selectedItem?: ChatListItem;
+  #selectedIndex?: number;
 
   #chatListScroll: gui.Scroll;
   #chatList: gui.Container;
@@ -129,6 +127,8 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
   async loadService(service: BaseMultiChatsService) {
     if (!(service instanceof BaseMultiChatsService))
       throw new Error('MultiChatsView can only be used with MultiChatsService');
+    if (this.service && this.service != service)  // changing service should reset selected item
+      this.#selectedIndex = null;
     if (!await super.loadService(service))
       return false;
 
@@ -140,10 +140,12 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
       this.#items.push(item);
       this.#chatList.addChildView(item.view);
     }
-    this.#items[0].setSelected(true);
-    this.connections.add(service.onNewChat.connect(this.#onNewChat.bind(this)));
-    this.connections.add(service.onRemoveChat.connect(this.#onRemoveChat.bind(this)));
-    this.connections.add(service.onClearChats.connect(this.#onClearChats.bind(this)));
+    // Restore selected item, the index is read in restoreState.
+    this.#items[this.#selectedIndex ?? 0]?.setSelected(true);
+    // Listen to events of service.
+    this.serviceConnections.add(service.onNewChat.connect(this.#onNewChat.bind(this)));
+    this.serviceConnections.add(service.onRemoveChat.connect(this.#onRemoveChat.bind(this)));
+    this.serviceConnections.add(service.onClearChats.connect(this.#onClearChats.bind(this)));
     return true;
   }
 
@@ -165,13 +167,13 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
   }
 
   saveState(): MultiChatsViewState {
-    return Object.assign(super.saveState(), {selected: this.#items.indexOf(this.#selectedItem)});
+    return Object.assign(super.saveState(), {selected: this.#selectedIndex});
   }
 
   restoreState(state?: MultiChatsViewState) {
     super.restoreState(state);
-    if (state?.selected)
-      this.#items[state.selected]?.setSelected(true);
+    if (state?.selected >= 0)
+      this.#selectedIndex = state?.selected;
     // The bounds of views are not changed immediately, so delay update a
     // tick to wait for resize.
     setImmediate(() => this.onResize());
@@ -182,15 +184,17 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
   }
 
   showPreviousChat() {
-    const index = this.#items.indexOf(this.#selectedItem);
-    if (index > -1)
-      this.#items[(index - 1 + this.#items.length) % this.#items.length].setSelected(true);
+    if (this.#selectedIndex == null)
+      return;
+    const prev = (this.#selectedIndex - 1 + this.#items.length) % this.#items.length;
+    this.#items[prev].setSelected(true);
   }
 
   showNextChat() {
-    const index = this.#items.indexOf(this.#selectedItem);
-    if (index > -1)
-      this.#items[(index + 1) % this.#items.length].setSelected(true);
+    if (this.#selectedIndex == null)
+      return;
+    const next = (this.#selectedIndex + 1) % this.#items.length;
+    this.#items[next].setSelected(true);
   }
 
   #createItemForChat(service) {
@@ -203,10 +207,11 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
   }
 
   async #onSelectItem(item: ChatListItem) {
-    if (this.#selectedItem && this.#selectedItem != item)
-      this.#selectedItem.setSelected(false);
-    this.#selectedItem = item;
-    await this.chatView.loadService(this.#selectedItem.service);
+    const selectedItem = this.#selectedIndex == null ? null : this.#items[this.#selectedIndex];
+    if (selectedItem && selectedItem != item)
+      selectedItem.setSelected(false);
+    this.#selectedIndex = this.#items.indexOf(item);
+    await this.chatView.loadService(item.service);
   }
 
   #onCloseItem(item: ChatListItem) {
@@ -223,14 +228,13 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
     this.#chatList.addChildViewAt(item.view, 0);
     this.onResize();
     item.setSelected(true);
-    config.saveToFile();
   }
 
   #onRemoveChat(index: number) {
     if (this.#items.length == 1)  // shortcut
       return this.#onClearChats();
     const item = this.#items[index];
-    if (this.#selectedItem == item) {
+    if (this.#selectedIndex == index) {
       // If closed item is selected, move selection to siblings.
       if (index + 1 < this.#items.length)
         this.#items[index + 1].setSelected(true);
@@ -241,8 +245,6 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
     this.#items.splice(index, 1);
     this.onResize();
     item.destructor();
-    config.saveToFile();
-    collectGarbage();
   }
 
   #onClearChats() {
@@ -251,7 +253,6 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
       item.destructor();
     }
     this.#items = [];
-    this.#selectedItem = null;
-    collectGarbage();
+    this.#selectedIndex = null;
   }
 }

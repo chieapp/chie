@@ -28,17 +28,13 @@ export default class AssistantsMenu extends SignalsOwner {
       this.#onNewInstance.bind(this)));
     this.connections.add(serviceManager.onRemoveInstance.connect(
       this.#onRemoveInstance.bind(this)));
+    this.connections.add(serviceManager.onReorderInstance.connect(
+      this.#onReorderInstance.bind(this)));
   }
 
   #onNewInstance(instance: Instance, index: number) {
-    const options = this.createAssistantMenuItem(instance);
-    if (this.acceleratorPrefix)
-      options.accelerator = `${this.acceleratorPrefix}+${index + 1}`;
-    const item = gui.MenuItem.create(options);
-    if (this.menuIndex == -1)
-      this.menu.append(item);
-    else
-      this.menu.insert(item, this.menuIndex + index);
+    const item = this.#createMenuItem(instance, index);
+    this.menu.insert(item, this.menuIndex + index);
     this.#assistants.push({instance, item});
   }
 
@@ -52,10 +48,26 @@ export default class AssistantsMenu extends SignalsOwner {
       this.#updateAssistantsMenuAccelerators();
   }
 
+  #onReorderInstance(instance: Instance, fromIndex: number, toIndex: number) {
+    const item = this.#assistants[fromIndex].item;
+    this.menu.remove(item);
+    this.menu.insert(item, this.menuIndex + toIndex);
+    this.#assistants.splice(fromIndex, 1);
+    this.#assistants.splice(toIndex, 0, {instance, item});
+    this.#updateAssistantsMenuAccelerators();
+  }
+
   #updateAssistantsMenuAccelerators() {
     if (!this.acceleratorPrefix)
       return;
     for (let i = 0; i < this.#assistants.length; ++i)
       this.#assistants[i].item.setAccelerator(`${this.acceleratorPrefix}+${i + 1}`);
+  }
+
+  #createMenuItem(instance: Instance, index: number) {
+    const options = this.createAssistantMenuItem(instance);
+    if (this.acceleratorPrefix)
+      options.accelerator = `${this.acceleratorPrefix}+${index + 1}`;
+    return gui.MenuItem.create(options);
   }
 }

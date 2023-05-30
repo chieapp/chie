@@ -1,8 +1,8 @@
 import gui from 'gui';
 
-import Clickable from './clickable';
+import Clickable from '../view/clickable';
 import {createRoundedCornerPath} from '../util/draw-utils';
-import {style} from './dashboard-window';
+import {style} from '../view/dashboard-window';
 
 export default class ToggleButton extends Clickable {
   image?: gui.Image;

@@ -42,17 +42,18 @@ export type ServiceRecord = {
 export class ServiceManager extends ConfigStoreItem {
   onNewInstance: Signal<(instance: Instance, index: number) => void> = new Signal;
   onRemoveInstance: Signal<(instance: Instance) => void> = new Signal;
+  onReorderInstance: Signal<(instance: Instance, fromIndex: number, toIndex:number) => void> = new Signal;
 
   #services: Record<string, ServiceRecord> = {};
   #views: BaseViewType[] = [];
-  #instances: Record<string, Instance> = {};
+  #instances: Instance[] = [];
 
   deserialize(data: ServiceManagerData) {
     if (!data)  // accepts empty data
       data = {};
     if (typeof data != 'object')
       throw new Error(`Unknown data for "services": ${JSON.stringify(data)}.`);
-    this.#instances = {};
+    this.#instances = [];
     for (const id in data) {
       const item = data[id];
       if (typeof item.serviceName != 'string' ||
@@ -77,18 +78,17 @@ export class ServiceManager extends ConfigStoreItem {
       // Deserialize using the service type's method.
       const options = baseClass.deserialize(item.service);
       const service = new record.serviceClass(options);
-      this.#instances[id] = {id, serviceName, service, viewClass};
+      this.#instances.push({id, serviceName, service, viewClass});
     }
   }
 
   serialize() {
     const data: ServiceManagerData = {};
-    for (const id in this.#instances) {
-      const ins = this.#instances[id];
-      data[id] = {
-        serviceName: ins.serviceName,
-        service: ins.service.serialize(),
-        view: ins.viewClass.name,
+    for (const instance of this.#instances) {
+      data[instance.id] = {
+        serviceName: instance.serviceName,
+        service: instance.service.serialize(),
+        view: instance.viewClass.name,
       };
     }
     return data;
@@ -143,7 +143,7 @@ export class ServiceManager extends ConfigStoreItem {
     if (!viewClasses.find(V => matchClass(V, viewClass)))
       throw new Error(`Service "${serviceName}" does not support View type "${viewClass.name}".`);
     // Create a new instance of service.
-    const ids = Object.keys(this.#instances);
+    const ids = this.#instances.map(instance => instance.id);
     const id = getNextId(name, ids);
     const serviceOptions = deepAssign({name, api: new apiClass(endpoint), icon}, options);
     if (serviceOptions.icon)
@@ -154,7 +154,7 @@ export class ServiceManager extends ConfigStoreItem {
       service: new serviceClass(serviceOptions),
       viewClass,
     };
-    this.#instances[id] = instance;
+    this.#instances.push(instance);
     this.onNewInstance.emit(instance, ids.length);
     this.saveConfig();
     return instance;
@@ -166,23 +166,37 @@ export class ServiceManager extends ConfigStoreItem {
   }
 
   removeInstanceById(id: string) {
-    const instance = this.getInstanceById(id);
+    const index = this.#instances.findIndex(instance => instance.id == id);
+    if (index == -1)
+      throw new Error(`Can not find instance of ID "${id}".`);
+    const instance = this.#instances[index];
     this.#removeIcon(instance.service.icon);
     instance.service.destructor();
-    delete this.#instances[id];
+    this.#instances.splice(index, 1);
     this.onRemoveInstance.emit(instance);
     this.saveConfig();
     collectGarbage();
   }
 
   getInstanceById(id: string) {
-    if (!(id in this.#instances))
-      throw new Error(`Can not find instance with ID: ${id}`);
-    return this.#instances[id];
+    const instance = this.#instances.find(instance => instance.id == id);
+    if (!instance)
+      throw new Error(`Can not find instance of ID "${id}".`);
+    return instance;
+  }
+
+  reorderInstance(fromIndex: number, toIndex: number) {
+    if (fromIndex < 0 || fromIndex >= this.#instances.length ||
+        toIndex < 0 || toIndex >= this.#instances.length)
+      throw new RangeError(`Invalid index: ${fromIndex}, ${toIndex}.`);
+    const [instance] = this.#instances.splice(fromIndex, 1);
+    this.#instances.splice(toIndex, 0, instance);
+    this.onReorderInstance.emit(instance, fromIndex, toIndex);
+    this.saveConfig();
   }
 
   getInstances() {
-    return Object.values(this.#instances);
+    return this.#instances;
   }
 
   // If the icon file is located outside app's bundle, copy it to user data dir.

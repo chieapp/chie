@@ -1,12 +1,12 @@
 import gui from 'gui';
 
-import AppearanceAware from '../view/appearance-aware';
 import BaseView, {ViewState} from '../view/base-view';
 import BaseWindow, {WindowState} from '../view/base-window';
 import IconButton from '../view/icon-button';
 import Instance from '../model/instance';
 import NewAPIWindow from '../view/new-api-window';
 import NewAssistantWindow from '../view/new-assistant-window';
+import SortableList from '../view/sortable-list';
 import SplitView, {SplitViewState} from '../view/split-view';
 import ToggleButton from '../view/toggle-button';
 import WelcomeBoard from '../view/welcome-board';
@@ -45,7 +45,7 @@ export default class DashboardWindow extends BaseWindow {
   // Most of the views are SplitView, make them have same panel width.
   #splitViewState?: SplitViewState;
 
-  #sidebar: AppearanceAware;
+  #sidebar: SortableList;
   #addButton: IconButton;
   #welcomeBoard?: WelcomeBoard;
 
@@ -57,13 +57,11 @@ export default class DashboardWindow extends BaseWindow {
     this.window.onFocus = () => this.selectedView?.mainView.onFocus();
     this.contentView.setStyle({flexDirection: 'row'});
 
-    this.#sidebar = new AppearanceAware();
+    this.#sidebar = new SortableList({padding: basicStyle.padding});
     this.#sidebar.view.onDraw = this.#onDraw.bind(this);
-    this.#sidebar.view.setStyle({
-      width: style.buttonSize + 2 * basicStyle.padding,
-      alignItems: 'center',
-    });
+    this.#sidebar.view.setStyle({width: style.buttonSize + 2 * basicStyle.padding});
     this.#sidebar.setBackgroundColor(style.light.bgColor, style.dark.bgColor);
+    this.#sidebar.onReorder.connect(serviceManager.reorderInstance.bind(serviceManager));
     this.contentView.addChildView(this.#sidebar.view);
 
     this.#addButton = new IconButton('add');
@@ -75,12 +73,14 @@ export default class DashboardWindow extends BaseWindow {
     // Create views for assistants.
     for (const instance of serviceManager.getInstances())
       this.#createViewForInstance(instance);
-    this.connections.add(serviceManager.onRemoveInstance.connect(
-      this.#removeViewForInstance.bind(this)));
     this.connections.add(serviceManager.onNewInstance.connect((instance, index) => {
       this.#createViewForInstance(instance);
       this.switchTo(index);
     }));
+    this.connections.add(serviceManager.onRemoveInstance.connect(
+      this.#removeViewForInstance.bind(this)));
+    this.connections.add(serviceManager.onReorderInstance.connect(
+      this.#reorderViewForInstance.bind(this)));
 
     // Show welcome board if there is no assistant.
     if (this.views.length == 0)
@@ -89,10 +89,8 @@ export default class DashboardWindow extends BaseWindow {
 
   destructor() {
     super.destructor();
-    for (const view of this.views) {
-      view.button.destructor();
+    for (const view of this.views)
       view.mainView.destructor();
-    }
     this.#addButton.destructor();
     this.#sidebar.destructor();
     if (this.#welcomeBoard)
@@ -147,11 +145,10 @@ export default class DashboardWindow extends BaseWindow {
     const button = new ToggleButton(instance.service.icon.getImage());
     button.view.setTooltip(instance.service.name);
     button.view.setStyle({
-      marginTop: basicStyle.padding,
       width: style.buttonSize,
       height: style.buttonSize,
     });
-    this.#sidebar.view.addChildViewAt(button.view, this.#sidebar.view.childCount() - 1);
+    this.#sidebar.addItemAt(button, -1);
     // Create the service's view.
     const mainView = new instance.viewClass();
     mainView.view.setVisible(false);
@@ -191,17 +188,23 @@ export default class DashboardWindow extends BaseWindow {
         this.selectedView = null;
     }
     // Destruct and remove views.
-    view.button.destructor();
     view.mainView.destructor();
     this.views.splice(index, 1);
     this.contentView.removeChildView(view.mainView.view);
-    this.#sidebar.view.removeChildView(view.button.view);
+    this.#sidebar.removeItem(view.button);
     this.#sidebar.view.schedulePaint();
     // Show welcome board if there is no view.
     if (!this.selectedView) {
       this.window.setTitle('Dashboard');
       this.#createWelcomeBoard();
     }
+  }
+
+  #reorderViewForInstance(instance: Instance, fromIndex: number, toIndex:number) {
+    const [view] = this.views.splice(fromIndex, 1);
+    this.views.splice(toIndex, 0, view);
+    this.#sidebar.reorderItem(fromIndex, toIndex);
+    this.#sidebar.view.schedulePaint();
   }
 
   #createWelcomeBoard() {

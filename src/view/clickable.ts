@@ -5,6 +5,7 @@ export default abstract class Clickable extends AppearanceAware {
   // Events.
   onClick?: () => void;
   onContextMenu?: () => void;
+  onMouseUp?: (view: gui.View, event: gui.MouseEvent) => boolean;
 
   // States.
   hover = false;
@@ -30,6 +31,8 @@ export default abstract class Clickable extends AppearanceAware {
       return true;
     };
     this.view.onMouseUp = (view, event) => {
+      if (this.onMouseUp && this.onMouseUp(view, event))
+        return true;
       this.pressed = false;
       this.view.schedulePaint();
       const bounds = view.getBounds();

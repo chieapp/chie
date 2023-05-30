@@ -91,7 +91,7 @@ export default class BaseMenuBar extends SignalsOwner {
         { type: 'separator' },
       ],
     });
-    this.#assistantsMenu = new AssistantsMenu(menuItem.getSubmenu(), -1, 'Alt+CmdOrCtrl', (instance) => ({
+    this.#assistantsMenu = new AssistantsMenu(menuItem.getSubmenu(), this.menu.itemCount(), 'Alt+CmdOrCtrl', (instance) => ({
       label: `Open ${instance.service.name}...`,
       onClick: () => windowManager.showChatWindow(instance.id),
     }));
@@ -105,7 +105,7 @@ export default class BaseMenuBar extends SignalsOwner {
       throw new Error('There is no View menu');
     const DashboardWindow = require('./dashboard-window').default;
     this.#viewMenu.append(gui.MenuItem.create('separator'));
-    this.#assistantsMenuInView = new AssistantsMenu(this.#viewMenu, -1, 'CmdOrCtrl', (instance) => ({
+    this.#assistantsMenuInView = new AssistantsMenu(this.#viewMenu, this.#viewMenu.itemCount(), 'CmdOrCtrl', (instance) => ({
       label: `Switch to ${instance.service.name}`,
       validate: () => windowManager.getCurrentWindow() instanceof DashboardWindow,
       onClick: () => {

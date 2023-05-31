@@ -31,10 +31,10 @@ export default abstract class Clickable extends AppearanceAware {
       return true;
     };
     this.view.onMouseUp = (view, event) => {
-      if (this.onMouseUp && this.onMouseUp(view, event))
-        return true;
       this.pressed = false;
       this.view.schedulePaint();
+      if (this.onMouseUp && this.onMouseUp(view, event))
+        return true;
       const bounds = view.getBounds();
       const pos = event.positionInView;
       if (pos.x < 0 || pos.y < 0 || pos.x > bounds.width || pos.y > bounds.height)

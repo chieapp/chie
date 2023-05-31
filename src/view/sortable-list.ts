@@ -17,6 +17,7 @@ export default class SortableList extends AppearanceAware {
   padding: number;
 
   onReorder: Signal<(fromIndex: number, toIndex:number) => void> = new Signal;
+  onDragging: Signal<() => void> = new Signal;
 
   #originY?: number;  // used for computing mouse movement delta
   #maxY?: number;  // the y of last item
@@ -116,6 +117,7 @@ export default class SortableList extends AppearanceAware {
         index += 1;
       this.view.addChildViewAt(this.#placeholder, index);
     }
+    this.onDragging.emit();
     return true;
   }
 
@@ -134,6 +136,8 @@ export default class SortableList extends AppearanceAware {
     // Reorder.
     if (this.#draggingIndex != this.#originIndex)
       this.onReorder.emit(this.#originIndex, this.#draggingIndex);
+    else
+      this.onDragging.emit();
     return true;
   }
 }

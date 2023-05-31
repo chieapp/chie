@@ -70,9 +70,6 @@ function guiMain() {
     params: chatServiceParams,
   });
 
-  extensionManager.registerExternalExtension('/Users/zcbenz/codes/chie-extension-agent-service');
-  extensionManager.registerExternalExtension('/Users/zcbenz/codes/chie-extension-translator');
-
   // Activate extensions.
   extensionManager.activate();
 

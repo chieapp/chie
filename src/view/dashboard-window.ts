@@ -53,7 +53,6 @@ export default class DashboardWindow extends BaseWindow {
     super({showMenuBar: true, useClassicBackground: true});
 
     this.window.setTitle('Dashboard');
-    this.window.setContentSize({width: 800, height: 600});
     this.window.onFocus = () => this.selectedView?.mainView.onFocus();
     this.contentView.setStyle({flexDirection: 'row'});
 
@@ -62,6 +61,7 @@ export default class DashboardWindow extends BaseWindow {
     this.#sidebar.view.setStyle({width: style.buttonSize + 2 * basicStyle.padding});
     this.#sidebar.setBackgroundColor(style.light.bgColor, style.dark.bgColor);
     this.#sidebar.onReorder.connect(serviceManager.reorderInstance.bind(serviceManager));
+    this.#sidebar.onDragging.connect(this.#sidebar.view.schedulePaint.bind(this.#sidebar.view));
     this.contentView.addChildView(this.#sidebar.view);
 
     this.#addButton = new IconButton('add');
@@ -108,6 +108,8 @@ export default class DashboardWindow extends BaseWindow {
   restoreState(state: DashboardState) {
     super.restoreState(state);
     this.#splitViewState = state.splitViewState;
+    if (!state.bounds)
+      this.window.setContentSize({width: 800, height: 600});
     if (state.views) {
       for (const i in state.views) {
         const view = this.views[i];

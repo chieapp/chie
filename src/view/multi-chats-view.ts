@@ -59,9 +59,10 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
   }
 
   chatView: ChatView;
+  items: ChatListItem[] = [];
 
-  #items: ChatListItem[] = [];
   #selectedIndex?: number;
+  #selectedItem?: ChatListItem;
 
   #chatListScroll: gui.Scroll;
   #chatList: gui.Container;
@@ -120,15 +121,18 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
 
   destructor() {
     super.destructor();
-    for (const item of this.#items)
+    for (const item of this.items)
       item.destructor();
   }
 
   async loadService(service: BaseMultiChatsService) {
     if (!(service instanceof BaseMultiChatsService))
       throw new Error('MultiChatsView can only be used with MultiChatsService');
-    if (this.service && this.service != service)  // changing service should reset selected item
+    // Changing service should reset selected item.
+    if (this.service && this.service != service) {
       this.#selectedIndex = null;
+      this.#selectedItem = null;
+    }
     if (!await super.loadService(service))
       return false;
 
@@ -137,11 +141,11 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
       this.service.createChat();
     for (const chat of service.chats) {
       const item = this.#createItemForChat(chat);
-      this.#items.push(item);
+      this.items.push(item);
       this.#chatList.addChildView(item.view);
     }
     // Restore selected item, the index is read in restoreState.
-    this.#items[this.#selectedIndex ?? 0]?.setSelected(true);
+    this.items[this.#selectedIndex ?? 0]?.setSelected(true);
     // Listen to events of service.
     this.serviceConnections.add(service.onNewChat.connect(this.#onNewChat.bind(this)));
     this.serviceConnections.add(service.onRemoveChat.connect(this.#onRemoveChat.bind(this)));
@@ -151,11 +155,11 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
 
   unload() {
     super.unload();
-    for (const item of this.#items) {
+    for (const item of this.items) {
       this.#chatList.removeChildView(item.view);
       item.destructor();
     }
-    this.#items = [];
+    this.items = [];
   }
 
   onResize() {
@@ -186,15 +190,15 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
   showPreviousChat() {
     if (this.#selectedIndex == null)
       return;
-    const prev = (this.#selectedIndex - 1 + this.#items.length) % this.#items.length;
-    this.#items[prev].setSelected(true);
+    const prev = (this.#selectedIndex - 1 + this.items.length) % this.items.length;
+    this.items[prev].setSelected(true);
   }
 
   showNextChat() {
     if (this.#selectedIndex == null)
       return;
-    const next = (this.#selectedIndex + 1) % this.#items.length;
-    this.#items[next].setSelected(true);
+    const next = (this.#selectedIndex + 1) % this.items.length;
+    this.items[next].setSelected(true);
   }
 
   #createItemForChat(service) {
@@ -207,15 +211,16 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
   }
 
   async #onSelectItem(item: ChatListItem) {
-    const selectedItem = this.#selectedIndex == null ? null : this.#items[this.#selectedIndex];
-    if (selectedItem && selectedItem != item)
-      selectedItem.setSelected(false);
-    this.#selectedIndex = this.#items.indexOf(item);
+    if (this.#selectedItem && this.#selectedItem != item)
+      this.#selectedItem.setSelected(false);
+    this.#selectedItem = item;
+    this.#selectedIndex = this.items.indexOf(item);
     await this.chatView.loadService(item.service);
   }
 
   #onCloseItem(item: ChatListItem) {
-    const index = this.#items.indexOf(item);
+    const index = this.items.indexOf(item);
+    console.log('onCloseItem', index);
     if (index < 0)
       throw new Error('Closing an unexist chat.');
     this.service.removeChatAt(index);
@@ -224,35 +229,36 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
   #onNewChat(chat) {
     // Create item.
     const item = this.#createItemForChat(chat);
-    this.#items.unshift(item);
+    this.items.unshift(item);
     this.#chatList.addChildViewAt(item.view, 0);
     this.onResize();
     item.setSelected(true);
   }
 
   #onRemoveChat(index: number) {
-    if (this.#items.length == 1)  // shortcut
+    if (this.items.length == 1)  // shortcut
       return this.#onClearChats();
-    const item = this.#items[index];
-    if (this.#selectedIndex == index) {
+    const item = this.items[index];
+    if (this.#selectedItem == item) {
       // If closed item is selected, move selection to siblings.
-      if (index + 1 < this.#items.length)
-        this.#items[index + 1].setSelected(true);
+      if (index + 1 < this.items.length)
+        this.items[index + 1].setSelected(true);
       else if (index > 0)
-        this.#items[index - 1].setSelected(true);
+        this.items[index - 1].setSelected(true);
     }
     this.#chatList.removeChildView(item.view);
-    this.#items.splice(index, 1);
+    this.items.splice(index, 1);
     this.onResize();
     item.destructor();
   }
 
   #onClearChats() {
-    for (const item of this.#items) {
+    for (const item of this.items) {
       this.#chatList.removeChildView(item.view);
       item.destructor();
     }
-    this.#items = [];
+    this.items = [];
     this.#selectedIndex = null;
+    this.#selectedItem = null;
   }
 }

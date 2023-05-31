@@ -84,4 +84,25 @@ describe('MultiChatsView', function() {
     })();
     await gcUntil(() => collected);
   });
+
+  it('does not have multiple selected views after creating chat', async () => {
+    const chatView = new MultiChatsView();
+    await chatView.loadService(service);
+    service.createChat();
+    service.createChat();
+    assert.isTrue(chatView.items[0].selected);
+    assert.isFalse(chatView.items[1].selected);
+  });
+
+  it('selects sibling view after removing chat', async () => {
+    const chatView = new MultiChatsView();
+    await chatView.loadService(service);
+    service.createChat();
+    service.createChat();
+    service.createChat();
+    service.removeChatAt(0);
+    assert.isTrue(chatView.items[0].selected);
+    service.removeChatAt(0);
+    assert.isTrue(chatView.items[0].selected);
+  });
 });

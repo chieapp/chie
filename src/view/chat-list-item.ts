@@ -26,7 +26,7 @@ export default class ChatListItem extends Clickable {
     super();
     this.service = service;
 
-    this.view.setStyle({width: '100%', height: 32, marginBottom: 2});
+    this.view.setStyle({width: '100%', height: 32});
     this.view.onMouseEnter = () => this.closeButton.view.setVisible(true);
     this.view.onMouseLeave = () => this.closeButton.view.setVisible(false);
     this.view.onSizeChanged = this.#updateTooltip.bind(this);

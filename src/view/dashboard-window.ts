@@ -66,7 +66,6 @@ export default class DashboardWindow extends BaseWindow {
 
     this.#addButton = new IconButton('add');
     this.#addButton.view.setTooltip('Add new assistant');
-    this.#addButton.view.setStyle({marginTop: basicStyle.padding});
     this.#addButton.onClick = () => windowManager.showNamedWindow('newAssistant');
     this.#sidebar.view.addChildView(this.#addButton.view);
 

@@ -36,7 +36,7 @@ abstract class ParamRow<T extends gui.View = gui.View> extends AppearanceAware {
     this.nullable = nullable;
 
     // Label on the left.
-    this.view.setStyle({flexDirection: 'row', marginBottom: basicStyle.padding / 2});
+    this.view.setStyle({flexDirection: 'row'});
     this.label = gui.Label.create(`${param.displayName ?? param.name}:`);
     this.label.setStyle({width: labelWidth, marginRight: labelPadding});
     this.label.setAlign('end');
@@ -85,7 +85,6 @@ abstract class ParamRow<T extends gui.View = gui.View> extends AppearanceAware {
     this.description.setStyle({
       marginTop: -4,
       marginLeft: valueMarginLeft + 2,
-      marginBottom: basicStyle.padding / 2,
     });
     if (!descriptionFont)
       descriptionFont = gui.Font.default().derive(-2, 'normal', 'normal');
@@ -246,7 +245,7 @@ export class IconParamRow extends ParamRow<gui.Container> {
 
   constructor(param: Param, nullable: boolean) {
     super(param, gui.Container.create(), nullable);
-    this.editor.setStyle({flexDirection: 'row'});
+    this.editor.setStyle({flexDirection: 'row', gap: basicStyle.padding / 2});
     this.imageView = new ToggleButton();
     this.imageView.setSelected(true);
     this.imageView.view.setStyle({
@@ -258,7 +257,6 @@ export class IconParamRow extends ParamRow<gui.Container> {
     // Button to choose an icon from the disk.
     const editButton = gui.Button.create('Choose from disk...');
     editButton.onClick = () => this.#chooseIconFromDisk();
-    editButton.setStyle({marginLeft: basicStyle.padding / 2});
     this.editor.addChildView(editButton);
 
     // Button to revert the icon to the default one in param.
@@ -268,7 +266,6 @@ export class IconParamRow extends ParamRow<gui.Container> {
       this.onChange?.emit();
     };
     this.revertButton.setVisible(false);
-    this.revertButton.setStyle({marginLeft: basicStyle.padding / 2});
     this.editor.addChildView(this.revertButton);
 
     if (param.value)
@@ -323,7 +320,6 @@ export class ParagraphParamRow extends ParamRow<gui.Container> {
     this.paragraph.setStyle({
       marginTop: -4,
       marginLeft: valueMarginLeft + 2,
-      marginBottom: basicStyle.padding / 2,
     });
     this.paragraph.setAlign('start');
     this.paragraph.setVisible(false);
@@ -362,6 +358,7 @@ export default class ParamsView {
   onActivate: Signal<() => void> = new Signal;
 
   constructor(params: Param[], nullable = false) {
+    this.view.setStyle({gap: basicStyle.padding / 2});
     for (const param of params) {
       let row: ParamRow;
       let constrainedBy: ParamRow;

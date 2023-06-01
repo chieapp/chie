@@ -27,6 +27,7 @@ export default class NewAPIWindow extends BaseWindow {
     this.endpoint = endpoint;
 
     this.contentView.setStyle({
+      gap: basicStyle.padding / 2,
       padding: basicStyle.padding,
       paddingLeft: 50,
       paddingRight: 50,
@@ -56,10 +57,7 @@ export default class NewAPIWindow extends BaseWindow {
         title: 'Create an assistant for this API endpoint...'
       });
       this.createCheckbox.setChecked(true);
-      this.createCheckbox.setStyle({
-        marginBottom: basicStyle.padding / 2,
-        marginLeft: valueMarginLeft,
-      });
+      this.createCheckbox.setStyle({marginLeft: valueMarginLeft});
       this.apiSelector.view.addChildViewAt(this.createCheckbox, 1);
     }
 
@@ -109,7 +107,6 @@ export default class NewAPIWindow extends BaseWindow {
     if (this.apiParams.apiRecord.auth == 'login') {
       this.loginButton = gui.Button.create('Login');
       this.loginButton.setStyle({
-        marginBottom: basicStyle.padding / 2,
         marginLeft: valueMarginLeft,
         alignSelf: 'flex-start',
       });

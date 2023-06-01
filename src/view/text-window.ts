@@ -23,7 +23,10 @@ export default class TextWindow extends BaseWindow {
     this.index = index;
     this.service = service;
 
-    this.contentView.setStyle({padding: basicStyle.padding});
+    this.contentView.setStyle({
+      padding: basicStyle.padding,
+      gap: basicStyle.padding,
+    });
     this.window.setTitle('Raw Message Text');
     this.window.setContentSize({width: 200, height: 300});
 

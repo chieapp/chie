@@ -31,14 +31,20 @@ export default class SettingsWindow extends BaseWindow {
     this.contentView.addChildView(this.tab);
 
     const settings = gui.Container.create();
-    settings.setStyle({padding: basicStyle.padding});
+    settings.setStyle({
+      gap: basicStyle.padding / 2,
+      padding: basicStyle.padding,
+    });
     this.tab.addPage('Settings', settings);
     settings.addChildView(this.#createAppTraySetting());
     if (process.platform == 'darwin')
       settings.addChildView(this.#createDockIconSetting());
 
     const apis = gui.Container.create();
-    apis.setStyle({padding: basicStyle.padding});
+    apis.setStyle({
+      gap: basicStyle.padding,
+      padding: basicStyle.padding,
+    });
     this.tab.addPage('APIs', apis);
     this.apisTable = gui.Table.create();
     this.apisTable.setHasBorder(true);
@@ -84,7 +90,6 @@ export default class SettingsWindow extends BaseWindow {
       type: 'checkbox',
       title: 'Show Dock Icon',
     });
-    checkbox.setStyle({marginTop: basicStyle.padding / 2});
     checkbox.setChecked(app.isDockIconVisible());
     checkbox.onClick = () => {
       checkbox.setEnabled(false);

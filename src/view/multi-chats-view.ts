@@ -91,9 +91,9 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
     // in the empty space for better visual effect.
     this.#chatListScroll.setStyle({margin: 0});
     this.#chatList.setStyle({
-      padding: basicStyle.padding,
-      paddingRight: basicStyle.padding - resizeHandleWidth,
-      paddingBottom: 0,
+      rowGap: 4,
+      paddingTop: basicStyle.padding,
+      paddingLeft: basicStyle.padding,
     });
 
     const button = gui.Button.create('New chat');

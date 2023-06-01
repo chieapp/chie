@@ -31,6 +31,7 @@ export default class NewAssistantWindow extends BaseWindow {
     this.instance = instance;
 
     this.contentView.setStyle({
+      gap: basicStyle.padding / 2,
       padding: basicStyle.padding,
       paddingLeft: 50,
       paddingRight: 50,
@@ -105,7 +106,6 @@ export default class NewAssistantWindow extends BaseWindow {
       apiButton.onClick = () => windowManager.showNamedWindow('newAPI');
     }
     apiButton.setStyle({
-      marginBottom: basicStyle.padding / 2,
       marginLeft: valueMarginLeft,
       alignSelf: 'flex-start',
     });
@@ -133,7 +133,7 @@ export default class NewAssistantWindow extends BaseWindow {
     }
 
     const buttonsArea = new ButtonsArea();
-    buttonsArea.view.setStyle({flex: 1, paddingTop: basicStyle.padding / 2});
+    buttonsArea.view.setStyle({flex: 1});
     this.contentView.addChildView(buttonsArea.view);
     const createButton = buttonsArea.addButton(instance ? 'OK' : 'Create');
     createButton.makeDefault();
@@ -213,10 +213,9 @@ export default class NewAssistantWindow extends BaseWindow {
 
     // Add separator and description for the params area.
     const separator = gui.Separator.create('horizontal');
-    separator.setStyle({marginTop: basicStyle.padding / 2});
     this.apiParams.view.addChildViewAt(separator, 0);
     const label = gui.Label.create('Override API parameters:');
-    label.setStyle({width: '100%', margin: basicStyle.padding / 2});
+    label.setStyle({width: '100%'});
     this.apiParams.view.addChildViewAt(label, 1);
     this.contentView.addChildViewAt(this.apiParams.view, this.serviceParams ? 2 : 1);
     this.resizeVerticallyToFitContentView();

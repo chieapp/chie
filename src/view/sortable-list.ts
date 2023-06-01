@@ -29,7 +29,11 @@ export default class SortableList extends AppearanceAware {
   constructor({padding}: SortableListOptions) {
     super();
     this.padding = padding;
-    this.view.setStyle({alignItems: 'center'});
+    this.view.setStyle({
+      alignItems: 'center',
+      gap: padding,
+      paddingTop: padding,
+    });
   }
 
   destructor() {
@@ -41,7 +45,6 @@ export default class SortableList extends AppearanceAware {
   addItemAt(item: Clickable, index: number) {
     if (index < 0)
       index += this.view.childCount();
-    item.view.setStyle({marginTop: this.padding});
     this.view.addChildViewAt(item.view, index);
     this.items.splice(index, 0, item);
     item.view.onMouseMove = this.#onDrag.bind(this, item);
@@ -81,7 +84,6 @@ export default class SortableList extends AppearanceAware {
     // will stay where they are.
     this.#placeholder = gui.Container.create();
     this.#placeholder.setStyle({
-      marginTop: this.padding,
       width: bounds.width,
       height: bounds.height,
     });
@@ -128,7 +130,6 @@ export default class SortableList extends AppearanceAware {
     view.setStyle({
       left: 0,
       top: 0,
-      marginTop: this.padding,
       position: 'relative',
     });
     // Remove placeholder item.

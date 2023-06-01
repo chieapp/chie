@@ -8,14 +8,12 @@ export default class ButtonsArea {
 
   constructor(options: {hideSeparator?: boolean} = {}) {
     if (!options.hideSeparator) {
-      this.view.setStyle({paddingTop: basicStyle.padding});
-      this.view.addChildView(gui.Separator.create('horizontal'));
+      const separator = gui.Separator.create('horizontal');
+      separator.setStyle({marginBottom: basicStyle.padding});
+      this.view.addChildView(separator);
     }
     this.view.setStyle({justifyContent: 'flex-end'});
-    this.row.setStyle({
-      flexDirection: 'row-reverse',
-      paddingTop: basicStyle.padding,
-    });
+    this.row.setStyle({flexDirection: 'row-reverse'});
     this.view.addChildView(this.row);
   }
 

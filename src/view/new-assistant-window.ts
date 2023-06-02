@@ -18,12 +18,16 @@ import windowManager from '../controller/window-manager';
 import {BaseViewType} from '../view/base-view';
 import {ChatCompletionAPI} from '../model/chat-api';
 import {WebServiceOptions} from '../model/web-service';
-import {matchClass} from '../util/object-utils';
+import {isEmptyObject, matchClass} from '../util/object-utils';
+
+const overrideAPIParamsLabel = 'Override API parameters';
+const hideAPIParamsLabel = 'Use default API parameters';
 
 export default class NewAssistantWindow extends BaseWindow {
   instance?: Instance;
   serviceSelector: ParamsView;
   serviceParams?: ParamsView;
+  overrideButton: gui.Button;
   apiParams?: APIParamsView;
 
   constructor(instance?: Instance) {
@@ -111,6 +115,17 @@ export default class NewAssistantWindow extends BaseWindow {
     });
     this.serviceSelector.view.addChildViewAt(apiButton, 3);
 
+    // A helper button to show/hide overrided API params.
+    this.overrideButton = gui.Button.create('Override API parameters');
+    this.overrideButton.setStyle({
+      marginLeft: valueMarginLeft,
+      alignSelf: 'flex-start',
+    });
+    this.overrideButton.onClick = this.#toggleAPIParams.bind(this);
+    this.serviceSelector.view.addChildViewAt(this.overrideButton, 4);
+    if (!isEmptyObject(instance?.service.api.params))
+      this.#toggleAPIParams();
+
     this.#updateServiceParamsView();
     this.#updateAPIParamsView();
     this.#updateDefaultIcon();
@@ -156,52 +171,40 @@ export default class NewAssistantWindow extends BaseWindow {
     return null;  // do not remember state
   }
 
-  #updateServiceParamsView() {
-    // Remove existing params view.
-    if (this.serviceParams) {
-      this.contentView.removeChildView(this.serviceParams.view);
-      this.serviceParams = null;
+  #toggleAPIParams() {
+    if (this.apiParams) {
+      this.overrideButton.setTitle(overrideAPIParamsLabel);
+      this.#destroyAPIParamsView();
+    } else {
+      this.overrideButton.setTitle(hideAPIParamsLabel);
+      this.#createAPIParamsView();
     }
+    this.resizeVerticallyToFitContentView();
+  }
 
-    // Service may not have params.
-    const serviceRecord = this.serviceSelector.getValue('service');
-    if (!serviceRecord?.params)
-      return;
-
-    // There are only options for ChatCompletionAPI for now.
-    // TODO(zcbenz): Add validate property to Param to make this automatic.
+  #hasCustomAPIParams() {
     const endpoint = this.serviceSelector.getValue('api');
-    const apiClass = apiManager.getAPIRecord(endpoint.type).apiClass;
-    if (!matchClass(ChatCompletionAPI, apiClass))
-      return;
-
-    // Create services view.
-    this.serviceParams = new ParamsView(serviceRecord.params, true);
-    this.contentView.addChildViewAt(this.serviceParams.view, 1);
-    if (this.instance?.service.params)
-      this.serviceParams.fillParams(this.instance.service.params);
-
-    // Ajust window size automatically.
-    for (const row of Object.values(this.serviceParams.rows)) {
-      if (row.param.type == 'paragraph')
-        row.subscribeOnChange(() => this.resizeVerticallyToFitContentView());
-    }
+    if (!endpoint)
+      return false;
+    const apiRecord = apiManager.getAPIRecord(endpoint.type);
+    return apiRecord?.params?.length > 0;
   }
 
   #updateAPIParamsView() {
+    this.overrideButton.setEnabled(this.#hasCustomAPIParams());
     if (this.apiParams) {
-      this.contentView.removeChildView(this.apiParams.view);
-      this.apiParams = null;
+      this.#destroyAPIParamsView();
+      this.#createAPIParamsView();
     }
-    // Skip if the API does not support custom parameter.
-    const endpoint = this.serviceSelector.getValue('api');
-    if (!endpoint)
-      return;
-    const apiRecord = apiManager.getAPIRecord(endpoint.type);
-    if (!apiRecord || !apiRecord.params || apiRecord.params.length == 0)
-      return;
+  }
+
+  #createAPIParamsView() {
+    if (this.apiParams)
+      throw new Error('Can not create duplicate APIParamsView.');
 
     // Create params view and fill with service.params.
+    const endpoint = this.serviceSelector.getValue('api');
+    const apiRecord = apiManager.getAPIRecord(endpoint.type);
     this.apiParams = new APIParamsView({
       apiRecord,
       showAuthParams: false,
@@ -218,6 +221,49 @@ export default class NewAssistantWindow extends BaseWindow {
     label.setStyle({width: '100%'});
     this.apiParams.view.addChildViewAt(label, 1);
     this.contentView.addChildViewAt(this.apiParams.view, this.serviceParams ? 2 : 1);
+    this.resizeVerticallyToFitContentView();
+  }
+
+  #destroyAPIParamsView() {
+    this.contentView.removeChildView(this.apiParams.view);
+    this.apiParams.destructor();
+    this.apiParams = null;
+  }
+
+  #updateServiceParamsView() {
+    // Remove existing params view.
+    if (this.serviceParams) {
+      this.contentView.removeChildView(this.serviceParams.view);
+      this.serviceParams = null;
+    }
+
+    // Service may not have params.
+    const serviceRecord = this.serviceSelector.getValue('service');
+    if (!serviceRecord?.params) {
+      this.resizeVerticallyToFitContentView();
+      return;
+    }
+
+    // There are only options for ChatCompletionAPI for now.
+    // TODO(zcbenz): Add validate property to Param to make this automatic.
+    const endpoint = this.serviceSelector.getValue('api');
+    const apiClass = apiManager.getAPIRecord(endpoint.type).apiClass;
+    if (!matchClass(ChatCompletionAPI, apiClass)) {
+      this.resizeVerticallyToFitContentView();
+      return;
+    }
+
+    // Create services view.
+    this.serviceParams = new ParamsView(serviceRecord.params, true);
+    this.contentView.addChildViewAt(this.serviceParams.view, 1);
+    if (this.instance?.service.params)
+      this.serviceParams.fillParams(this.instance.service.params);
+
+    // Ajust window size automatically.
+    for (const row of Object.values(this.serviceParams.rows)) {
+      if (row.param.type == 'paragraph')
+        row.subscribeOnChange(() => this.resizeVerticallyToFitContentView());
+    }
     this.resizeVerticallyToFitContentView();
   }
 
@@ -247,6 +293,8 @@ export default class NewAssistantWindow extends BaseWindow {
       this.instance.service.setName(name);
       if (this.apiParams)
         this.instance.service.setAPIParams(this.apiParams.readParams() as Record<string, string>);
+      else
+        this.instance.service.setAPIParams({});
       if (this.serviceParams) {
         for (const [name, row] of Object.entries(this.serviceParams.rows))
           this.instance.service.setParam(name, row.getValue());

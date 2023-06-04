@@ -14,7 +14,8 @@ import WebService, {
   WebServiceOptions,
   WebServiceType,
 } from '../model/web-service';
-import apiManager, {sortByPriority} from './api-manager';
+import apiManager, {sortByPriority} from '../controller//api-manager';
+import shortcutManager from '../controller/shortcut-manager';
 import {ConfigStoreItem} from '../model/config-store';
 import {Selection} from '../model/param';
 import {collectGarbage} from './gc-center';
@@ -86,7 +87,7 @@ export class ServiceManager extends ConfigStoreItem {
       const service = new record.serviceClass(options);
       const instance: Instance = {id, serviceName, service, viewClass};
       if (item.shortcut)
-        instance.shortcut = item.shortcut;
+        this.setInstanceShortcut(instance, item.shortcut);
       this.#instances.push(instance);
     }
   }
@@ -167,11 +168,16 @@ export class ServiceManager extends ConfigStoreItem {
       viewClass,
     };
     if (options?.shortcut)
-      instance.shortcut = options.shortcut;
+      this.setInstanceShortcut(instance, options.shortcut);
     this.#instances.push(instance);
     this.onNewInstance.emit(instance, ids.length);
     this.saveConfig();
     return instance;
+  }
+
+  setInstanceShortcut(instance: Instance, shortcut: string | null) {
+    instance.shortcut = shortcut;
+    shortcutManager.setShortcutForChatWindow(instance.id, shortcut);
   }
 
   setInstanceIcon(instance: Instance, icon: Icon) {
@@ -184,6 +190,7 @@ export class ServiceManager extends ConfigStoreItem {
     if (index == -1)
       throw new Error(`Can not find instance of ID "${id}".`);
     const instance = this.#instances[index];
+    shortcutManager.setShortcutForChatWindow(id, null);
     this.#removeIcon(instance.service.icon);
     instance.service.destructor();
     this.#instances.splice(index, 1);

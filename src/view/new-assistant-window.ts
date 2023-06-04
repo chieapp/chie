@@ -303,7 +303,7 @@ export default class NewAssistantWindow extends BaseWindow {
         for (const [name, row] of Object.entries(this.serviceParams.rows))
           this.instance.service.setParam(name, row.getValue());
       }
-      this.instance.shortcut = this.serviceSelector.getValue('shortcut');
+      serviceManager.setInstanceShortcut(this.instance, this.serviceSelector.getValue('shortcut'));
       serviceManager.setInstanceIcon(this.instance, this.serviceSelector.getValue('icon') as Icon);
       serviceManager.saveConfig();
     } else {

@@ -2,6 +2,7 @@ import gui from 'gui';
 
 import AppMenuBar from '../view/app-menu-bar';
 import AppTray from '../view/app-tray';
+import shortcutManager from '../controller/shortcut-manager';
 import {ConfigStoreItem} from '../model/config-store';
 import {collectGarbage} from './gc-center';
 
@@ -9,12 +10,14 @@ interface AppData {
   hideTrayIcon?: boolean;
   hideDockIcon?: boolean;
   notFirstTime?: boolean;
+  dashboarShortcut?: string;
 }
 
 export class App extends ConfigStoreItem {
   firstTimeStart = true;
   menuBar?: AppMenuBar;
   tray?: AppTray;
+  dashboarShortcut?: string;
 
   constructor() {
     super();
@@ -29,6 +32,8 @@ export class App extends ConfigStoreItem {
       this.setDockIconVisible(false);
     if (data.notFirstTime)
       this.firstTimeStart = false;
+    if (data.dashboarShortcut)
+      this.setDashboardShortcut(data.dashboarShortcut);
     // There is no config for menuBar but we should only create it after config
     // is read.
     if (process.platform == 'darwin')
@@ -41,6 +46,8 @@ export class App extends ConfigStoreItem {
       data.hideTrayIcon = true;
     if (process.platform == 'darwin' && !this.isDockIconVisible())
       data.hideDockIcon = true;
+    if (this.dashboarShortcut)
+      data.dashboarShortcut = this.dashboarShortcut;
     return data;
   }
 
@@ -71,6 +78,12 @@ export class App extends ConfigStoreItem {
       this.tray = null;
       collectGarbage();
     }
+    this.saveConfig();
+  }
+
+  setDashboardShortcut(shortcut: string) {
+    this.dashboarShortcut = shortcut;
+    shortcutManager.setDashboardShortcut(shortcut);
     this.saveConfig();
   }
 }

@@ -39,6 +39,7 @@ export default class ShortcutEditor extends Clickable {
     });
     const bounds = text.getBoundsFor({width: 1000, height: 1000});
     this.view.setStyle({
+      width: 180,
       maxWidth: 180,
       height: bounds.height + 8,
     });
@@ -88,6 +89,8 @@ export default class ShortcutEditor extends Clickable {
     this.view.schedulePaint();
     if (event.key == 'Tab')  // do not hack Tab key
       return false;
+    if (event.key == 'Escape')  // prevent Esc from closing window
+      return true;
     if (this.isRecording) {
       // Releasing modifier keys should update displayed accelerator.
       if (allModifiers.includes(event.key)) {
@@ -95,8 +98,10 @@ export default class ShortcutEditor extends Clickable {
         this.#updatePendingAccelerator();
       }
     } else {
-      if (event.key == 'Space' || event.key == 'Enter')  // press button
+      if (event.key == 'Space')  // press button
         this.setRecording(true);
+      else
+        return false;
     }
     return true;
   }
@@ -107,6 +112,7 @@ export default class ShortcutEditor extends Clickable {
         event.positionInView.x > this.view.getBounds().width - 20) {
       // Clicked the x button.
       this.setAccelerator(null);
+      this.onChange?.();
       return;
     }
     this.setRecording(!this.isRecording);

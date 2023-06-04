@@ -1,13 +1,14 @@
 import gui from 'gui';
 
 import APIEndpoint from '../model/api-endpoint';
-import BaseWindow from './base-window';
-import ButtonsArea from './buttons-area';
-import NewAPIWindow from './new-api-window';
+import BaseWindow from '../view/base-window';
+import ButtonsArea from '../view/buttons-area';
+import NewAPIWindow from '../view/new-api-window';
+import ShortcutEditor from '../view/shortcut-editor';
 import alert from '../util/alert';
 import app from '../controller/app';
 import apiManager from '../controller/api-manager';
-import basicStyle from './basic-style';
+import basicStyle from '../view/basic-style';
 import windowManager from '../controller/window-manager';
 import serviceManager from '../controller/service-manager';
 
@@ -17,6 +18,7 @@ export default class SettingsWindow extends BaseWindow {
   addButton: gui.Button;
   editButton: gui.Button;
   removeButton: gui.Button;
+  shortcutEditor: ShortcutEditor;
 
   // Keep a copy of endpoints here, which maps to the ones in table.
   #endpoints: APIEndpoint[];
@@ -39,6 +41,7 @@ export default class SettingsWindow extends BaseWindow {
     settings.addChildView(this.#createAppTraySetting());
     if (process.platform == 'darwin')
       settings.addChildView(this.#createDockIconSetting());
+    settings.addChildView(this.#createDashboardSetting());
 
     const apis = gui.Container.create();
     apis.setStyle({
@@ -71,6 +74,11 @@ export default class SettingsWindow extends BaseWindow {
     this.window.setTitle('Settings');
   }
 
+  destructor() {
+    super.destructor();
+    this.shortcutEditor.destructor();
+  }
+
   saveState() {
     return null;  // do not remember state
   }
@@ -98,6 +106,17 @@ export default class SettingsWindow extends BaseWindow {
       setTimeout(() => checkbox.setEnabled(true), 300);
     };
     return checkbox;
+  }
+
+  #createDashboardSetting() {
+    const view = gui.Container.create();
+    view.setStyle({flexDirection: 'row', alignSelf: 'flex-start', gap: 4});
+    view.addChildView(gui.Label.create('Dashboard shortcut:'));
+    this.shortcutEditor = new ShortcutEditor();
+    this.shortcutEditor.setAccelerator(app.dashboarShortcut);
+    this.shortcutEditor.onChange = () => app.setDashboardShortcut(this.shortcutEditor.accelerator);
+    view.addChildView(this.shortcutEditor.view);
+    return view;
   }
 
   #createAPISetting() {

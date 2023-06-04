@@ -80,7 +80,6 @@ export default class BaseMenuBar extends SignalsOwner {
       submenu: [
         {
           label: 'Open Dashboard...',
-          accelerator: 'Shift+CmdOrCtrl+D',
           onClick: () => windowManager.showNamedWindow('dashboard'),
         },
         {
@@ -91,7 +90,7 @@ export default class BaseMenuBar extends SignalsOwner {
         { type: 'separator' },
       ],
     });
-    this.#assistantsMenu = new AssistantsMenu(menuItem.getSubmenu(), this.menu.itemCount(), 'Alt+CmdOrCtrl', (instance) => ({
+    this.#assistantsMenu = new AssistantsMenu(menuItem.getSubmenu(), this.menu.itemCount(), null, (instance) => ({
       label: `Open ${instance.service.name}...`,
       onClick: () => windowManager.showChatWindow(instance.id),
     }));

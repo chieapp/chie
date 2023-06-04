@@ -1,4 +1,4 @@
-export type ParamType = 'string' | 'paragraph' | 'selection' | 'number' | 'image';
+export type ParamType = 'string' | 'selection' | 'number' | 'image' | 'paragraph' | 'shortcut';
 
 export interface Selection {
   name: string,

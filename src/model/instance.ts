@@ -8,4 +8,5 @@ export default interface Instance {
   serviceName: string;
   service: WebService<WebAPI>;
   viewClass: BaseViewType;
+  shortcut?: string;
 }

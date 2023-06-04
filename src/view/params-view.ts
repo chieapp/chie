@@ -4,10 +4,11 @@ import {Signal} from 'typed-signals';
 import AppearanceAware from '../view/appearance-aware';
 import Icon from '../model/icon';
 import Param from '../model/param';
-import ToggleButton from './toggle-button';
-import basicStyle from './basic-style';
+import ToggleButton from '../view/toggle-button';
+import ShortcutEditor from '../view/shortcut-editor';
+import basicStyle from '../view/basic-style';
 import prompt from '../util/prompt';
-import {style} from './dashboard-window';
+import {style} from '../view/dashboard-window';
 
 export const labelWidth = 110;
 export const labelPadding = 8;
@@ -351,6 +352,30 @@ export class ParagraphParamRow extends ParamRow<gui.Container> {
   }
 }
 
+export class ShortcutParamRow extends ParamRow<gui.Container> {
+  shortcutEditor: ShortcutEditor;
+
+  constructor(param: Param, nullable: boolean) {
+    const shortcutEditor = new ShortcutEditor();
+    super(param, shortcutEditor.view, nullable);
+    this.shortcutEditor = shortcutEditor;
+    this.setValue(param.value);
+  }
+
+  subscribeOnChange(callback: () => void) {
+    this.shortcutEditor.onChange = callback;
+  }
+
+  getValue() {
+    return this.shortcutEditor.accelerator;
+  }
+
+  setValue(value: string) {
+    this.shortcutEditor.setAccelerator(value);
+  }
+}
+
+
 export default class ParamsView {
   view = gui.Container.create();
   rows: Record<string, ParamRow> = {};
@@ -377,6 +402,9 @@ export default class ParamsView {
         row = new IconParamRow(param, nullable);
       } else if (param.type == 'paragraph') {
         row = new ParagraphParamRow(param, nullable);
+      } else if (param.type == 'shortcut') {
+        row = new ShortcutParamRow(param, nullable);
+        (row as ShortcutParamRow).shortcutEditor.onActivate = () => this.onActivate.emit();
       }
       row.nullable = nullable;
       row.addToView(this.view);

@@ -9,15 +9,13 @@ import Instance from '../model/instance';
 import Icon from '../model/icon';
 import NewAPIWindow from '../view/new-api-window';
 import ParamsView, {IconParamRow, valueMarginLeft} from '../view/params-view';
-import WebAPI from '../model/web-api';
 import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
 import basicStyle from '../view/basic-style';
-import serviceManager, {ServiceRecord} from '../controller/service-manager';
+import serviceManager, {InstanceOptions, ServiceRecord} from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
 import {BaseViewType} from '../view/base-view';
 import {ChatCompletionAPI} from '../model/chat-api';
-import {WebServiceOptions} from '../model/web-service';
 import {isEmptyObject, matchClass} from '../util/object-utils';
 
 const overrideAPIParamsLabel = 'Override API parameters';
@@ -53,6 +51,12 @@ export default class NewAssistantWindow extends BaseWindow {
         type: 'image',
         displayName: 'Icon',
         value: instance?.service.icon,
+      },
+      {
+        name: 'shortcut',
+        type: 'shortcut',
+        displayName: 'Shortcut',
+        value: instance?.shortcut,
       },
       {
         name: 'api',
@@ -113,7 +117,7 @@ export default class NewAssistantWindow extends BaseWindow {
       marginLeft: valueMarginLeft,
       alignSelf: 'flex-start',
     });
-    this.serviceSelector.view.addChildViewAt(apiButton, 3);
+    this.serviceSelector.view.addChildViewAt(apiButton, 4);
 
     // A helper button to show/hide overrided API params.
     this.overrideButton = gui.Button.create('Override API parameters');
@@ -122,7 +126,7 @@ export default class NewAssistantWindow extends BaseWindow {
       alignSelf: 'flex-start',
     });
     this.overrideButton.onClick = this.#toggleAPIParams.bind(this);
-    this.serviceSelector.view.addChildViewAt(this.overrideButton, 4);
+    this.serviceSelector.view.addChildViewAt(this.overrideButton, 5);
     if (!isEmptyObject(instance?.service.api.params))
       this.#toggleAPIParams();
 
@@ -299,12 +303,14 @@ export default class NewAssistantWindow extends BaseWindow {
         for (const [name, row] of Object.entries(this.serviceParams.rows))
           this.instance.service.setParam(name, row.getValue());
       }
+      this.instance.shortcut = this.serviceSelector.getValue('shortcut');
       serviceManager.setInstanceIcon(this.instance, this.serviceSelector.getValue('icon') as Icon);
       serviceManager.saveConfig();
     } else {
       // Create a new assistant.
-      const options: Partial<WebServiceOptions<WebAPI>> = {
+      const options: Partial<InstanceOptions> = {
         icon: this.serviceSelector.getValue('icon') as Icon,
+        shortcut: this.serviceSelector.getValue('shortcut') as string,
       };
       if (this.apiParams)
         options.apiParams = this.apiParams.readParams() as Record<string, string>;

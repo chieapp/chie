@@ -7,8 +7,7 @@ import WebService from '../model/web-service';
 import basicStyle from '../view/basic-style';
 
 let resizeCursor: gui.Cursor;
-
-export const resizeHandleWidth = 6;
+const resizeHandleWidth = 6;
 
 export interface SplitViewState extends ViewState {
   panelWidth?: number;

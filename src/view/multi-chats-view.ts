@@ -3,7 +3,7 @@ import gui from 'gui';
 import BaseMultiChatsService from '../model/base-multi-chats-service';
 import ChatListItem from '../view/chat-list-item';
 import ChatView from '../view/chat-view';
-import SplitView, {SplitViewState, resizeHandleWidth} from '../view/split-view';
+import SplitView, {SplitViewState} from '../view/split-view';
 import basicStyle from '../view/basic-style';
 
 export const style = {

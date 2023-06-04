@@ -21,11 +21,13 @@ import {collectGarbage} from './gc-center';
 import {deepAssign, matchClass} from '../util/object-utils';
 import {getNextId} from '../util/id-generator';
 
-type ServiceManagerData = Record<string, {
+type ServiceManagerDataItem = {
   serviceName: string,
   service: WebServiceData,
   view: string,
-}>;
+  shortcut?: string,
+};
+type ServiceManagerData = Record<string, ServiceManagerDataItem>;
 
 type WebAPIType = (new (endpoint) => WebAPI) | (abstract new (endpoint) => WebAPI);
 
@@ -38,6 +40,10 @@ export type ServiceRecord = {
   priority?: number,
   params?: Param[],
 };
+
+export interface InstanceOptions extends WebServiceOptions {
+  shortcut?: string;
+}
 
 export class ServiceManager extends ConfigStoreItem {
   onNewInstance: Signal<(instance: Instance, index: number) => void> = new Signal;
@@ -78,18 +84,24 @@ export class ServiceManager extends ConfigStoreItem {
       // Deserialize using the service type's method.
       const options = baseClass.deserialize(item.service);
       const service = new record.serviceClass(options);
-      this.#instances.push({id, serviceName, service, viewClass});
+      const instance: Instance = {id, serviceName, service, viewClass};
+      if (item.shortcut)
+        instance.shortcut = item.shortcut;
+      this.#instances.push(instance);
     }
   }
 
   serialize() {
     const data: ServiceManagerData = {};
     for (const instance of this.#instances) {
-      data[instance.id] = {
+      const item: ServiceManagerDataItem = {
         serviceName: instance.serviceName,
         service: instance.service.serialize(),
         view: instance.viewClass.name,
       };
+      if (instance.shortcut)
+        item.shortcut = instance.shortcut;
+      data[instance.id] = item;
     }
     return data;
   }
@@ -132,7 +144,7 @@ export class ServiceManager extends ConfigStoreItem {
     return Object.keys(this.#services).map(k => ({name: k, value: this.#services[k]})).sort(sortByPriority);
   }
 
-  createInstance(name: string, serviceName: string, endpoint: APIEndpoint, viewClass: BaseViewType, options?: Partial<WebServiceOptions<WebAPI>>) {
+  createInstance(name: string, serviceName: string, endpoint: APIEndpoint, viewClass: BaseViewType, options?: Partial<InstanceOptions>) {
     if (!(serviceName in this.#services))
       throw new Error(`Service with name "${serviceName}" does not exist.`);
     // Do runtime check of API type compatibility.
@@ -148,12 +160,14 @@ export class ServiceManager extends ConfigStoreItem {
     const serviceOptions = deepAssign({name, api: new apiClass(endpoint), icon}, options);
     if (serviceOptions.icon)
       serviceOptions.icon = this.#copyIcon(serviceOptions.icon);
-    const instance = {
+    const instance: Instance = {
       id,
       serviceName,
       service: new serviceClass(serviceOptions),
       viewClass,
     };
+    if (options?.shortcut)
+      instance.shortcut = options.shortcut;
     this.#instances.push(instance);
     this.onNewInstance.emit(instance, ids.length);
     this.saveConfig();

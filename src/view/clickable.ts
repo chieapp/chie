@@ -3,7 +3,7 @@ import AppearanceAware from '../view/appearance-aware';
 
 export default abstract class Clickable extends AppearanceAware {
   // Events.
-  onClick?: () => void;
+  onClick?: (event: gui.MouseEvent) => void;
   onContextMenu?: () => void;
   onMouseUp?: (view: gui.View, event: gui.MouseEvent) => boolean;
 
@@ -33,7 +33,7 @@ export default abstract class Clickable extends AppearanceAware {
     this.view.onMouseUp = (view, event) => {
       this.pressed = false;
       this.view.schedulePaint();
-      if (this.onMouseUp && this.onMouseUp(view, event))
+      if (this.onMouseUp?.(view, event))
         return true;
       const bounds = view.getBounds();
       const pos = event.positionInView;
@@ -41,10 +41,10 @@ export default abstract class Clickable extends AppearanceAware {
         return false;
       if (!this.enabled)
         return false;
-      if (event.button == 1 && this.onClick)
-        this.onClick();
-      else if (event.button == 2 && this.onContextMenu)
-        this.onContextMenu();
+      if (event.button == 1)
+        this.onClick?.(event);
+      else if (event.button == 2)
+        this.onContextMenu?.();
       return true;
     };
   }

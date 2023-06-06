@@ -59,6 +59,13 @@ export default class NewAssistantWindow extends BaseWindow {
         value: instance?.shortcut,
       },
       {
+        name: 'tray',
+        type: 'boolean',
+        displayName: 'Tray',
+        title: 'Show tray icon for the assistant',
+        value: instance?.hasTray,
+      },
+      {
         name: 'api',
         type: 'selection',
         displayName: 'API',
@@ -117,7 +124,7 @@ export default class NewAssistantWindow extends BaseWindow {
       marginLeft: valueMarginLeft,
       alignSelf: 'flex-start',
     });
-    this.serviceSelector.view.addChildViewAt(apiButton, 4);
+    this.serviceSelector.view.addChildViewAt(apiButton, 5);
 
     // A helper button to show/hide overrided API params.
     this.overrideButton = gui.Button.create('Override API parameters');
@@ -126,7 +133,7 @@ export default class NewAssistantWindow extends BaseWindow {
       alignSelf: 'flex-start',
     });
     this.overrideButton.onClick = this.#toggleAPIParams.bind(this);
-    this.serviceSelector.view.addChildViewAt(this.overrideButton, 5);
+    this.serviceSelector.view.addChildViewAt(this.overrideButton, 6);
     if (!isEmptyObject(instance?.service.api.params))
       this.#toggleAPIParams();
 
@@ -152,7 +159,7 @@ export default class NewAssistantWindow extends BaseWindow {
     }
 
     const buttonsArea = new ButtonsArea();
-    buttonsArea.view.setStyle({flex: 1});
+    buttonsArea.view.setStyle({flex: 1, marginTop: basicStyle.padding / 2});
     this.contentView.addChildView(buttonsArea.view);
     const createButton = buttonsArea.addButton(instance ? 'OK' : 'Create');
     createButton.makeDefault();
@@ -220,6 +227,7 @@ export default class NewAssistantWindow extends BaseWindow {
 
     // Add separator and description for the params area.
     const separator = gui.Separator.create('horizontal');
+    separator.setStyle({marginTop: basicStyle.padding / 2});
     this.apiParams.view.addChildViewAt(separator, 0);
     const label = gui.Label.create('Override API parameters:');
     label.setStyle({width: '100%'});
@@ -303,14 +311,16 @@ export default class NewAssistantWindow extends BaseWindow {
         for (const [name, row] of Object.entries(this.serviceParams.rows))
           this.instance.service.setParam(name, row.getValue());
       }
-      serviceManager.setInstanceShortcut(this.instance, this.serviceSelector.getValue('shortcut'));
       serviceManager.setInstanceIcon(this.instance, this.serviceSelector.getValue('icon') as Icon);
+      serviceManager.setInstanceShortcut(this.instance, this.serviceSelector.getValue('shortcut'));
+      serviceManager.setInstanceHasTray(this.instance, this.serviceSelector.getValue('tray'));
       serviceManager.saveConfig();
     } else {
       // Create a new assistant.
       const options: Partial<InstanceOptions> = {
         icon: this.serviceSelector.getValue('icon') as Icon,
         shortcut: this.serviceSelector.getValue('shortcut') as string,
+        hasTray: this.serviceSelector.getValue('tray') as boolean,
       };
       if (this.apiParams)
         options.apiParams = this.apiParams.readParams() as Record<string, string>;

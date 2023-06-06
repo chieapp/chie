@@ -1,5 +1,7 @@
 import gui from 'gui';
 
+import windowManager from '../controller/window-manager';
+
 interface ShortcutRecord {
   shortcutId: number;
   accelerator: string;
@@ -13,7 +15,7 @@ export class ShortcutManager {
     if (this.dashboarShortcut)
       gui.globalShortcut.unregister(this.dashboarShortcut.shortcutId);
     if (accelerator) {
-      const shortcutId = gui.globalShortcut.register(accelerator, () => this.#getWindowManager().showNamedWindow('dashboard'));
+      const shortcutId = gui.globalShortcut.register(accelerator, () => windowManager.showNamedWindow('dashboard'));
       this.dashboarShortcut = {shortcutId, accelerator};
     } else {
       this.dashboarShortcut = null;
@@ -25,16 +27,11 @@ export class ShortcutManager {
     if (existing)
       gui.globalShortcut.unregister(existing.shortcutId);
     if (accelerator) {
-      const shortcutId = gui.globalShortcut.register(accelerator, () => this.#getWindowManager().showChatWindow(id));
+      const shortcutId = gui.globalShortcut.register(accelerator, () => windowManager.showChatWindow(id));
       this.chatWindowShortcuts[id] = {shortcutId, accelerator};
     } else {
       delete this.chatWindowShortcuts[id];
     }
-  }
-
-  #getWindowManager() {
-    // Load windowManager lazily to avoid cyclic reference.
-    return require('./window-manager').default;
   }
 }
 

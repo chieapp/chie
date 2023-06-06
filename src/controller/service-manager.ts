@@ -27,6 +27,7 @@ type ServiceManagerDataItem = {
   service: WebServiceData,
   view: string,
   shortcut?: string,
+  hasTray?: boolean,
 };
 type ServiceManagerData = Record<string, ServiceManagerDataItem>;
 
@@ -44,6 +45,7 @@ export type ServiceRecord = {
 
 export interface InstanceOptions extends WebServiceOptions {
   shortcut?: string;
+  hasTray?: boolean;
 }
 
 export class ServiceManager extends ConfigStoreItem {
@@ -88,6 +90,8 @@ export class ServiceManager extends ConfigStoreItem {
       const instance: Instance = {id, serviceName, service, viewClass};
       if (item.shortcut)
         this.setInstanceShortcut(instance, item.shortcut);
+      if (item.hasTray)
+        this.setInstanceHasTray(instance, item.hasTray);
       this.#instances.push(instance);
     }
   }
@@ -102,6 +106,8 @@ export class ServiceManager extends ConfigStoreItem {
       };
       if (instance.shortcut)
         item.shortcut = instance.shortcut;
+      if (instance.hasTray)
+        item.hasTray = instance.hasTray;
       data[instance.id] = item;
     }
     return data;
@@ -169,15 +175,12 @@ export class ServiceManager extends ConfigStoreItem {
     };
     if (options?.shortcut)
       this.setInstanceShortcut(instance, options.shortcut);
+    if (options?.hasTray)
+      this.setInstanceHasTray(instance, true);
     this.#instances.push(instance);
     this.onNewInstance.emit(instance, ids.length);
     this.saveConfig();
     return instance;
-  }
-
-  setInstanceShortcut(instance: Instance, shortcut: string | null) {
-    instance.shortcut = shortcut;
-    shortcutManager.setShortcutForChatWindow(instance.id, shortcut);
   }
 
   setInstanceIcon(instance: Instance, icon: Icon) {
@@ -185,13 +188,28 @@ export class ServiceManager extends ConfigStoreItem {
     instance.service.setIcon(this.#copyIcon(icon));
   }
 
+  setInstanceShortcut(instance: Instance, shortcut: string | null) {
+    instance.shortcut = shortcut;
+    // Load shortcutManager lazily to avoid cyclic reference.
+    const shortcutManager = require('./shortcut-manager').default;
+    shortcutManager.setShortcutForChatWindow(instance.id, shortcut);
+  }
+
+  setInstanceHasTray(instance: Instance, hasTray: boolean) {
+    instance.hasTray = hasTray;
+    // Load trayManager lazily to avoid cyclic reference.
+    const trayManager = require('./tray-manager').default;
+    trayManager.setTrayForChatWindow(instance.id, hasTray ? instance.service.icon : null);
+  }
+
   removeInstanceById(id: string) {
     const index = this.#instances.findIndex(instance => instance.id == id);
     if (index == -1)
       throw new Error(`Can not find instance of ID "${id}".`);
     const instance = this.#instances[index];
-    shortcutManager.setShortcutForChatWindow(id, null);
     this.#removeIcon(instance.service.icon);
+    this.setInstanceShortcut(instance, null);
+    this.setInstanceHasTray(instance, false);
     instance.service.destructor();
     this.#instances.splice(index, 1);
     this.onRemoveInstance.emit(instance);

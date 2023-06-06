@@ -239,6 +239,26 @@ export class ComboBoxParamRow extends ParamRow<gui.ComboBox> {
   }
 }
 
+export class CheckboxParamRow extends ParamRow<gui.Button> {
+  constructor(param: Param, nullable: boolean) {
+    super(param, gui.Button.create({type: 'checkbox', title: param.title}), nullable);
+    this.setValue(param.value);
+  }
+
+  subscribeOnChange(callback: () => void) {
+    this.connectYueSignal(this.editor.onClick, callback);
+  }
+
+  getValue() {
+    return this.editor.isChecked();
+  }
+
+  setValue(value: boolean) {
+    this.editor.setChecked(Boolean(value));
+  }
+}
+
+
 export class IconParamRow extends ParamRow<gui.Container> {
   imageView: ToggleButton;
   revertButton: gui.Button;
@@ -398,6 +418,8 @@ export default class ParamsView {
         }
       } else if (param.type == 'selection') {
         row = new PickerParamRow(param, constrainedBy, nullable);
+      } else if (param.type == 'boolean') {
+        row = new CheckboxParamRow(param, nullable);
       } else if (param.type == 'image') {
         row = new IconParamRow(param, nullable);
       } else if (param.type == 'paragraph') {

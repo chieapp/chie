@@ -9,4 +9,5 @@ export default interface Instance {
   service: WebService<WebAPI>;
   viewClass: BaseViewType;
   shortcut?: string;
+  hasTray?: boolean;
 }

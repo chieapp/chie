@@ -10,7 +10,7 @@ import app from '../controller/app';
 import apiManager from '../controller/api-manager';
 import basicStyle from '../view/basic-style';
 import windowManager from '../controller/window-manager';
-import serviceManager from '../controller/service-manager';
+import assistantManager from '../controller/assistant-manager';
 
 export default class SettingsWindow extends BaseWindow {
   tab: gui.Tab;
@@ -162,9 +162,9 @@ export default class SettingsWindow extends BaseWindow {
     if (row == -1)
       return;
     const id = this.#endpoints[row].id;
-    const instance = serviceManager.getInstances().find(i => i.service.api.endpoint.id == id);
-    if (instance) {
-      alert(`Can not remove API endpoint because assistant "${instance.service.name}" is using it.`);
+    const assistant = assistantManager.getAssistants().find(i => i.service.api.endpoint.id == id);
+    if (assistant) {
+      alert(`Can not remove API endpoint because assistant "${assistant.service.name}" is using it.`);
       return;
     }
     apiManager.removeEndpointById(id);

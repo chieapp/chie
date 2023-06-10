@@ -1,9 +1,9 @@
 import gui from 'gui';
 
+import Assistant from '../model/assistant';
 import BaseView, {ViewState} from '../view/base-view';
 import BaseWindow, {WindowState} from '../view/base-window';
 import IconButton from '../view/icon-button';
-import Instance from '../model/instance';
 import NewAPIWindow from '../view/new-api-window';
 import NewAssistantWindow from '../view/new-assistant-window';
 import SortableList from '../view/sortable-list';
@@ -11,7 +11,7 @@ import SplitView, {SplitViewState} from '../view/split-view';
 import ToggleButton from '../view/toggle-button';
 import WelcomeBoard from '../view/welcome-board';
 import basicStyle from '../view/basic-style';
-import serviceManager from '../controller/service-manager';
+import assistantManager from '../controller/assistant-manager';
 import windowManager from '../controller/window-manager';
 import {createRoundedCornerPath} from '../util/draw-utils';
 
@@ -26,8 +26,8 @@ export const style = {
   },
 };
 
-type InstanceView = {
-  instance: Instance,
+type AssistantView = {
+  assistant: Assistant,
   button: ToggleButton,
   mainView: BaseView,
 };
@@ -39,8 +39,8 @@ interface DashboardState extends WindowState {
 }
 
 export default class DashboardWindow extends BaseWindow {
-  views: InstanceView[] = [];
-  selectedView?: InstanceView;
+  views: AssistantView[] = [];
+  selectedView?: AssistantView;
 
   // Most of the views are SplitView, make them have same panel width.
   #splitViewState?: SplitViewState;
@@ -60,7 +60,7 @@ export default class DashboardWindow extends BaseWindow {
     this.#sidebar.view.onDraw = this.#onDraw.bind(this);
     this.#sidebar.view.setStyle({width: style.buttonSize + 2 * basicStyle.padding});
     this.#sidebar.setBackgroundColor(style.light.bgColor, style.dark.bgColor);
-    this.#sidebar.onReorder.connect(serviceManager.reorderInstance.bind(serviceManager));
+    this.#sidebar.onReorder.connect(assistantManager.reorderAssistant.bind(assistantManager));
     this.#sidebar.onDragging.connect(this.#sidebar.view.schedulePaint.bind(this.#sidebar.view));
     this.contentView.addChildView(this.#sidebar.view);
 
@@ -70,16 +70,16 @@ export default class DashboardWindow extends BaseWindow {
     this.#sidebar.view.addChildView(this.#addButton.view);
 
     // Create views for assistants.
-    for (const instance of serviceManager.getInstances())
-      this.#createViewForInstance(instance);
-    this.connections.add(serviceManager.onNewInstance.connect((instance, index) => {
-      this.#createViewForInstance(instance);
+    for (const assistant of assistantManager.getAssistants())
+      this.#createViewForAssistant(assistant);
+    this.connections.add(assistantManager.onNewAssistant.connect((assistant, index) => {
+      this.#createViewForAssistant(assistant);
       this.switchTo(index);
     }));
-    this.connections.add(serviceManager.onRemoveInstance.connect(
-      this.#removeViewForInstance.bind(this)));
-    this.connections.add(serviceManager.onReorderInstance.connect(
-      this.#reorderViewForInstance.bind(this)));
+    this.connections.add(assistantManager.onRemoveAssistant.connect(
+      this.#removeViewForAssistant.bind(this)));
+    this.connections.add(assistantManager.onReorderAssistant.connect(
+      this.#reorderViewForAssistant.bind(this)));
 
     // Show welcome board if there is no assistant.
     if (this.views.length == 0)
@@ -98,7 +98,7 @@ export default class DashboardWindow extends BaseWindow {
 
   saveState(): DashboardState {
     return Object.assign(super.saveState(), {
-      selected: this.selectedView?.instance.id,
+      selected: this.selectedView?.assistant.id,
       splitViewState: this.#splitViewState,
       views: this.views.map(v => v.mainView.saveState()),
     });
@@ -119,7 +119,7 @@ export default class DashboardWindow extends BaseWindow {
       }
     }
     if (state.selected) {
-      const index = this.views.findIndex(v => v.instance.id == state.selected);
+      const index = this.views.findIndex(v => v.assistant.id == state.selected);
       if (index > -1)
         this.switchTo(index);
       else
@@ -141,23 +141,23 @@ export default class DashboardWindow extends BaseWindow {
     this.#onSelect(this.views[index]);
   }
 
-  #createViewForInstance(instance: Instance) {
+  #createViewForAssistant(assistant: Assistant) {
     // Create a button in sidebar.
-    const button = new ToggleButton(instance.service.icon.getImage());
-    button.view.setTooltip(instance.service.name);
+    const button = new ToggleButton(assistant.service.icon.getImage());
+    button.view.setTooltip(assistant.service.name);
     button.view.setStyle({
       width: style.buttonSize,
       height: style.buttonSize,
     });
     this.#sidebar.addItemAt(button, -1);
     // Create the service's view.
-    const mainView = new instance.viewClass();
+    const mainView = new assistant.viewClass();
     mainView.view.setVisible(false);
     mainView.view.setStyle({flex: 1});
-    mainView.loadService(instance.service);
+    mainView.loadService(assistant.service);
     this.contentView.addChildView(mainView.view);
     // Save them.
-    const view = {instance, button, mainView};
+    const view = {assistant, button, mainView};
     this.views.push(view);
     button.onClick = this.#onSelect.bind(this, view);
     button.onContextMenu = this.#onContextMenu.bind(this, view);
@@ -165,19 +165,19 @@ export default class DashboardWindow extends BaseWindow {
     mainView.connections.add(mainView.onNewTitle.connect(() => {
       this.#onNewTitle(view);
     }));
-    mainView.connections.add(instance.service.onChangeName.connect(() => {
-      button.view.setTooltip(instance.service.name);
+    mainView.connections.add(assistant.service.onChangeName.connect(() => {
+      button.view.setTooltip(assistant.service.name);
       this.#onNewTitle(view);
     }));
-    mainView.connections.add(instance.service.onChangeIcon.connect(() => {
-      button.setImage(instance.service.icon.getImage());
+    mainView.connections.add(assistant.service.onChangeIcon.connect(() => {
+      button.setImage(assistant.service.icon.getImage());
     }));
   }
 
-  #removeViewForInstance(instance: Instance) {
-    const index = this.views.findIndex(v => v.instance == instance);
+  #removeViewForAssistant(assistant: Assistant) {
+    const index = this.views.findIndex(v => v.assistant == assistant);
     if (index < 0)
-      throw new Error(`Can not find view to remove for ${instance.service.name}.`);
+      throw new Error(`Can not find view to remove for ${assistant.service.name}.`);
     // If closed view is selected, move selection to siblings.
     const view = this.views[index];
     if (this.selectedView == view) {
@@ -201,7 +201,7 @@ export default class DashboardWindow extends BaseWindow {
     }
   }
 
-  #reorderViewForInstance(instance: Instance, fromIndex: number, toIndex:number) {
+  #reorderViewForAssistant(assistant: Assistant, fromIndex: number, toIndex:number) {
     const [view] = this.views.splice(fromIndex, 1);
     this.views.splice(toIndex, 0, view);
     this.#sidebar.reorderItem(fromIndex, toIndex);
@@ -215,7 +215,7 @@ export default class DashboardWindow extends BaseWindow {
     this.contentView.addChildView(this.#welcomeBoard.view);
   }
 
-  #onSelect(view: InstanceView) {
+  #onSelect(view: AssistantView) {
     if (this.selectedView == view)
       return;
     if (this.#welcomeBoard) {
@@ -254,16 +254,16 @@ export default class DashboardWindow extends BaseWindow {
     this.#onNewTitle(view);
   }
 
-  #onContextMenu(view: InstanceView) {
+  #onContextMenu(view: AssistantView) {
     const menu = gui.Menu.create([
       {
         label: 'Show in new window...',
-        onClick: () => windowManager.showChatWindow(view.instance.id),
+        onClick: () => windowManager.showChatWindow(view.assistant.id),
       },
       {
         label: 'Edit assistant...',
         onClick: () => {
-          const win = new NewAssistantWindow(view.instance);
+          const win = new NewAssistantWindow(view.assistant);
           win.window.center();
           win.window.activate();
         }
@@ -271,7 +271,7 @@ export default class DashboardWindow extends BaseWindow {
       {
         label: 'Edit API endpoint...',
         onClick: () => {
-          const win = new NewAPIWindow(view.instance.service.api.endpoint);
+          const win = new NewAPIWindow(view.assistant.service.api.endpoint);
           win.window.center();
           win.window.activate();
         }
@@ -279,17 +279,17 @@ export default class DashboardWindow extends BaseWindow {
       {type: 'separator'},
       {
         label: 'Remove',
-        onClick: () => serviceManager.removeInstanceById(view.instance.id),
+        onClick: () => assistantManager.removeAssistantById(view.assistant.id),
       },
     ]);
     menu.popup();
   }
 
-  #onNewTitle(view: InstanceView) {
+  #onNewTitle(view: AssistantView) {
     if (view == this.selectedView) {
       let title = view.mainView.getTitle();
-      if (title != view.instance.service.name)
-        title = view.instance.service.name + ': ' + title;
+      if (title != view.assistant.service.name)
+        title = view.assistant.service.name + ': ' + title;
       this.window.setTitle(title);
     }
   }

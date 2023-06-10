@@ -4,7 +4,7 @@ import BaseChatService from '../model/base-chat-service';
 import IconButton from '../view/icon-button';
 import Param from '../model/param';
 import prompt from '../util/prompt';
-import serviceManager from '../controller/service-manager';
+import assistantManager from '../controller/assistant-manager';
 
 export default class SwitcherButton extends IconButton {
   service: BaseChatService;
@@ -54,7 +54,7 @@ export default class SwitcherButton extends IconButton {
             this.service.setAPIParam(this.param.name, str);
           else
             this.service.setParam(this.param.name, str);
-          serviceManager.saveConfig();
+          assistantManager.saveConfig();
         },
       }));
       // Allow custom value.
@@ -88,6 +88,6 @@ export default class SwitcherButton extends IconButton {
       this.service.setAPIParam(this.param.name, value);
     else
       this.service.setParam(this.param.name, value);
-    serviceManager.saveConfig();
+    assistantManager.saveConfig();
   }
 }

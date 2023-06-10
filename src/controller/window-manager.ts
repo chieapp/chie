@@ -1,9 +1,9 @@
 import gui from 'gui';
 
+import Assistant from '../model/assistant';
 import BaseWindow from '../view/base-window';
-import Instance from '../model/instance';
 import WindowStore, {WindowStoreData} from '../model/window-store';
-import serviceManager from './service-manager';
+import assistantManager from './assistant-manager';
 import {collectGarbage} from './gc-center';
 import {ConfigStoreItem} from '../model/config-store';
 
@@ -20,7 +20,7 @@ export class WindowManager extends ConfigStoreItem {
 
   // Saves all windows.
   windows: BaseWindow[] = [];
-  // Chat windows, using instance id as name.
+  // Chat windows, using assistant id as name.
   #chatWindows: WindowStore;
   // Global windows, each window has its own type.
   #registeredWindows: Record<string, NamedWindowType> = {};
@@ -30,7 +30,7 @@ export class WindowManager extends ConfigStoreItem {
     super();
     this.#chatWindows = new WindowStore((id) => {
       const ChatWindow = require('../view/chat-window').default;
-      return new ChatWindow(serviceManager.getInstanceById(id));
+      return new ChatWindow(assistantManager.getAssistantById(id));
     });
     this.#namedWindows = new WindowStore((name) => {
       const windowType = this.#registeredWindows[name];
@@ -38,7 +38,7 @@ export class WindowManager extends ConfigStoreItem {
         throw new Error(`There is no window named "${name}".`);
       return new windowType();
     });
-    serviceManager.onRemoveInstance.connect(this.#onRemoveInstance.bind(this));
+    assistantManager.onRemoveAssistant.connect(this.#onRemoveAssistant.bind(this));
   }
 
   deserialize(data: WindowManagerData) {
@@ -115,9 +115,9 @@ export class WindowManager extends ConfigStoreItem {
       this.quit();
   }
 
-  #onRemoveInstance(instance: Instance) {
-    this.#chatWindows.closeWindow(instance.id);
-    this.#chatWindows.removeWindowState(instance.id);
+  #onRemoveAssistant(assistant: Assistant) {
+    this.#chatWindows.closeWindow(assistant.id);
+    this.#chatWindows.removeWindowState(assistant.id);
     this.#namedWindows.saveWindowState('dashboard');
     this.saveConfig();
   }

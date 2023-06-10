@@ -1,6 +1,6 @@
+import Assistant from '../model/assistant';
 import BaseView, {ViewState} from './base-view';
 import BaseWindow, {WindowState} from './base-window';
-import Instance from '../model/instance';
 import WebAPI from '../model/web-api';
 import WebService from '../model/web-service';
 
@@ -9,25 +9,25 @@ export interface ChatWindowState extends WindowState {
 }
 
 export default class ChatWindow extends BaseWindow {
-  instance: Instance;
+  assistant: Assistant;
   chatView: BaseView<WebService<WebAPI>>;
 
-  constructor(instance: Instance) {
+  constructor(assistant: Assistant) {
     super({
-      viewClass: instance.viewClass,
+      viewClass: assistant.viewClass,
       useClassicBackground: true,
     });
-    this.instance = instance;
+    this.assistant = assistant;
 
-    this.window.setTitle(instance.service.name);
+    this.window.setTitle(assistant.service.name);
     this.window.onFocus = () => this.chatView.onFocus();
 
-    this.chatView = new instance.viewClass();
+    this.chatView = new assistant.viewClass();
     this.chatView.view.setStyle({flex: 1});
     this.contentView.addChildView(this.chatView.view);
     this.window.setContentSize(this.chatView.getSizeFromMainViewSize({width: 400, height: 400}));
 
-    this.chatView.loadService(instance.service);
+    this.chatView.loadService(assistant.service);
   }
 
   destructor() {

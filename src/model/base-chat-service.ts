@@ -3,7 +3,7 @@ import {Signal} from 'typed-signals';
 import WebAPI from '../model/web-api';
 import WebService, {WebServiceData, WebServiceOptions} from '../model/web-service';
 import historyKeeper from '../controller/history-keeper';
-import serviceManager from '../controller/service-manager';
+import assistantManager from '../controller/assistant-manager';
 import titleGenerator from '../controller/title-generator';
 import {ChatRole, ChatMessage, ChatResponse} from '../model/chat-api';
 import {deepAssign} from '../util/object-utils';
@@ -395,7 +395,7 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
     // The title is written to both chat history and the main config file, the
     // latter is used for cache purpose when showing UI.
     this.saveHistory();
-    serviceManager.saveConfig();
+    assistantManager.saveConfig();
   }
 
   // Load history from disk.
@@ -412,7 +412,7 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
   protected saveHistory() {
     if (!this.moment) {
       this.moment = historyKeeper.newMoment();
-      serviceManager.saveConfig();
+      assistantManager.saveConfig();
     }
     historyKeeper.save(this.moment, this.serializeHistory());
   }

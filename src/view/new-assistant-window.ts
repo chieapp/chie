@@ -2,17 +2,18 @@ import gui from 'gui';
 
 import APIEndpoint from '../model/api-endpoint';
 import APIParamsView from '../view/api-params-view';
+import Assistant from '../model/assistant';
 import BaseWindow from '../view/base-window';
 import ButtonsArea from '../view/buttons-area';
 import DashboardWindow from '../view/dashboard-window';
-import Instance from '../model/instance';
 import Icon from '../model/icon';
 import NewAPIWindow from '../view/new-api-window';
 import ParamsView, {IconParamRow, valueMarginLeft} from '../view/params-view';
 import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
 import basicStyle from '../view/basic-style';
-import serviceManager, {InstanceOptions, ServiceRecord} from '../controller/service-manager';
+import assistantManager, {AssistantOptions} from '../controller/assistant-manager';
+import serviceManager, {ServiceRecord} from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
 import {BaseViewType} from '../view/base-view';
 import {ChatCompletionAPI} from '../model/chat-api';
@@ -22,15 +23,15 @@ const overrideAPIParamsLabel = 'Override API parameters';
 const hideAPIParamsLabel = 'Use default API parameters';
 
 export default class NewAssistantWindow extends BaseWindow {
-  instance?: Instance;
+  assistant?: Assistant;
   serviceSelector: ParamsView;
   serviceParams?: ParamsView;
   overrideButton: gui.Button;
   apiParams?: APIParamsView;
 
-  constructor(instance?: Instance) {
+  constructor(assistant?: Assistant) {
     super({pressEscToClose: true});
-    this.instance = instance;
+    this.assistant = assistant;
 
     this.contentView.setStyle({
       gap: basicStyle.padding / 2,
@@ -44,39 +45,39 @@ export default class NewAssistantWindow extends BaseWindow {
         name: 'name',
         type: 'string',
         displayName: 'Name',
-        value: instance?.service.name,
+        value: assistant?.service.name,
       },
       {
         name: 'icon',
         type: 'image',
         displayName: 'Icon',
-        value: instance?.service.icon,
+        value: assistant?.service.icon,
       },
       {
         name: 'shortcut',
         type: 'shortcut',
         displayName: 'Shortcut',
-        value: instance?.shortcut,
+        value: assistant?.shortcut,
       },
       {
         name: 'tray',
         type: 'boolean',
         displayName: 'Tray',
         title: 'Show tray icon for the assistant',
-        value: instance?.hasTray,
+        value: assistant?.hasTray,
       },
       {
         name: 'api',
         type: 'selection',
         displayName: 'API',
-        selection: instance?.service.api.endpoint.name,
+        selection: assistant?.service.api.endpoint.name,
         selections: apiManager.getEndpointSelections(),
       },
       {
         name: 'service',
         type: 'selection',
         displayName: 'Service',
-        selection: instance?.serviceName,
+        selection: assistant?.service.constructor.name,
         selections: serviceManager.getServiceSelections(),
         constrainedBy: 'api',
         constrain: (endpoint: APIEndpoint, record: ServiceRecord) => {
@@ -92,7 +93,7 @@ export default class NewAssistantWindow extends BaseWindow {
         name: 'view',
         type: 'selection',
         displayName: 'View',
-        selection: instance?.viewClass.name,
+        selection: assistant?.viewClass.name,
         selections: serviceManager.getViewSelections(),
         constrainedBy: 'service',
         constrain: (record: ServiceRecord, viewClass) => {
@@ -109,10 +110,10 @@ export default class NewAssistantWindow extends BaseWindow {
 
     // Create helper button to add or edit api endpoint.
     let apiButton: gui.Button;
-    if (instance) {
+    if (assistant) {
       apiButton = gui.Button.create('Edit API endpoint...');
       apiButton.onClick = () => {
-        const win = new NewAPIWindow(instance.service.api.endpoint);
+        const win = new NewAPIWindow(assistant.service.api.endpoint);
         win.window.center();
         win.window.activate();
       };
@@ -134,14 +135,14 @@ export default class NewAssistantWindow extends BaseWindow {
     });
     this.overrideButton.onClick = this.#toggleAPIParams.bind(this);
     this.serviceSelector.view.addChildViewAt(this.overrideButton, 6);
-    if (!isEmptyObject(instance?.service.api.params))
+    if (!isEmptyObject(assistant?.service.api.params))
       this.#toggleAPIParams();
 
     this.#updateServiceParamsView();
     this.#updateAPIParamsView();
     this.#updateDefaultIcon();
-    if (instance) {
-      // We do not allow editing types of instance.
+    if (assistant) {
+      // We do not allow editing types of assistant.
       this.serviceSelector.getRow('api').editor.setEnabled(false);
       this.serviceSelector.getRow('service').editor.setEnabled(false);
       this.serviceSelector.getRow('view').editor.setEnabled(false);
@@ -161,14 +162,14 @@ export default class NewAssistantWindow extends BaseWindow {
     const buttonsArea = new ButtonsArea();
     buttonsArea.view.setStyle({flex: 1, marginTop: basicStyle.padding / 2});
     this.contentView.addChildView(buttonsArea.view);
-    const createButton = buttonsArea.addButton(instance ? 'OK' : 'Create');
+    const createButton = buttonsArea.addButton(assistant ? 'OK' : 'Create');
     createButton.makeDefault();
     createButton.onClick = this.#onSubmit.bind(this);
     buttonsArea.addCloseButton();
 
     this.serviceSelector.getRow('name').editor.focus();
     this.resizeToFitContentView({width: 550});
-    this.window.setTitle(instance ? `Edit Assistant: ${instance.service.name}` : 'Create New Assistant');
+    this.window.setTitle(assistant ? `Edit Assistant: ${assistant.service.name}` : 'Create New Assistant');
   }
 
   destructor() {
@@ -222,8 +223,8 @@ export default class NewAssistantWindow extends BaseWindow {
       nullable: true,
     });
     this.apiParams.clearParams();  // fill empty instead of default values
-    if (this.instance?.service.api.params)
-      this.apiParams.fillParams(this.instance.service.api.params);
+    if (this.assistant?.service.api.params)
+      this.apiParams.fillParams(this.assistant.service.api.params);
 
     // Add separator and description for the params area.
     const separator = gui.Separator.create('horizontal');
@@ -268,8 +269,8 @@ export default class NewAssistantWindow extends BaseWindow {
     // Create services view.
     this.serviceParams = new ParamsView(serviceRecord.params, true);
     this.contentView.addChildViewAt(this.serviceParams.view, 1);
-    if (this.instance?.service.params)
-      this.serviceParams.fillParams(this.instance.service.params);
+    if (this.assistant?.service.params)
+      this.serviceParams.fillParams(this.assistant.service.params);
 
     // Ajust window size automatically.
     for (const row of Object.values(this.serviceParams.rows)) {
@@ -300,24 +301,24 @@ export default class NewAssistantWindow extends BaseWindow {
       this.serviceSelector.requestAttention('name');
       return;
     }
-    if (this.instance) {
+    if (this.assistant) {
       // Update existing assistant.
-      this.instance.service.setName(name);
+      this.assistant.service.setName(name);
       if (this.apiParams)
-        this.instance.service.setAPIParams(this.apiParams.readParams() as Record<string, string>);
+        this.assistant.service.setAPIParams(this.apiParams.readParams() as Record<string, string>);
       else
-        this.instance.service.setAPIParams({});
+        this.assistant.service.setAPIParams({});
       if (this.serviceParams) {
         for (const [name, row] of Object.entries(this.serviceParams.rows))
-          this.instance.service.setParam(name, row.getValue());
+          this.assistant.service.setParam(name, row.getValue());
       }
-      serviceManager.setInstanceIcon(this.instance, this.serviceSelector.getValue('icon') as Icon);
-      serviceManager.setInstanceShortcut(this.instance, this.serviceSelector.getValue('shortcut'));
-      serviceManager.setInstanceHasTray(this.instance, this.serviceSelector.getValue('tray'));
-      serviceManager.saveConfig();
+      this.assistant.setIcon(this.serviceSelector.getValue('icon') as Icon);
+      this.assistant.setShortcut(this.serviceSelector.getValue('shortcut'));
+      this.assistant.setHasTray(this.serviceSelector.getValue('tray'));
+      assistantManager.saveConfig();
     } else {
       // Create a new assistant.
-      const options: Partial<InstanceOptions> = {
+      const options: Partial<AssistantOptions> = {
         icon: this.serviceSelector.getValue('icon') as Icon,
         shortcut: this.serviceSelector.getValue('shortcut') as string,
         hasTray: this.serviceSelector.getValue('tray') as boolean,
@@ -326,9 +327,9 @@ export default class NewAssistantWindow extends BaseWindow {
         options.apiParams = this.apiParams.readParams() as Record<string, string>;
       if (this.serviceParams)
         options.params = this.serviceParams.readParams();
-      serviceManager.createInstance(
+      assistantManager.createAssistant(
         name,
-        (this.serviceSelector.getValue('service') as ServiceRecord).name,
+        (this.serviceSelector.getValue('service') as ServiceRecord).serviceClass.name,
         (this.serviceSelector.getValue('api') as APIEndpoint),
         (this.serviceSelector.getValue('view') as BaseViewType),
         options);

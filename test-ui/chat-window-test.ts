@@ -2,22 +2,22 @@ import ChatService from '../src/model/chat-service';
 import ChatView from '../src/view/chat-view';
 import ChatWindow from '../src/view/chat-window';
 import apiManager from '../src/controller/api-manager';
-import serviceManager from '../src/controller/service-manager';
+import assistantManager from '../src/controller/assistant-manager';
 import {ChatRole} from '../src/model/chat-api';
 
 import {addFinalizer, gcUntil} from './util';
 
 describe('ChatWindow', () => {
   afterEach(() => {
-    serviceManager.deserialize({});
+    assistantManager.deserialize({});
   });
 
   it('can be garbage collected', async () => {
     let collected = false;
     (() => {
       const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const instance = serviceManager.createInstance('TestChat', 'DummyConversationChatService', endpoint, ChatView);
-      const chatWindow = new ChatWindow(instance);
+      const assistant = assistantManager.createAssistant('TestChat', 'ChatService', endpoint, ChatView);
+      const chatWindow = new ChatWindow(assistant);
       addFinalizer(chatWindow, () => collected = true);
       chatWindow.window.close();
     })();
@@ -28,9 +28,9 @@ describe('ChatWindow', () => {
     let collected = false;
     await (async () => {
       const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const instance = serviceManager.createInstance('TestChat', 'DummyConversationChatService', endpoint, ChatView);
-      const chatWindow = new ChatWindow(instance);
-      await (instance.service as ChatService).sendMessage({role: ChatRole.User, content: 'message'});
+      const assistant = assistantManager.createAssistant('TestChat', 'ChatService', endpoint, ChatView);
+      const chatWindow = new ChatWindow(assistant);
+      await (assistant.service as ChatService).sendMessage({role: ChatRole.User, content: 'message'});
       addFinalizer(chatWindow, () => collected = true);
       chatWindow.window.close();
     })();

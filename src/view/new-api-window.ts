@@ -8,6 +8,7 @@ import DashboardWindow from './dashboard-window';
 import ParamsView, {valueMarginLeft} from './params-view';
 import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
+import assistantManager from '../controller/assistant-manager';
 import basicStyle from './basic-style';
 import serviceManager from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
@@ -173,7 +174,7 @@ export default class NewAPIWindow extends BaseWindow {
         if (!serviceRecord)
           throw new Error('Unable to find a service type for the endpoint.');
         // Create a new assistant.
-        serviceManager.createInstance(name, serviceRecord.name, endpoint, serviceRecord.viewClasses[0]);
+        assistantManager.createAssistant(name, serviceRecord.serviceClass.name, endpoint, serviceRecord.viewClasses[0]);
         // Close new assistant window since it is no longer needed.
         windowManager.getNamedWindow('newAssistant')?.close();
         // Show the added assistant.

@@ -24,7 +24,7 @@ const socketPath = process.platform == 'win32'
   ? `\\\\.\\pipe\\${socketName}`
   : `${os.tmpdir()}/${socketName}`;
 
-// Return true if there is already an instance running
+// Return true if there is already an assistant running
 export async function check() {
   const client = net.connect({path: socketPath});
   const connected = await connectionPromise(client);

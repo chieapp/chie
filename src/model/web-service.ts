@@ -2,7 +2,7 @@ import {Signal} from 'typed-signals';
 
 import Icon from '../model/icon';
 import Serializable from '../model/serializable';
-import WebAPI from './web-api';
+import WebAPI from '../model/web-api';
 import apiManager from '../controller/api-manager';
 import {isEmptyObject, shallowEqual} from '../util/object-utils';
 
@@ -22,7 +22,7 @@ export interface WebServiceOptions<T extends WebAPI = WebAPI, P extends object =
   params?: P;
 }
 
-export default class WebService<T extends WebAPI, P extends object = object> implements Serializable {
+export default class WebService<T extends WebAPI = WebAPI, P extends object = object> implements Serializable {
   onChangeName: Signal<() => void> = new Signal;
   onChangeAPIParams: Signal<() => void> = new Signal;
   onChangeParams: Signal<() => void> = new Signal;
@@ -58,7 +58,7 @@ export default class WebService<T extends WebAPI, P extends object = object> imp
     this.name = options.name;
     this.api = options.api;
     this.icon = options.icon ?? new Icon({name: 'bot'});
-    // The params are cloned since they may be used to create other instances.
+    // The params are cloned since they may be used to create other assistants.
     this.api.params = Object.assign({}, options.apiParams);
     this.params = Object.assign({}, options.params);
   }
@@ -146,7 +146,7 @@ export default class WebService<T extends WebAPI, P extends object = object> imp
   }
 }
 
-export interface WebServiceType<T extends WebAPI> {
+export interface WebServiceType<T extends WebAPI = WebAPI> {
   new (options: WebServiceOptions<T>): WebService<T>;
   deserialize(config: object): WebServiceOptions<T>;
 }

@@ -1,7 +1,7 @@
 import AppTray from '../src/view/app-tray';
 import ChatView from '../src/view/chat-view';
 import apiManager from '../src/controller/api-manager';
-import serviceManager from '../src/controller/service-manager';
+import assistantManager from '../src/controller/assistant-manager';
 import {addFinalizer, gcUntil} from './util';
 
 describe('AppTray', () => {
@@ -15,14 +15,14 @@ describe('AppTray', () => {
     await gcUntil(() => collected);
   });
 
-  it('does not reference removed instance', async () => {
+  it('does not reference removed assistant', async () => {
     let collected = false;
     (() => {
       const tray = new AppTray();
       const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const instance = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint, ChatView);
+      const assistant = assistantManager.createAssistant('TestChat 1', 'MultiChatsService', endpoint, ChatView);
       addFinalizer(tray, () => collected = true);
-      serviceManager.removeInstanceById(instance.id);
+      assistantManager.removeAssistantById(assistant.id);
       tray.destructor();
     })();
     await gcUntil(() => collected);

@@ -1,11 +1,11 @@
 import gui from 'gui';
 
+import Assistant from '../model/assistant';
 import BaseView, {MenuItemOptions} from './base-view';
-import Instance from '../model/instance';
 import SignalsOwner from '../model/signals-owner';
-import serviceManager from '../controller/service-manager';
+import assistantManager from '../controller/assistant-manager';
 
-type createAssistantMenuItemFunc = (instance: Instance) => MenuItemOptions<BaseView>;
+type createAssistantMenuItemFunc = (assistant: Assistant) => MenuItemOptions<BaseView>;
 
 export default class AssistantsMenu extends SignalsOwner {
   menu: gui.Menu;
@@ -13,7 +13,7 @@ export default class AssistantsMenu extends SignalsOwner {
   acceleratorPrefix?: string;
   createAssistantMenuItem: createAssistantMenuItemFunc;
 
-  #assistants: {instance: Instance, item: gui.MenuItem}[] = [];
+  #assistants: {assistant: Assistant, item: gui.MenuItem}[] = [];
 
   constructor(menu: gui.Menu, menuIndex: number, acceleratorPrefix: string | null, createAssistantMenuItem: createAssistantMenuItemFunc) {
     super();
@@ -21,25 +21,25 @@ export default class AssistantsMenu extends SignalsOwner {
     this.menuIndex = menuIndex;
     this.acceleratorPrefix = acceleratorPrefix;
     this.createAssistantMenuItem = createAssistantMenuItem;
-    // Insert menu items for existing instances.
-    serviceManager.getInstances().forEach(this.#onNewInstance.bind(this));
-    // Connect to serviceManager to update assistant menu items.
-    this.connections.add(serviceManager.onNewInstance.connect(
-      this.#onNewInstance.bind(this)));
-    this.connections.add(serviceManager.onRemoveInstance.connect(
-      this.#onRemoveInstance.bind(this)));
-    this.connections.add(serviceManager.onReorderInstance.connect(
-      this.#onReorderInstance.bind(this)));
+    // Insert menu items for existing assistants.
+    assistantManager.getAssistants().forEach(this.#onNewAssistant.bind(this));
+    // Connect to assistantManager to update assistant menu items.
+    this.connections.add(assistantManager.onNewAssistant.connect(
+      this.#onNewAssistant.bind(this)));
+    this.connections.add(assistantManager.onRemoveAssistant.connect(
+      this.#onRemoveAssistant.bind(this)));
+    this.connections.add(assistantManager.onReorderAssistant.connect(
+      this.#onReorderAssistant.bind(this)));
   }
 
-  #onNewInstance(instance: Instance, index: number) {
-    const item = this.#createMenuItem(instance, index);
+  #onNewAssistant(assistant: Assistant, index: number) {
+    const item = this.#createMenuItem(assistant, index);
     this.menu.insert(item, this.menuIndex + index);
-    this.#assistants.push({instance, item});
+    this.#assistants.push({assistant, item});
   }
 
-  #onRemoveInstance(instance: Instance) {
-    const index = this.#assistants.findIndex(a => a.instance == instance);
+  #onRemoveAssistant(assistant: Assistant) {
+    const index = this.#assistants.findIndex(a => a.assistant == assistant);
     if (index < 0)
       throw new Error('Removing unexist assistant from menu bar.');
     this.menu.remove(this.#assistants[index].item);
@@ -48,12 +48,12 @@ export default class AssistantsMenu extends SignalsOwner {
       this.#updateAssistantsMenuAccelerators();
   }
 
-  #onReorderInstance(instance: Instance, fromIndex: number, toIndex: number) {
+  #onReorderAssistant(assistant: Assistant, fromIndex: number, toIndex: number) {
     const item = this.#assistants[fromIndex].item;
     this.menu.remove(item);
     this.menu.insert(item, this.menuIndex + toIndex);
     this.#assistants.splice(fromIndex, 1);
-    this.#assistants.splice(toIndex, 0, {instance, item});
+    this.#assistants.splice(toIndex, 0, {assistant, item});
     this.#updateAssistantsMenuAccelerators();
   }
 
@@ -64,8 +64,8 @@ export default class AssistantsMenu extends SignalsOwner {
       this.#assistants[i].item.setAccelerator(`${this.acceleratorPrefix}+${i + 1}`);
   }
 
-  #createMenuItem(instance: Instance, index: number) {
-    const options = this.createAssistantMenuItem(instance);
+  #createMenuItem(assistant: Assistant, index: number) {
+    const options = this.createAssistantMenuItem(assistant);
     if (this.acceleratorPrefix)
       options.accelerator = `${this.acceleratorPrefix}+${index + 1}`;
     return gui.MenuItem.create(options);

@@ -12,6 +12,7 @@ import SettingsWindow from './view/settings-window';
 import apiManager from './controller/api-manager';
 import app from './controller/app';
 import extensionManager from './controller/extension-manager';
+import assistantManager from './controller/assistant-manager';
 import serviceManager from './controller/service-manager';
 import windowManager from './controller/window-manager';
 import * as singleInstance from './util/single-instance';
@@ -52,7 +53,6 @@ function guiMain() {
     },
   ];
   serviceManager.registerService({
-    name: 'MultiChatsService',
     serviceClass: MultiChatsService,
     apiClasses: [ChatConversationAPI, ChatCompletionAPI],
     viewClasses: [MultiChatsView],
@@ -61,7 +61,6 @@ function guiMain() {
     params: chatServiceParams,
   });
   serviceManager.registerService({
-    name: 'ChatService',
     serviceClass: ChatService,
     apiClasses: [ChatConversationAPI, ChatCompletionAPI],
     viewClasses: [ChatView],
@@ -75,7 +74,7 @@ function guiMain() {
 
   // Read config and initialize.
   config.addItem('apis', apiManager);
-  config.addItem('services', serviceManager);
+  config.addItem('assistants', assistantManager);
   config.addItem('app', app);
   config.initFromFileSync();
 

@@ -57,13 +57,11 @@ export const mochaHooks = {
     serviceManager.registerView(ChatView);
     serviceManager.registerView(MultiChatsView);
     serviceManager.registerService({
-      name: 'DummyCompletionChatService',
       serviceClass: MultiChatsService,
       apiClasses: [ChatCompletionAPI],
       viewClasses: [ChatView, MultiChatsView],
     });
     serviceManager.registerService({
-      name: 'DummyConversationChatService',
       serviceClass: ChatService,
       apiClasses: [ChatCompletionAPI, ChatConversationAPI],
       viewClasses: [ChatView],

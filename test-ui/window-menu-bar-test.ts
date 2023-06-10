@@ -2,7 +2,7 @@ import BaseWindow from '../src/view/base-window';
 import ChatView from '../src/view/chat-view';
 import WindowMenuBar from '../src/view/window-menu-bar';
 import apiManager from '../src/controller/api-manager';
-import serviceManager from '../src/controller/service-manager';
+import assistantManager from '../src/controller/assistant-manager';
 import {addFinalizer, gcUntil} from './util';
 
 describe('WindowMenuBar', () => {
@@ -18,15 +18,15 @@ describe('WindowMenuBar', () => {
     await gcUntil(() => collected);
   });
 
-  it('does not reference removed instance', async () => {
+  it('does not reference removed assistant', async () => {
     let collected = false;
     (() => {
       const win = new BaseWindow();
       const menubar = new WindowMenuBar(win);
       const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const instance = serviceManager.createInstance('TestChat 1', 'DummyCompletionChatService', endpoint, ChatView);
+      const assistant = assistantManager.createAssistant('TestChat 1', 'MultiChatsService', endpoint, ChatView);
       addFinalizer(menubar, () => collected = true);
-      serviceManager.removeInstanceById(instance.id);
+      assistantManager.removeAssistantById(assistant.id);
       menubar.destructor();
       win.window.close();
     })();

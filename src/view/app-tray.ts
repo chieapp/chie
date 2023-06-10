@@ -27,9 +27,9 @@ export default class AppTray {
       { type: 'separator' },
       ...BaseMenuBar.fileMenuItems,
     ]);
-    this.#assistantsMenu = new AssistantsMenu(this.menu, 2, null, (instance) => ({
-      label: `Open ${instance.service.name}...`,
-      onClick: () => windowManager.showChatWindow(instance.id),
+    this.#assistantsMenu = new AssistantsMenu(this.menu, 2, null, (assistant) => ({
+      label: `Open ${assistant.service.name}...`,
+      onClick: () => windowManager.showChatWindow(assistant.id),
     }));
     this.tray.setMenu(this.menu);
 

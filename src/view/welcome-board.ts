@@ -2,7 +2,7 @@ import gui from 'gui';
 
 import AppearanceAware from '../view/appearance-aware';
 import apiManager from '../controller/api-manager';
-import serviceManager from '../controller/service-manager';
+import assistantManager from '../controller/assistant-manager';
 import windowManager from '../controller/window-manager';
 
 const noEndpointText = 'Start by adding an API endpoint first:';
@@ -20,7 +20,7 @@ export default class WelcomeBoard extends AppearanceAware {
     });
 
     const hasEndpoint = apiManager.getEndpoints().length > 0;
-    const hasAssistant = serviceManager.getInstances().length > 0;
+    const hasAssistant = assistantManager.getAssistants().length > 0;
     if (hasEndpoint && hasAssistant)  // should not happen
       return;
 

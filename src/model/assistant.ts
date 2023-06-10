@@ -1,40 +1,34 @@
 import crypto from 'node:crypto';
 import fs from 'fs-extra';
+import gui from 'gui';
 import path from 'node:path';
 
 import Icon from '../model/icon';
 import WebService from '../model/web-service';
 import {BaseViewType} from '../view/base-view';
 
-export interface AssistantOptions {
-  shortcut?: string;
-  hasTray?: boolean;
-}
-
 export default class Assistant {
   id?: string;
   service: WebService;
   viewClass: BaseViewType;
-  shortcut?: string;
-  hasTray?: boolean;
 
-  constructor(id: string, service: WebService, viewClass: BaseViewType, options?: AssistantOptions) {
+  shortcut?: string;
+  shortcutId?: number;
+
+  tray?: gui.Tray;
+  trayIcon?: Icon;
+
+  constructor(id: string, service: WebService, viewClass: BaseViewType) {
     this.id = id;
     this.service = service;
     this.viewClass = viewClass;
-    if (options) {
-      if (options.shortcut)
-        this.setShortcut(options.shortcut);
-      if (options.hasTray)
-        this.setHasTray(options.hasTray);
-    }
     if (service.icon)
       service.icon = this.#copyIcon(service.icon);
   }
 
   destructor() {
     this.setShortcut(null);
-    this.setHasTray(false);
+    this.setTrayIcon(null);
     this.#removeIcon(this.service.icon);
     this.service.destructor();
   }
@@ -45,17 +39,35 @@ export default class Assistant {
   }
 
   setShortcut(shortcut: string | null) {
+    if (this.shortcut == shortcut)
+      return;
+    if (this.shortcut)
+      gui.globalShortcut.unregister(this.shortcutId);
     this.shortcut = shortcut;
-    // Load shortcutManager lazily to avoid cyclic reference.
-    const shortcutManager = require('../controller/shortcut-manager').default;
-    shortcutManager.setShortcutForChatWindow(this.id, shortcut);
+    if (shortcut)
+      this.shortcutId = gui.globalShortcut.register(shortcut, this.onActivate.bind(this));
+    else
+      this.shortcutId = null;
   }
 
-  setHasTray(hasTray: boolean) {
-    this.hasTray = hasTray;
-    // Load trayManager lazily to avoid cyclic reference.
-    const trayManager = require('../controller/tray-manager').default;
-    trayManager.setTrayForChatWindow(this.id, hasTray ? this.service.icon : null);
+  setTrayIcon(trayIcon: Icon | null) {
+    if (this.trayIcon == trayIcon)  // ignore when icon is not changed
+      return;
+    if (this.tray)  // remove existing tray
+      this.tray.remove();
+    if (trayIcon) {  // create new one
+      this.trayIcon = trayIcon;
+      this.tray = gui.Tray.createWithImage(this.trayIcon.getImage());
+      this.tray.onClick = this.onActivate.bind(this);
+    } else {  // remove record
+      this.tray = null;
+      this.trayIcon = null;
+    }
+  }
+
+  onActivate() {
+    const windowManager = require('../controller/window-manager').default;
+    windowManager.showChatWindow(this.id);
   }
 
   // If the icon file is located outside app's bundle, copy it to user data dir.

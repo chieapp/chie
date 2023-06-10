@@ -22,11 +22,6 @@ type AssistantManagerDataItem = {
 };
 type AssistantManagerData = Record<string, AssistantManagerDataItem>;
 
-export interface AssistantOptions extends WebServiceOptions {
-  shortcut?: string;
-  hasTray?: boolean;
-}
-
 export class AssistantManager extends ConfigStoreItem {
   onNewAssistant: Signal<(assistant: Assistant, index: number) => void> = new Signal;
   onRemoveAssistant: Signal<(assistant: Assistant) => void> = new Signal;
@@ -64,11 +59,12 @@ export class AssistantManager extends ConfigStoreItem {
       // Deserialize using the service type's method.
       const options = baseClass.deserialize(item.service);
       const service = new record.serviceClass(options);
-      const assistantOptions = {
-        shortcut: item.shortcut,
-        hasTray: item.hasTray,
-      };
-      this.#assistants.push(new Assistant(id, service, viewClass, assistantOptions));
+      const assistant = new Assistant(id, service, viewClass);
+      if (item.shortcut)
+        assistant.setShortcut(item.shortcut);
+      if (item.hasTray)
+        assistant.setTrayIcon(service.icon);
+      this.#assistants.push(assistant);
     }
   }
 
@@ -82,14 +78,14 @@ export class AssistantManager extends ConfigStoreItem {
       };
       if (assistant.shortcut)
         item.shortcut = assistant.shortcut;
-      if (assistant.hasTray)
-        item.hasTray = assistant.hasTray;
+      if (assistant.tray)
+        item.hasTray = true;
       data[assistant.id] = item;
     }
     return data;
   }
 
-  createAssistant(name: string, serviceName: string, endpoint: APIEndpoint, viewClass: BaseViewType, options?: Partial<AssistantOptions>) {
+  createAssistant(name: string, serviceName: string, endpoint: APIEndpoint, viewClass: BaseViewType, options?: Partial<WebServiceOptions>) {
     const service = serviceManager.createService(name, serviceName, endpoint, options);
     // Do runtime check of API type compatibility.
     const {viewClasses} = serviceManager.getServiceByName(serviceName);
@@ -98,7 +94,7 @@ export class AssistantManager extends ConfigStoreItem {
     // Create a new assistant of service.
     const ids = this.#assistants.map(assistant => assistant.id);
     const id = getNextId(service.name, ids);
-    const assistant = new Assistant(id, service, viewClass, options);
+    const assistant = new Assistant(id, service, viewClass);
     this.#assistants.push(assistant);
     this.onNewAssistant.emit(assistant, ids.length);
     this.saveConfig();

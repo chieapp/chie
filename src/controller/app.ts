@@ -2,7 +2,7 @@ import gui from 'gui';
 
 import AppMenuBar from '../view/app-menu-bar';
 import AppTray from '../view/app-tray';
-import shortcutManager from '../controller/shortcut-manager';
+import windowManager from '../controller/window-manager';
 import {ConfigStoreItem} from '../model/config-store';
 import {collectGarbage} from './gc-center';
 
@@ -17,6 +17,8 @@ export class App extends ConfigStoreItem {
   firstTimeStart = true;
   menuBar?: AppMenuBar;
   tray?: AppTray;
+
+  shortcutId?: number;
   dashboarShortcut?: string;
 
   constructor() {
@@ -82,8 +84,15 @@ export class App extends ConfigStoreItem {
   }
 
   setDashboardShortcut(shortcut: string) {
+    if (this.dashboarShortcut)
+      gui.globalShortcut.unregister(this.shortcutId);
     this.dashboarShortcut = shortcut;
-    shortcutManager.setDashboardShortcut(shortcut);
+    if (shortcut) {
+      this.shortcutId = gui.globalShortcut.register(shortcut, () => windowManager.showNamedWindow('dashboard'));
+    } else {
+      this.shortcutId = null;
+      this.dashboarShortcut = null;
+    }
     this.saveConfig();
   }
 }

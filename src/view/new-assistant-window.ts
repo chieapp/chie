@@ -11,12 +11,13 @@ import NewAPIWindow from '../view/new-api-window';
 import ParamsView, {IconParamRow, valueMarginLeft} from '../view/params-view';
 import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
+import assistantManager from '../controller/assistant-manager';
 import basicStyle from '../view/basic-style';
-import assistantManager, {AssistantOptions} from '../controller/assistant-manager';
 import serviceManager, {ServiceRecord} from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
 import {BaseViewType} from '../view/base-view';
 import {ChatCompletionAPI} from '../model/chat-api';
+import {WebServiceOptions} from '../model/web-service';
 import {isEmptyObject, matchClass} from '../util/object-utils';
 
 const overrideAPIParamsLabel = 'Override API parameters';
@@ -64,7 +65,7 @@ export default class NewAssistantWindow extends BaseWindow {
         type: 'boolean',
         displayName: 'Tray',
         title: 'Show tray icon for the assistant',
-        value: assistant?.hasTray,
+        value: assistant?.tray != null,
       },
       {
         name: 'api',
@@ -314,25 +315,29 @@ export default class NewAssistantWindow extends BaseWindow {
       }
       this.assistant.setIcon(this.serviceSelector.getValue('icon') as Icon);
       this.assistant.setShortcut(this.serviceSelector.getValue('shortcut'));
-      this.assistant.setHasTray(this.serviceSelector.getValue('tray'));
+      if (this.serviceSelector.getValue('tray'))
+        this.assistant.setTrayIcon(this.assistant.service.icon);
+      else
+        this.assistant.setTrayIcon(null);
       assistantManager.saveConfig();
     } else {
       // Create a new assistant.
-      const options: Partial<AssistantOptions> = {
+      const options: Partial<WebServiceOptions> = {
         icon: this.serviceSelector.getValue('icon') as Icon,
-        shortcut: this.serviceSelector.getValue('shortcut') as string,
-        hasTray: this.serviceSelector.getValue('tray') as boolean,
       };
       if (this.apiParams)
         options.apiParams = this.apiParams.readParams() as Record<string, string>;
       if (this.serviceParams)
         options.params = this.serviceParams.readParams();
-      assistantManager.createAssistant(
+      const assistant = assistantManager.createAssistant(
         name,
         (this.serviceSelector.getValue('service') as ServiceRecord).serviceClass.name,
         (this.serviceSelector.getValue('api') as APIEndpoint),
         (this.serviceSelector.getValue('view') as BaseViewType),
         options);
+      assistant.setShortcut(this.serviceSelector.getValue('shortcut'));
+      if (this.serviceSelector.getValue('tray'))
+        assistant.setTrayIcon(assistant.service.icon);
       // Show the added assistant.
       const dashboard = windowManager.showNamedWindow('dashboard') as DashboardWindow;
       dashboard.switchTo(-1);

@@ -30,6 +30,10 @@ jobs:
           npm run dist -- --arch ${{ matrix.arch }}
           npm publish --dry-run
 
+      - name: Verify code sign
+        if: startsWith(matrix.os, 'macos')
+        run: codesign --verify out/Chie.app
+
       - name: Start xvfb
         if: startsWith(matrix.os, 'ubuntu') && matrix.arch == 'x64'
         run: |

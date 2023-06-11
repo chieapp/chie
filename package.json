@@ -11,6 +11,7 @@
     "ignore": [
       "assets/build"
     ],
+    "entitlements": "assets/build/entitlements.plist",
     "icons": {
       "mac": "assets/build/icon.icns",
       "win": "assets/build/icon.ico"
@@ -69,6 +70,6 @@
     "mocha": "10.2.0",
     "ts-node": "10.9.1",
     "typescript": "5.0.2",
-    "yackage": "0.8.x"
+    "yackage": "0.9.x"
   }
 }

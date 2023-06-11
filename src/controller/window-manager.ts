@@ -111,7 +111,7 @@ export class WindowManager extends ConfigStoreItem {
     if (!this.quitOnAllWindowsClosed)
       return;
     const app = require('./app').default;
-    if (!app.tray && !app.isDockIconVisible())
+    if (!app.hasDockOrTray())
       this.quit();
   }
 

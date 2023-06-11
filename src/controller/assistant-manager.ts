@@ -2,6 +2,7 @@ import {Signal} from 'typed-signals';
 
 import APIEndpoint from '../model/api-endpoint';
 import Assistant from '../model/assistant';
+import Icon from '../model/icon';
 import WebService, {
   WebServiceData,
   WebServiceOptions,
@@ -19,6 +20,7 @@ type AssistantManagerDataItem = {
   view: string,
   shortcut?: string,
   hasTray?: boolean,
+  trayIcon?: string,
 };
 type AssistantManagerData = Record<string, AssistantManagerDataItem>;
 
@@ -62,8 +64,10 @@ export class AssistantManager extends ConfigStoreItem {
       const assistant = new Assistant(id, service, viewClass);
       if (item.shortcut)
         assistant.setShortcut(item.shortcut);
-      if (item.hasTray)
-        assistant.setTrayIcon(service.icon);
+      if (item.hasTray) {
+        const icon = item.trayIcon ? new Icon({chieURL: item.trayIcon}) : service.icon;
+        assistant.setTrayIcon(icon);
+      }
       this.#assistants.push(assistant);
     }
   }
@@ -78,8 +82,11 @@ export class AssistantManager extends ConfigStoreItem {
       };
       if (assistant.shortcut)
         item.shortcut = assistant.shortcut;
-      if (assistant.tray)
+      if (assistant.tray) {
         item.hasTray = true;
+        if (assistant.trayIcon != assistant.service.icon)
+          item.trayIcon = assistant.trayIcon.getChieURL();
+      }
       data[assistant.id] = item;
     }
     return data;

@@ -97,7 +97,7 @@ function guiMain() {
   // 1. This is the first time start;
   // 2. There is no tray icon and no dock icon and no opened windows.
   if (app.firstTimeStart ||
-      (windowManager.windows.length == 0 && !app.tray && !app.isDockIconVisible())) {
+      (windowManager.windows.length == 0 && !app.hasDockOrTray())) {
     windowManager.showNamedWindow('dashboard');
   }
 

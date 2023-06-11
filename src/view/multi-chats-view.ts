@@ -220,7 +220,6 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
 
   #onCloseItem(item: ChatListItem) {
     const index = this.items.indexOf(item);
-    console.log('onCloseItem', index);
     if (index < 0)
       throw new Error('Closing an unexist chat.');
     this.service.removeChatAt(index);

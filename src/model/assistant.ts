@@ -3,12 +3,15 @@ import fs from 'fs-extra';
 import gui from 'gui';
 import path from 'node:path';
 
+import DashboardWindow from '../view/dashboard-window';
 import Icon from '../model/icon';
 import WebService from '../model/web-service';
+import assistantManager from '../controller/assistant-manager';
 import {BaseViewType} from '../view/base-view';
+import {collectGarbage} from '../controller/gc-center';
 
 export default class Assistant {
-  id?: string;
+  id: string;
   service: WebService;
   viewClass: BaseViewType;
 
@@ -17,6 +20,7 @@ export default class Assistant {
 
   tray?: gui.Tray;
   trayIcon?: Icon;
+  trayMenu?: gui.Menu;
 
   constructor(id: string, service: WebService, viewClass: BaseViewType) {
     this.id = id;
@@ -53,21 +57,58 @@ export default class Assistant {
   setTrayIcon(trayIcon: Icon | null) {
     if (this.trayIcon == trayIcon)  // ignore when icon is not changed
       return;
-    if (this.tray)  // remove existing tray
+    if (this.tray) {  // remove existing tray
       this.tray.remove();
+      this.#removeIcon(this.trayIcon);
+    }
     if (trayIcon) {  // create new one
-      this.trayIcon = trayIcon;
+      if (trayIcon.getImage().getSize().width > 22)
+        this.trayIcon = this.#resizeIcon(trayIcon, {width: 16, height: 16});
+      else
+        this.trayIcon = trayIcon;
       this.tray = gui.Tray.createWithImage(this.trayIcon.getImage());
+      if (process.platform != 'darwin') {
+        this.trayMenu = gui.Menu.create([
+          {
+            label: `Open ${this.service.name}...`,
+            onClick: this.onActivate.bind(this),
+          },
+          {
+            label: 'Open in Dashboard...',
+            onClick: this.onActivateDashboard.bind(this),
+          },
+        ]);
+        this.tray.setMenu(this.trayMenu);
+      }
       this.tray.onClick = this.onActivate.bind(this);
     } else {  // remove record
       this.tray = null;
       this.trayIcon = null;
+      this.trayMenu = null;
+      collectGarbage();
     }
   }
 
   onActivate() {
     const windowManager = require('../controller/window-manager').default;
     windowManager.showChatWindow(this.id);
+  }
+
+  onActivateDashboard() {
+    const windowManager = require('../controller/window-manager').default;
+    const dashboard = windowManager.showNamedWindow('dashboard') as DashboardWindow;
+    dashboard.switchTo(assistantManager.getAssistants().indexOf(this));
+  }
+
+  // Resize the icon and copy it to user data dir.
+  #resizeIcon(icon: Icon, size: gui.SizeF) {
+    const filename = crypto.randomUUID() + '@2x.png';
+    const newIcon = new Icon({
+      image: icon.getImage().resize(size, 2),
+      filePath: path.join(Icon.userIconsPath, filename),
+    });
+    fs.outputFileSync(newIcon.filePath, newIcon.getImage().toPNG());
+    return newIcon;
   }
 
   // If the icon file is located outside app's bundle, copy it to user data dir.

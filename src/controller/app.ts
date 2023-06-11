@@ -2,6 +2,7 @@ import gui from 'gui';
 
 import AppMenuBar from '../view/app-menu-bar';
 import AppTray from '../view/app-tray';
+import assistantManager from './assistant-manager';
 import windowManager from '../controller/window-manager';
 import {ConfigStoreItem} from '../model/config-store';
 import {collectGarbage} from './gc-center';
@@ -51,6 +52,10 @@ export class App extends ConfigStoreItem {
     if (this.dashboarShortcut)
       data.dashboarShortcut = this.dashboarShortcut;
     return data;
+  }
+
+  hasDockOrTray() {
+    return this.isDockIconVisible() || this.tray || assistantManager.getAssistants().find(a => a.tray);
   }
 
   setDockIconVisible(visible: boolean) {

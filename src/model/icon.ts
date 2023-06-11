@@ -12,7 +12,7 @@ export default class Icon {
   #chieURL?: string;
   #image?: gui.Image;
 
-  constructor(options: {chieURL?: string, filePath?: string, name?: string}) {
+  constructor(options: {chieURL?: string, image?: gui.Image, filePath?: string, name?: string}) {
     if (options.chieURL) {
       const u = new URL(options.chieURL);
       if (u.host == 'app-file')
@@ -22,6 +22,11 @@ export default class Icon {
       else
         throw new Error(`Invalid chie URL: ${options.chieURL}`);
       this.#chieURL = options.chieURL;
+    } else if (options.image) {
+      if (!options.filePath)
+        throw new Error('Must specify filePath when passing image to icon.');
+      this.#image = options.image;
+      this.filePath = options.filePath;
     } else if (options.filePath) {
       this.filePath = options.filePath;
     } else if (options.name) {

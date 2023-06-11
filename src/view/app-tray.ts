@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import gui from 'gui';
 import path from 'node:path';
 
-import AssistantsMenu from './assistants-menu';
-import BaseMenuBar from './base-menu-bar';
+import AssistantsMenu from '../view/assistants-menu';
+import BaseMenuBar from '../view/base-menu-bar';
 import windowManager from '../controller/window-manager';
 
 export default class AppTray {

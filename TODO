@@ -1,13 +1,3 @@
-* chat view
-  * show suggestions in blank chat view
-* entry
-  * flash when sening empty message
-  * change background when disabled on mac
-  * resize window to increase the entry height
-* bug
-  * inactive background color of input on linux
-* optimizations
-  * render markdown in worker
-  * save custom icon to smaller size
-  * update yoga to use gap
-  * lazy main view creation / reuse same type of view in dashboard
+* render markdown in worker
+* lazy main view creation / reuse same type of view in dashboard
+* fix yode arm64 bug unable to boostrap to asar

@@ -2,6 +2,10 @@ name: chie
 
 on: push
 
+# Needed by action-gh-release.
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -15,24 +19,40 @@ jobs:
         include:
           - os: windows-2022
             arch: ia32
-          - os: macos-12
-            arch: arm64
 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Install the Apple Certificate
+        if: startsWith(matrix.os, 'macos')
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Create variables.
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # Import certificate from secrets.
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+
+          # Create temporary keychain.
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate to keychain.
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
 
       - name: Build
         shell: bash
         run: |
           set -e
           npm install
-          npm run dist -- --arch ${{ matrix.arch }}
           npm publish --dry-run
-
-      - name: Verify code sign
-        if: startsWith(matrix.os, 'macos')
-        run: codesign --verify out/Chie.app
 
       - name: Start xvfb
         if: startsWith(matrix.os, 'ubuntu') && matrix.arch == 'x64'
@@ -52,6 +72,32 @@ jobs:
           npm run test
           npm run test-ui
 
+      - name: Create Distribution
+        if: ${{ !(startsWith(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/')) }}
+        run: npm run dist -- --arch ${{ matrix.arch }}
+
+      - name: Create App Bundle
+        if: ${{ startsWith(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/') }}
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npm run build -- --arch ${{ matrix.arch }} --identity "$APPLE_TEAM_ID"
+
+      - name: Notarize Build
+        if: ${{ startsWith(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/') }}
+        uses: lando/notarize-action@v2
+        with:
+          product-path: out/Chie.app
+          appstore-connect-username: ${{ secrets.APPLE_ID }}
+          appstore-connect-password: ${{ secrets.APPLE_PASSWORD }}
+          appstore-connect-team-id: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Create Distribution (macOS)
+        if: ${{ startsWith(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          VERSION=`node -e "process.stdout.write(require('./package.json').version)"`
+          xcrun stapler staple out/Chie.app
+          ditto -c -k out chieapp-v$VERSION-darwin-${{ matrix.arch }}.zip
+
       - name: Upload Binary Files
         uses: actions/upload-artifact@v3
         with:
@@ -64,8 +110,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-      - run: npm install
-      - uses: JS-DevTools/npm-publish@v1
+      - name: Download Files
+        uses: actions/download-artifact@v3
+
+      - name: Release
+        uses: softprops/action-gh-release@v0.1.14
         with:
-          token: ${{ secrets.NPM_TOKEN }}
+          draft: true
+          name: Chie ${{ github.ref_name }}
+          body: '## Changelog'
+          files: artifact/*.zip

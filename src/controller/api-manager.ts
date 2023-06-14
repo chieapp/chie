@@ -4,6 +4,7 @@ import APIEndpoint from '../model/api-endpoint';
 import Icon from '../model/icon';
 import Param from '../model/param';
 import WebAPI from '../model/web-api';
+import assistantManager from '../controller/assistant-manager';
 import {ConfigStoreItem} from '../model/config-store';
 import {Selection} from '../model/param';
 import {getNextId} from '../util/id-generator';
@@ -91,6 +92,9 @@ export class APIManager extends ConfigStoreItem {
   removeEndpointById(id: string) {
     if (!(id in this.#endpoints))
       throw new Error(`Removing unknown API id: ${id}.`);
+    const assistant = assistantManager.getAssistants().find(a => a.service.api.endpoint.id == id);
+    if (assistant)
+      throw new Error(`Can not remove API endpoint because assistant "${assistant.service.name}" is using it.`);
     const endpoint = this.#endpoints[id];
     delete this.#endpoints[id];
     this.onRemoveEndpoint.emit(endpoint);

@@ -10,6 +10,7 @@ import {deepAssign, matchClass} from '../util/object-utils';
 type WebAPIType = (new (endpoint) => WebAPI) | (abstract new (endpoint) => WebAPI);
 
 export type ServiceRecord = {
+  name?: string,
   serviceClass: WebServiceType,
   apiClasses: WebAPIType[],
   viewClasses: BaseViewType[],
@@ -23,7 +24,7 @@ export class ServiceManager {
   #views: BaseViewType[] = [];
 
   registerService(record: ServiceRecord) {
-    const name = record.serviceClass.name;
+    const name = record.name ?? record.serviceClass.name;
     if (name in this.#services)
       throw new Error(`Service "${name}" has already been registered.`);
     if (record.viewClasses.length < 1)
@@ -35,6 +36,17 @@ export class ServiceManager {
         throw new Error(`View "${viewClass.name}" is not registered.`);
     }
     this.#services[name] = record;
+  }
+
+  unregisterService(arg: string | WebServiceType) {
+    const name = typeof arg == 'string' ? arg : arg.name;
+    if (!(name in this.#services))
+      throw new Error(`There is no service named "${name}".`);
+    const serviceClass = this.#services[name].serviceClass;
+    const assistantManager = require('./assistant-manager').default;
+    if (assistantManager.getAssistants().find(a => a.service instanceof serviceClass))
+      throw new Error(`Can not unregister service "${name}" because there is an assistant using it.`);
+    delete this.#services[name];
   }
 
   getRegisteredServices() {
@@ -55,6 +67,15 @@ export class ServiceManager {
     if (this.#views.find(v => v.name == viewClass.name))
       throw new Error(`View "${viewClass.name}" has already been registered.`);
     this.#views.push(viewClass);
+  }
+
+  unregisterView(viewClass: BaseViewType) {
+    if (!this.#views.includes(viewClass))
+      throw new Error(`There is no View named "${viewClass.name}".`);
+    const assistantManager = require('./assistant-manager').default;
+    if (assistantManager.getAssistants().find(a => a.viewClass == viewClass))
+      throw new Error(`Can not unregister View "${viewClass.name}" because there is an assistant using it.`);
+    this.#views.splice(this.#views.indexOf(viewClass), 1);
   }
 
   getRegisteredViews() {

@@ -56,6 +56,16 @@ export class APIManager extends ConfigStoreItem {
     if (record.name in this.#apis)
       throw new Error(`API with name "${record.name}" has already been registered.`);
     this.#apis[record.name] = record;
+    this.saveConfig();
+  }
+
+  unregisterAPI(name: string) {
+    if (!(name in this.#apis))
+      throw new Error(`There is no API named "${name}".`);
+    if (this.getEndpoints().find(e => e.type == name))
+      throw new Error(`Can not unregister API "${name}" because there is an API endpoint using it.`);
+    delete this.#apis[name];
+    this.saveConfig();
   }
 
   getAPISelections(): Selection[] {

@@ -3,16 +3,20 @@ import gui from 'gui';
 import APIEndpoint from '../model/api-endpoint';
 import BaseWindow from '../view/base-window';
 import EditableTable from '../view/editable-table';
+import Extension from '../model/extension';
 import NewAPIWindow from '../view/new-api-window';
 import ShortcutEditor from '../view/shortcut-editor';
 import app from '../controller/app';
 import apiManager from '../controller/api-manager';
+import extensionManager from '../controller/extension-manager';
 import basicStyle from '../view/basic-style';
+import alert from '../util/alert';
 import windowManager from '../controller/window-manager';
 
 export default class SettingsWindow extends BaseWindow {
   tab: gui.Tab;
   apisTable: EditableTable<APIEndpoint>;
+  extensionsTable: EditableTable<Extension>;
   shortcutEditor: ShortcutEditor;
 
   constructor() {
@@ -36,6 +40,7 @@ export default class SettingsWindow extends BaseWindow {
     settings.addChildView(this.#createDashboardSetting());
 
     this.tab.addPage('APIs', this.#createAPISetting());
+    this.tab.addPage('Extensions', this.#createExtensionSetting());
 
     this.resizeToFitContentView({width: 500, height: 400});
     this.window.setTitle('Settings');
@@ -114,5 +119,48 @@ export default class SettingsWindow extends BaseWindow {
     this.connections.add(apiManager.onRemoveEndpoint.connect(update));
 
     return this.apisTable.view;
+  }
+
+  #createExtensionSetting() {
+    this.extensionsTable = new EditableTable<Extension>([
+      {title: 'Name', key: 'displayName'},
+      {title: 'Path', key: 'dirPath'},
+    ]);
+    this.extensionsTable.view.setStyle({
+      gap: basicStyle.padding,
+      padding: basicStyle.padding,
+    });
+
+    this.extensionsTable.editButton.setVisible(false);
+    this.extensionsTable.onRemoveRow.connect((index, extension) => {
+      try {
+        extensionManager.unregisterExternalExtension(extension.name);
+      } catch (error) {
+        alert(`Failed to remove extension: ${error.message}`, {window: this.window});
+      }
+    });
+
+    const addButton = this.extensionsTable.buttonsArea.addButton('Add');
+    addButton.onClick = () => {
+      const dialog = gui.FileOpenDialog.create();
+      dialog.setTitle('Load extension');
+      dialog.setButtonLabel('Load');
+      dialog.setOptions(gui.FileDialog.optionPickFolders);
+      if (dialog.runForWindow(this.window)) {
+        try {
+          extensionManager.registerExternalExtension(dialog.getResults()[0]);
+        } catch (error) {
+          alert(`Failed to load extension: ${error.message}`, {window: this.window});
+        }
+      }
+    };
+
+    // Fill table with existing extensions.
+    const update = () => this.extensionsTable.setData(extensionManager.getExtensions());
+    this.connections.add(extensionManager.onAddExtension.connect(update));
+    this.connections.add(extensionManager.onRemoveExtension.connect(update));
+    update();
+
+    return this.extensionsTable.view;
   }
 }

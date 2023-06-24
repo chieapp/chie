@@ -19,6 +19,8 @@ jobs:
         include:
           - os: windows-2022
             arch: ia32
+          - os: macos-12
+            arch: arm64
 
     steps:
       - name: Checkout

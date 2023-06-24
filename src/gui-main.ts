@@ -69,10 +69,8 @@ function guiMain() {
     params: chatServiceParams,
   });
 
-  // Activate extensions.
-  extensionManager.activate();
-
   // Read config and initialize.
+  config.addItem('extensions', extensionManager);
   config.addItem('apis', apiManager);
   config.addItem('assistants', assistantManager);
   config.addItem('app', app);

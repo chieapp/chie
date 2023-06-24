@@ -11,6 +11,7 @@ export {default as BaseMultiChatsService} from '../model/base-multi-chats-servic
 export {default as BrowserWindow} from '../view/browser-window';
 export {default as ChatService} from '../model/chat-service';
 export {default as ChatView} from '../view/chat-view';
+export {default as Extension} from '../model/extension';
 export {default as Icon} from '../model/icon';
 export {default as MultiChatsService} from '../model/multi-chats-service';
 export {default as MultiChatsView} from '../view/multi-chats-view';

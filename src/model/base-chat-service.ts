@@ -251,7 +251,10 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
     if (this.pending)
       throw new Error('Can not clear when there is pending message being received.');
     this.history = [];
+    this.aborter = null;
+    this.customTitle = null;
     this.title = null;
+    this.titlePromise = null;
     this.lastError = null;
     this.removeTrace();
     this.onNewTitle.emit(null);

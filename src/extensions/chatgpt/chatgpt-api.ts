@@ -16,28 +16,19 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
     super(endpoint);
   }
 
-  async sendConversation(history: ChatMessage[], options?: ChatAPIOptions) {
+  async sendConversation(history: ChatMessage[], options: ChatAPIOptions) {
     // Start request.
     const headers = {'Content-Type': 'application/json'};
     if (this.endpoint.key)
       headers['Authorization'] = `Bearer ${this.endpoint.key}`;
     const response = await fetch(this.endpoint.url, {
-      body: JSON.stringify({
-        // API reference:
-        // https://platform.openai.com/docs/api-reference/chat/create
-        model: this.getParam('model'),
-        stream: true,
-        messages: history.map(m => ({
-          role: m.role.toString().toLowerCase(),
-          content: m.content,
-        })),
-      }),
+      body: JSON.stringify(this.#getRequestBody(history, options)),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.endpoint.key}`,
       },
-      signal: options?.signal,
+      signal: options.signal,
     });
 
     // API error happened.
@@ -55,6 +46,19 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
     for await (const chunk of bodyToIterator(response.body)) {
       parser.feed(decoder.decode(chunk));
     }
+  }
+
+  #getRequestBody(history: ChatMessage[], options?: ChatAPIOptions) {
+    // API reference:
+    // https://platform.openai.com/docs/api-reference/chat/create
+    return {
+      model: this.getParam('model'),
+      stream: true,
+      messages: history.map(m => ({
+        role: m.role.toString().toLowerCase(),
+        content: m.content,
+      })),
+    };
   }
 
   #parseMessage(state, options, message) {
@@ -94,13 +98,18 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
       delta.content = delta.content.trimLeft();
       state.firstDelta = false;
     }
-    if (choice.delta.role) {
-      const key = capitalize(choice.delta.role) as keyof typeof ChatRole;
-      delta.role = ChatRole[key];
-    }
+    if (choice.delta.role)
+      delta.role = chatRoleToOpenAIRole(choice.delta.role);
     // ChatService will handle the rest.
     options.onMessageDelta(delta, response);
   }
+}
+
+function chatRoleToOpenAIRole(role: string) {
+  if (role == 'Function')
+    return ChatRole.Tool;
+  else
+    return ChatRole[capitalize(role) as keyof typeof ChatRole];
 }
 
 function capitalize(str) {

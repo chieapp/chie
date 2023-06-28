@@ -4,7 +4,7 @@ import Icon from '../model/icon';
 import Serializable from '../model/serializable';
 import WebAPI from '../model/web-api';
 import apiManager from '../controller/api-manager';
-import {isEmptyObject, shallowEqual} from '../util/object-utils';
+import {isEmptyObject, nonNullAssign, shallowEqual} from '../util/object-utils';
 
 export interface WebServiceData<P extends object = object> {
   name: string;
@@ -71,9 +71,9 @@ export default class WebService<T extends WebAPI = WebAPI, P extends object = ob
     if (this.icon)
       data.icon = this.icon.getChieURL();
     if (!isEmptyObject(this.api.params))
-      data.apiParams = this.api.params;
+      data.apiParams = nonNullAssign({}, this.api.params);
     if (!isEmptyObject(this.params))
-      data.params = this.params;
+      data.params = nonNullAssign({}, this.params);
     return data;
   }
 

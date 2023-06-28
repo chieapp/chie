@@ -1,4 +1,4 @@
-export type ParamType = 'string' | 'selection' | 'number' | 'boolean' | 'image' | 'paragraph' | 'shortcut';
+export type ParamType = 'string' | 'selection' | 'multi-selection' | 'number' | 'boolean' | 'image' | 'paragraph' | 'shortcut';
 
 export interface Selection {
   name: string,
@@ -28,14 +28,17 @@ export default interface Param {
   // The range of number.
   range?: [number, number];
 
-  // The title of checkbox.
+  // The title of checkbox or button.
   title?: string;
 
+  // Callback when user clicks on the button.
+  callback?: () => void;
+
   // The param has a set of values to select.
-  selections?: Selection[];
+  selections?: Selection[] | (() => Selection[]);
 
   // Name of the default selection.
-  selection?: string;
+  selected?: string | string[];
 
   // The id of param that will constrain whether a selection is usable.
   constrainedBy?: string;

@@ -3,7 +3,7 @@ import {Signal} from 'typed-signals';
 
 import AppearanceAware from '../view/appearance-aware';
 import Icon from '../model/icon';
-import Param from '../model/param';
+import Param, {Selection} from '../model/param';
 import ToggleButton from '../view/toggle-button';
 import ShortcutEditor from '../view/shortcut-editor';
 import basicStyle from '../view/basic-style';
@@ -30,7 +30,7 @@ abstract class ParamRow<T extends gui.View = gui.View> extends AppearanceAware {
 
   affects: ParamRow[] = [];
 
-  constructor(param: Param, editor: T, nullable: boolean) {
+  constructor(param: Param, editor: T, nullable: boolean = true) {
     super();
     this.param = param;
     this.editor = editor;
@@ -95,12 +95,15 @@ abstract class ParamRow<T extends gui.View = gui.View> extends AppearanceAware {
 }
 
 export class PickerParamRow extends ParamRow<gui.Picker> {
+  selections?: Selection[];
   constrainedBy?: ParamRow;
 
   constructor(param: Param, constrainedBy?: ParamRow, nullable = false) {
     if (!param.selections)
       throw new Error('Property "selections" expected.');
     super(param, gui.Picker.create(), nullable);
+
+    this.selections = param.selections instanceof Function ? param.selections() : param.selections;
 
     // Listen to controlling param's change and update.
     if (constrainedBy) {
@@ -113,9 +116,9 @@ export class PickerParamRow extends ParamRow<gui.Picker> {
       });
     }
     // There is a description field in selection.
-    if (param.selections.length > 0 &&
-        typeof param.selections[0].value == 'object' &&
-        'description' in param.selections[0].value) {
+    if (this.selections.length > 0 &&
+        typeof this.selections[0].value == 'object' &&
+        'description' in this.selections[0].value) {
       this.createDescription();
       this.subscribeOnChange(() => this.#updateDescription());
     }
@@ -124,7 +127,7 @@ export class PickerParamRow extends ParamRow<gui.Picker> {
   }
 
   update() {
-    let selections = this.param.selections;
+    let selections = this.selections;
     if (this.param.constrain && this.constrainedBy) {
       const controllingValue = this.constrainedBy.getValue();
       if (controllingValue)
@@ -137,8 +140,8 @@ export class PickerParamRow extends ParamRow<gui.Picker> {
       this.editor.addItem('');
     for (const selection of selections)
       this.editor.addItem(selection.name);
-    if (this.param.selection)
-      this.#setSelection(this.param.selection);
+    if (typeof this.param.selected == 'string')
+      this.#setSelected(this.param.selected);
     else if (this.param.value)
       this.setValue(this.param.value);
     if (this.description)
@@ -151,7 +154,7 @@ export class PickerParamRow extends ParamRow<gui.Picker> {
 
   getValue() {
     const name = this.editor.getSelectedItem();
-    return this.param.selections.find(s => s.name == name)?.value;
+    return this.selections.find(s => s.name == name)?.value;
   }
 
   setValue(value) {
@@ -159,12 +162,12 @@ export class PickerParamRow extends ParamRow<gui.Picker> {
       this.editor.selectItemAt(0);
       return;
     }
-    const selection = this.param.selections.find(s => s.value == value)?.name;
-    if (selection)
-      this.#setSelection(selection);
+    const selected = this.selections.find(s => s.value == value)?.name;
+    if (selected)
+      this.#setSelected(selected);
   }
 
-  #setSelection(name: string) {
+  #setSelected(name: string) {
     const index = this.editor.getItems().indexOf(name);
     if (index == -1)
       return;
@@ -236,6 +239,57 @@ export class ComboBoxParamRow extends ParamRow<gui.ComboBox> {
 
   setValue(value: string) {
     this.editor.setText(value ?? '');
+  }
+}
+
+export class MultiCheckboxParamRow extends ParamRow<gui.Container> {
+  selections: Selection[];
+  button?: gui.Button;
+  checkboxes?: gui.Button[];
+
+  constructor(param: Param) {
+    super(param, gui.Container.create());
+    this.selections = param.selections instanceof Function ? param.selections() : param.selections;
+    this.editor.setStyle({flexDirection: 'row', flexWrap: 'warp', gap: 5});
+    if (this.selections.length > 0) {
+      // Show a list of checkboxes.
+      this.checkboxes = [];
+      for (const {value} of this.selections) {
+        const button = gui.Button.create({
+          title: value.displayName,
+          type: 'checkbox',
+        });
+        button.setTooltip(value.descriptionForHuman ?? value.descriptionForModel);
+        button.onClick = () => this.onChange?.emit();
+        this.checkboxes.push(button);
+        this.editor.addChildView(button);
+      }
+    } else {
+      // Show a button for action.
+      this.button = gui.Button.create(`Add ${param.displayName}...`);
+      this.button.onClick = param.callback;
+      this.editor.addChildView(this.button);
+    }
+  }
+
+  getValue() {
+    if (!this.checkboxes)
+      return null;
+    const result = [];
+    for (let i = 0; i < this.selections.length; ++i) {
+      if (this.checkboxes[i].isChecked())
+        result.push(this.selections[i].name);
+    }
+    return result.length == 0 ? null : result;
+  }
+
+  setValue(value: string[]) {
+    if (!this.checkboxes)
+      return;
+    for (let i = 0; i < this.selections.length; ++i) {
+      const checked = value.includes(this.selections[i].name);
+      this.checkboxes[i].setChecked(checked);
+    }
   }
 }
 
@@ -418,6 +472,8 @@ export default class ParamsView {
         }
       } else if (param.type == 'selection') {
         row = new PickerParamRow(param, constrainedBy, nullable);
+      } else if (param.type == 'multi-selection') {
+        row = new MultiCheckboxParamRow(param);
       } else if (param.type == 'boolean') {
         row = new CheckboxParamRow(param, nullable);
       } else if (param.type == 'image') {

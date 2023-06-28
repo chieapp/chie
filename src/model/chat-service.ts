@@ -1,4 +1,5 @@
 import BaseChatService, {BaseChatHistoryData} from '../model/base-chat-service';
+import Tool from '../model/tool';
 import {
   ChatCompletionAPI,
   ChatConversationAPI,
@@ -13,6 +14,7 @@ export interface ChatHistoryData extends BaseChatHistoryData {
 }
 
 export interface ChatServiceParams {
+  tools?: Tool[];
   systemPrompt?: string;
   contextLength?: number;
 }

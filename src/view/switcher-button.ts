@@ -30,12 +30,14 @@ export default class SwitcherButton extends IconButton {
       this.service.getAPIParam(this.param.name) :
       this.service.getParam(this.param.name);
     // For selections show name instead of actual value.
-    if (this.param.type == 'selection')
-      title = this.param.selections.find(s => s.value == title)?.name;
+    if (this.param.type == 'selection') {
+      const selections = this.param.selections instanceof Function ? this.param.selections() : this.param.selections;
+      title = selections.find(s => s.value == title)?.name;
+    }
     // Find default value.
     if (!title) {
       if (this.param.type == 'selection')
-        title = this.param.selection;
+        title = this.param.selected;
       else
         title = String(this.param.value);
     }
@@ -68,7 +70,8 @@ export default class SwitcherButton extends IconButton {
         },
       });
     } else if (this.param.selections) {
-      options = this.param.selections.map(selection => ({
+      const selections = this.param.selections instanceof Function ? this.param.selections() : this.param.selections;
+      options = selections.map(selection => ({
         label: selection.name,
         onClick: this.#setParam.bind(this, selection.value),
       }));

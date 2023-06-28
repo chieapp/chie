@@ -9,11 +9,13 @@ import NewAPIWindow from './view/new-api-window';
 import NewAssistantWindow from './view/new-assistant-window';
 import Param from './model/param';
 import SettingsWindow from './view/settings-window';
+import Tool from './model/tool';
 import apiManager from './controller/api-manager';
 import app from './controller/app';
 import extensionManager from './controller/extension-manager';
 import assistantManager from './controller/assistant-manager';
 import serviceManager from './controller/service-manager';
+import toolManager from './controller/tool-manager';
 import windowManager from './controller/window-manager';
 import * as singleInstance from './util/single-instance';
 import {ChatConversationAPI, ChatCompletionAPI} from './model/chat-api';
@@ -40,6 +42,14 @@ function guiMain() {
 
   // Register builtin services.
   const chatServiceParams: Param[] = [
+    {
+      name: 'tools',
+      type: 'multi-selection',
+      displayName: 'Tools',
+      selections: () => toolManager.getToolSelections(),
+      title: 'Install extensions...',
+      callback: () => windowManager.showNamedWindow('settings'),
+    },
     {
       name: 'systemPrompt',
       type: 'paragraph',

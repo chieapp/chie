@@ -71,14 +71,14 @@ export default class NewAssistantWindow extends BaseWindow {
         name: 'api',
         type: 'selection',
         displayName: 'API',
-        selection: assistant?.service.api.endpoint.name,
+        selected: assistant?.service.api.endpoint.name,
         selections: apiManager.getEndpointSelections(),
       },
       {
         name: 'service',
         type: 'selection',
         displayName: 'Service',
-        selection: assistant?.service.constructor.name,
+        selected: assistant?.service.constructor.name,
         selections: serviceManager.getServiceSelections(),
         constrainedBy: 'api',
         constrain: (endpoint: APIEndpoint, record: ServiceRecord) => {
@@ -94,7 +94,7 @@ export default class NewAssistantWindow extends BaseWindow {
         name: 'view',
         type: 'selection',
         displayName: 'View',
-        selection: assistant?.viewClass.name,
+        selected: assistant?.viewClass.name,
         selections: serviceManager.getViewSelections(),
         constrainedBy: 'service',
         constrain: (record: ServiceRecord, viewClass) => {

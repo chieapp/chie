@@ -19,7 +19,7 @@ const params: Param[] = [
     type: 'selection',
     displayName: 'Model',
     hasSwitcher: true,
-    selection: 'Default',
+    selected: 'Default',
     selections: [
       {
         name: 'Default',

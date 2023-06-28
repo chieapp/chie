@@ -2,9 +2,10 @@ import APIEndpoint from './api-endpoint';
 import WebAPI from './web-api';
 
 export enum ChatRole {
-  User = 'User',
   Assistant = 'Assistant',
   System = 'System',
+  Tool = 'Tool',
+  User = 'User',
 }
 
 export interface ChatLink {

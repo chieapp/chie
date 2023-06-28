@@ -20,6 +20,15 @@ export function deepAssign<T extends AnyObject, S extends AnyObject>(target: T, 
   return target;
 }
 
+// Like Object.assign but ignore null or undefined properties.
+export function nonNullAssign<T extends object, S extends object>(target: T, source: S): T {
+  for (const key in source) {
+    if (Object.prototype.hasOwnProperty.call(source, key) && source[key] != null)
+      target[key as unknown as keyof T] = source[key] as unknown as T[keyof T];
+  }
+  return target;
+}
+
 // Return true if |obj| is not an object or it has no properties.
 export function isEmptyObject(obj: object) {
   return !obj || Object.keys(obj).length == 0;

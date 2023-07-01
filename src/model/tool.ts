@@ -1,4 +1,4 @@
-export interface ExecutionResult {
+export interface ToolExecutionResult {
   resultForModel: string;
   resultForHuman: string;
 }
@@ -17,5 +17,5 @@ export default class Tool {
   descriptionForModel: string;
   descriptionForHuman?: string;
   parameters: ToolParamter[];
-  execute: (arg: object) => Promise<ExecutionResult>;
+  execute: (signal: AbortSignal, arg?: object) => Promise<ToolExecutionResult>;
 }

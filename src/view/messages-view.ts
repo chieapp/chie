@@ -41,7 +41,7 @@ export default class MessagesView extends BrowserView {
 
   // Load a chat service.
   loadChatService(service: BaseChatService) {
-    this.hasPendingMessage = false;
+    this.hasPendingMessage = service.pending;
     this.loadURL(`chie://chat/${service.id}/${encodeURIComponent(service.getTitle())}`);
   }
 
@@ -52,7 +52,6 @@ export default class MessagesView extends BrowserView {
     this.pushTask(async () => {
       const html = getTemplate('message')({
         message: messageToJSON(service, message, service.history.length - 1),
-        response: {pending: false},
       });
       await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
     });
@@ -67,8 +66,7 @@ export default class MessagesView extends BrowserView {
       const html = getTemplate('message')({
         // A pending message is not added to service.history yet, so we use one
         // pass end as its index.
-        message: messageToJSON(service, message, service.history.length),
-        response: {pending: true},
+        message: messageToJSON(service, message, service.history.length, true),
       });
       await this.executeJavaScript(`window.appendMessage(${JSON.stringify(html)})`);
     });
@@ -139,7 +137,6 @@ export default class MessagesView extends BrowserView {
     this.pushTask(async () => {
       const html = getTemplate('message')({
         message: messageToJSON(service, message, index),
-        response: {pending: false},
       });
       await this.executeJavaScript(`window.updateMessage(${index}, ${JSON.stringify(html)})`);
     });
@@ -187,9 +184,14 @@ gui.Browser.registerProtocol('chie', (url) => {
     if (!service)
       return gui.ProtocolStringJob.create('text/plain', `Can not find chat with id "${chatServiceId}" and title "${decodeURIComponent(title)}".`);
     // Render chat service.
+    const messages = service.history.reduce(mergeToolMessages.bind(this, service), []);
+    if (service.pending && messages.length > 0 &&
+        messages[messages.length - 1].role != ChatRole.User) {
+      messages[messages.length - 1].pending = true;
+    }
     const html = getTemplate('page')({
+      messages,
       style: Object.assign({}, style, basicStyle),
-      messages: service.history.map(messageToJSON.bind(this, service)),
     });
     return gui.ProtocolStringJob.create('text/html', html);
   } else {
@@ -204,12 +206,35 @@ interface MessageRenderJSON {
   content: string;
   canEdit?: boolean;
   avatar?: string;
-  steps?: string[];
+  steps: string[];
   links?: ChatLink[];
+  pending?: boolean;
+}
+
+// Merge tool messages into assistant message.
+function mergeToolMessages(service: BaseChatService, result: MessageRenderJSON[], message: Partial<ChatMessage>, index: number, messages: ChatMessage[]) {
+  const lastJson = result.length > 0 ? result[result.length - 1] : null;
+  if (message.role == ChatRole.Tool) {
+    // Merge tool message into last message.
+    lastJson.steps.push('Result');
+  } else {
+    const json = messageToJSON(service, message, index);
+    // Add step for tool execution.
+    if (message.tool)
+      json.steps.push(`Tool: ${message.tool.name}(${JSON.stringify(message.tool.arg)})`);
+    // Merge messages from the same role into one.
+    if (json.role == lastJson?.role) {
+      lastJson.content += json.content;
+      lastJson.steps = lastJson.steps.concat(json.steps);
+    } else {
+      result.push(json);
+    }
+  }
+  return result;
 }
 
 // Translate the message into data to be parsed by EJS template.
-function messageToJSON(service: BaseChatService, message: Partial<ChatMessage>, index: number): MessageRenderJSON {
+function messageToJSON(service: BaseChatService, message: Partial<ChatMessage>, index: number, pending: boolean = false): MessageRenderJSON {
   if (!message.role)  // should not happen
     throw new Error('Role of message expected for serialization.');
   let content = message.content;
@@ -222,7 +247,7 @@ function messageToJSON(service: BaseChatService, message: Partial<ChatMessage>, 
     [ChatRole.Assistant]: service.name,
     [ChatRole.System]: 'System',
   }[message.role];
-  const json: MessageRenderJSON = {index, role: message.role, sender, content};
+  const json: MessageRenderJSON = {index, role: message.role, sender, content, steps: [], pending};
   if (service.canRegenerateFrom())
     json.canEdit = true;
   if (message.role == ChatRole.Assistant)

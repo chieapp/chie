@@ -2,8 +2,8 @@ import {createParser} from 'eventsource-parser';
 import {
   APIEndpoint,
   APIError,
-  ChatAPIOptions,
   ChatCompletionAPI,
+  ChatCompletionAPIOptions,
   ChatMessage,
   ChatResponse,
   ChatRole,
@@ -16,7 +16,7 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
     super(endpoint);
   }
 
-  async sendConversation(history: ChatMessage[], options: ChatAPIOptions) {
+  async sendConversation(history: ChatMessage[], options: ChatCompletionAPIOptions) {
     // Start request.
     const headers = {'Content-Type': 'application/json'};
     if (this.endpoint.key)
@@ -40,7 +40,7 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
     }
 
     // Parse server sent event (SSE).
-    const state = {firstDelta: true};
+    const state = {firstDelta: true, toolName: '', toolArg: ''};
     const parser = createParser(this.#parseMessage.bind(this, state, options));
     const decoder = new TextDecoder();
     for await (const chunk of bodyToIterator(response.body)) {
@@ -48,17 +48,54 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
     }
   }
 
-  #getRequestBody(history: ChatMessage[], options?: ChatAPIOptions) {
+  #getRequestBody(history: ChatMessage[], options: ChatCompletionAPIOptions) {
     // API reference:
     // https://platform.openai.com/docs/api-reference/chat/create
-    return {
+    const body = {
       model: this.getParam('model'),
       stream: true,
-      messages: history.map(m => ({
-        role: m.role.toString().toLowerCase(),
-        content: m.content,
-      })),
+      messages: history.map(message => {
+        const result = {
+          role: fromChatRole(message.role),
+          // The content must be string or null, can't be undefined.
+          content: message.content ?? null,
+        };
+        if (message.toolName) {
+          result['name'] = message.toolName;
+        }
+        if (message.tool) {
+          result['function_call'] = {
+            name: message.tool.name,
+            arguments: JSON.stringify(message.tool.arg),
+          };
+        }
+        return result;
+      }),
     };
+    if (options.tools) {
+      body['function_call'] = 'auto';
+      body['functions'] = options.tools.map(tool => {
+        const properties: Record<string, object> = {};
+        for (const param of tool.parameters) {
+          properties[param.name] = {
+            description: param.description,
+            type: param.type,
+          };
+          if (param.enum)
+            properties[param.name] = param.enum;
+        }
+        return {
+          name: tool.name,
+          description: tool.descriptionForModel,
+          parameters: {
+            type: 'object',
+            required: tool.parameters.filter(p => !p.optional).map(p => p.name),
+            properties,
+          },
+        };
+      });
+    }
+    return body;
   }
 
   #parseMessage(state, options, message) {
@@ -86,6 +123,9 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
       case 'content_filter':
         response.filtered = true;
         break;
+      case 'function_call':
+        response.useTool = true;
+        break;
       default:
         throw new APIError(`Unknown finish_reason: ${choice.finish_reason}`);
     }
@@ -99,14 +139,36 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
       state.firstDelta = false;
     }
     if (choice.delta.role)
-      delta.role = chatRoleToOpenAIRole(choice.delta.role);
+      delta.role = toChatRole(choice.delta.role);
+    // Function call.
+    if (choice.delta.function_call) {
+      if (choice.delta.function_call.name)
+        state.toolName += choice.delta.function_call.name;
+      if (choice.delta.function_call.arguments)
+        state.toolArg += choice.delta.function_call.arguments;
+      // Keep waiting for all function_call data before notifying chat service.
+      return;
+    }
+    // All function_call data are received when finished.
+    if (response.useTool) {
+      delta.tool = {
+        name: state.toolName,
+        arg: JSON.parse(state.toolArg),
+      };
+    }
     // ChatService will handle the rest.
     options.onMessageDelta(delta, response);
   }
 }
 
-function chatRoleToOpenAIRole(role: string) {
-  if (role == 'Function')
+function fromChatRole(role: ChatRole) {
+  if (role == ChatRole.Tool)
+    return 'function';
+  return role.toString().toLowerCase();
+}
+
+function toChatRole(role: string) {
+  if (role == 'function')
     return ChatRole.Tool;
   else
     return ChatRole[capitalize(role) as keyof typeof ChatRole];

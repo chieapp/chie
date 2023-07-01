@@ -1,11 +1,18 @@
 import {Signal} from 'typed-signals';
 
+import Tool, {ToolExecutionResult} from '../model/tool';
 import WebAPI from '../model/web-api';
 import WebService, {WebServiceData, WebServiceOptions} from '../model/web-service';
 import historyKeeper from '../controller/history-keeper';
 import assistantManager from '../controller/assistant-manager';
 import titleGenerator from '../controller/title-generator';
-import {ChatRole, ChatMessage, ChatResponse} from '../model/chat-api';
+import toolManager from '../controller/tool-manager';
+import {
+  ChatMessage,
+  ChatResponse,
+  ChatRole,
+  ChatToolCall,
+} from '../model/chat-api';
 import {deepAssign} from '../util/object-utils';
 
 export interface BaseChatHistoryData {
@@ -40,8 +47,9 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
   onClearError: Signal<() => void> = new Signal;
   onMessageBegin: Signal<() => void> = new Signal;
   onMessageDelta: Signal<(delta: Partial<ChatMessage>, response: ChatResponse) => void> = new Signal;
+  onExecuteToolError: Signal<(error: Error) => void> = new Signal;
   onMessageError: Signal<(error: Error) => void> = new Signal;
-  onMessage: Signal<(message: ChatMessage) => void> = new Signal;
+  onMessage: Signal<(message: ChatMessage, response?: ChatResponse) => void> = new Signal;
   onRemoveMessagesAfter: Signal<((index: number) => void)> = new Signal;
   onUpdateMessage: Signal<((message: ChatMessage, index: number) => void)> = new Signal;
   onClearMessages: Signal<() => void> = new Signal;
@@ -60,6 +68,9 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
 
   // Error is set if last message failed to send.
   lastError?: Error;
+
+  // The response of last chunk.
+  lastResponse?: ChatResponse;
 
   // Whether there is a message being sent.
   pending = false;
@@ -168,12 +179,11 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
   async sendMessage(message: Partial<ChatMessage>) {
     if (this.pendingMessage)
       throw new Error('There is pending message being received.');
-    const senderMessage = {
-      role: message.role ?? ChatRole.User,
-      content: message.content ?? '',
-    };
-    this.history.push(senderMessage);
-    this.onUserMessage.emit(senderMessage);
+    if (message.role == ChatRole.User && !message.content)
+      throw new Error('Message from user must have content.');
+    message.role = message.role ?? ChatRole.User;
+    this.history.push(message as ChatMessage);
+    this.onUserMessage.emit(message as ChatMessage);
     this.saveHistory();
     // Start sending.
     this.pending = true;
@@ -188,6 +198,31 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
           .finally(() => this.titlePromise = null);
       }
     }
+  }
+
+  // Execute tool.
+  async executeTool(call: ChatToolCall) {
+    if (this.pending)
+      throw new Error('Can not execute tool when there is pending message.');
+    this.pending = true;
+    // Get tool and execute it.
+    let tool: Tool;
+    let result: ToolExecutionResult;
+    try {
+      tool = toolManager.getToolByName(call.name);
+      result = await tool.execute(this.aborter.signal, call.arg);
+    } catch(error) {
+      this.onExecuteToolError.emit(error);
+      return;
+    } finally {
+      this.pending = false;
+    }
+    // Send the result to API and wait for response.
+    await this.sendMessage({
+      role: ChatRole.Tool,
+      content: result.resultForModel,
+      toolName: tool.name,
+    });
   }
 
   // Called when user clicks the reload button, should usually resend last user
@@ -256,6 +291,7 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
     this.title = null;
     this.titlePromise = null;
     this.lastError = null;
+    this.lastResponse = null;
     this.removeTrace();
     this.onNewTitle.emit(null);
     this.onClearMessages.emit();
@@ -301,6 +337,7 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
     if (this.lastError)
       this.onClearError.emit();
     this.lastError = null;
+    this.lastResponse = null;
     this.pendingMessage = null;
     this.aborter = new AbortController();
     this.onMessageBegin.emit();
@@ -318,18 +355,38 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
       }
     }
 
-    if (this.pendingMessage) {
-      // The pendingMessage should be cleared when end of message has been
-      // received, if there is no such signal and the partial message has been
-      // left after API call ends (for example aborted), send an end signal here.
-      this.notifyMessageDelta({}, {pending: false});
-    } else if (this.pending) {
-      // If we have never received any message, then it is likely the server
-      // refused our connection for some reason.
+    // If we have never received any message, then it is likely the server
+    // refused our connection for some reason.
+    if (!this.lastResponse) {
       this.notifyMessageError(new Error('Server closed connection.'));
+      return;
     }
 
+    // A complete message should have some properties set.
+    if (!this.pendingMessage.role ||
+        (!this.pendingMessage.content && !this.pendingMessage.tool)) {
+      this.notifyMessageError(new Error('Incomplete delta received from API'));
+      return;
+    }
+
+    // If we are still waiting for more messages after the API call ends (for
+    // example aborted), send an end signal here.
+    if (this.lastResponse.pending)
+      this.notifyMessageDelta({}, {pending: false});
+
+    // Save message.
+    const message = this.pendingMessage as ChatMessage;
+    this.history.push(message);
     this.saveHistory();
+
+    // Clear pending state before emitting onMessage.
+    this.pending = false;
+    this.pendingMessage = null;
+    this.onMessage.emit(message, this.lastResponse);
+
+    // TODO(zcbenz): Ask for user's confirmation before executing tools.
+    if (this.lastResponse.useTool)
+      await this.executeTool(message.tool);
   }
 
   // Generate a title for the chat.
@@ -351,8 +408,7 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
 
   // Called by sub-class when there is message delta available.
   protected notifyMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
-    this.onMessageDelta.emit(delta, response);
-
+    this.lastResponse = response;
     // Concatenate to the pendingMessage.
     if (!this.pendingMessage)
       this.pendingMessage = {role: delta.role ?? ChatRole.Assistant};
@@ -368,6 +424,11 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
       else
         this.pendingMessage.content = delta.content;
     }
+    if (delta.tool) {
+      if (this.pendingMessage.tool)
+        throw new Error('Got multiple function calls in one message.');
+      this.pendingMessage.tool = delta.tool;
+    }
     if (delta.links) {
       if (this.pendingMessage.links)
         this.pendingMessage.links.push(...delta.links);
@@ -375,21 +436,8 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
         this.pendingMessage.links = delta.links;
     }
 
-    if (response.pending)
-      return;
-    if (!this.pendingMessage.role || !this.pendingMessage.content)
-      throw new Error('Incomplete delta received from API');
-
-    // Send onMessage when all pending messages have been received.
-    const message = {
-      role: this.pendingMessage.role,
-      content: this.pendingMessage.content.trim(),
-    };
-    // Should clear pendingMessage before emitting onMessage.
-    this.history.push(this.pendingMessage as ChatMessage);
-    this.pending = false;
-    this.pendingMessage = null;
-    this.onMessage.emit(message);
+    // Notify the view of message delta.
+    this.onMessageDelta.emit(delta, response);
   }
 
   // Notify the title of chat has changed.

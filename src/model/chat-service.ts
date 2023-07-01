@@ -1,7 +1,8 @@
 import BaseChatService, {BaseChatHistoryData} from '../model/base-chat-service';
-import Tool from '../model/tool';
+import toolManager from '../controller/tool-manager';
 import {
   ChatCompletionAPI,
+  ChatCompletionAPIOptions,
   ChatConversationAPI,
   ChatConversationAPIType,
   ChatRole,
@@ -14,7 +15,7 @@ export interface ChatHistoryData extends BaseChatHistoryData {
 }
 
 export interface ChatServiceParams {
-  tools?: Tool[];
+  tools?: string[];
   systemPrompt?: string;
   contextLength?: number;
 }
@@ -80,12 +81,15 @@ export default class ChatService<P extends ChatServiceParams = ChatServiceParams
       onMessageDelta: this.notifyMessageDelta.bind(this),
     };
     if (this.api instanceof ChatCompletionAPI) {
+      const completionApiOptions: ChatCompletionAPIOptions = apiOptions;
+      if (this.params?.tools)
+        completionApiOptions.tools = this.params.tools.map(name => toolManager.getToolByName(name));
       let conversation = this.history;
       if (this.params?.contextLength)
         conversation = conversation.slice(-this.params.contextLength);
       if (this.params?.systemPrompt)
         conversation = [{role: ChatRole.System, content: this.params.systemPrompt}, ...conversation];
-      await this.api.sendConversation(conversation, apiOptions);
+      await this.api.sendConversation(conversation, completionApiOptions);
     } else if (this.api instanceof ChatConversationAPI) {
       await this.api.sendMessage(this.history[this.history.length - 1].content, apiOptions);
     }

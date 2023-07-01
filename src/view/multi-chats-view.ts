@@ -247,6 +247,8 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
     }
     this.#chatList.removeChildView(item.view);
     this.items.splice(index, 1);
+    if (this.#selectedIndex >= index)
+      this.#selectedIndex -= 1;
     this.onResize();
     item.destructor();
   }

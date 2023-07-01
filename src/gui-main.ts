@@ -9,7 +9,6 @@ import NewAPIWindow from './view/new-api-window';
 import NewAssistantWindow from './view/new-assistant-window';
 import Param from './model/param';
 import SettingsWindow from './view/settings-window';
-import Tool from './model/tool';
 import apiManager from './controller/api-manager';
 import app from './controller/app';
 import extensionManager from './controller/extension-manager';

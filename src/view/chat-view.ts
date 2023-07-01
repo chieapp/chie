@@ -182,10 +182,12 @@ export default class ChatView extends BaseView<BaseChatService> {
       this.#onMessageBegin.bind(this)));
     this.serviceConnections.add(service.onMessageDelta.connect(
       this.#onMessageDelta.bind(this)));
+    this.serviceConnections.add(service.onExecuteToolError.connect(
+      this.#onMessageError.bind(this)));
     this.serviceConnections.add(service.onMessageError.connect(
       this.#onMessageError.bind(this)));
     this.serviceConnections.add(service.onMessage.connect(
-      this.#resetUIState.bind(this)));
+      this.#onMessageEnd.bind(this)));
     this.serviceConnections.add(service.onRemoveMessagesAfter.connect(
       this.messagesView.removeMessagesAfter.bind(this.messagesView)));
     this.serviceConnections.add(service.onUpdateMessage.connect(
@@ -195,8 +197,11 @@ export default class ChatView extends BaseView<BaseChatService> {
       this.#resetUIState();
     }));
     if (this.service.pending) {
+      // When the we have started recieving message but there is nothing
+      // received yet, we should append a pending message.
+      if (!this.service.pendingMessage)
+        this.#onMessageBegin();
       // Load pending message.
-      this.#onMessageBegin();
       if (this.service.pendingMessage)
         this.#onMessageDelta(this.service.pendingMessage, {pending: true});
       if (this.service.lastError)
@@ -355,7 +360,10 @@ export default class ChatView extends BaseView<BaseChatService> {
 
   // User has sent a message.
   #onUserMessage(message: ChatMessage) {
-    this.messagesView.appendMessage(this.service, message);
+    if (message.role == ChatRole.User)
+      this.messagesView.appendMessage(this.service, message);
+    else if (message.role == ChatRole.Tool)
+      this.messagesView.appendSteps(['Result']);
   }
 
   // Last error has been cleared for regeneration.
@@ -365,6 +373,10 @@ export default class ChatView extends BaseView<BaseChatService> {
 
   // Begin receving response.
   #onMessageBegin() {
+    // When last message is a tool result, there is no need to append pending
+    // message.
+    if (this.service.history[this.service.history.length - 1].role != ChatRole.User)
+      return;
     // Add a bot message to indicate we are loading.
     this.messagesView.appendPendingMessage(this.service, {role: ChatRole.Assistant});
     // Clear input.
@@ -375,6 +387,8 @@ export default class ChatView extends BaseView<BaseChatService> {
 
   // Message being received.
   #onMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
+    if (delta.tool)
+      this.messagesView.appendSteps([`Tool: ${delta.tool.name}(${JSON.stringify(delta.tool.arg)})`]);
     if (delta.steps)
       this.messagesView.appendSteps(delta.steps);
     if (!this.#markdown && (delta.links || delta.content))
@@ -390,13 +404,6 @@ export default class ChatView extends BaseView<BaseChatService> {
     }
     if (response.suggestedReplies)
       this.messagesView.setSuggestdReplies(response.suggestedReplies);
-    if (response.pending)
-      return;
-    // Reset after message is received.
-    this.#resetUIState();
-    if (this.service.isAborted())
-      this.messagesView.abortPending();
-    this.messagesView.endPending();
   }
 
   // There is error thrown when sending message.
@@ -416,6 +423,18 @@ export default class ChatView extends BaseView<BaseChatService> {
         this.messagesView.setReplyActions(['clear']);
     }
     this.#resetUIState();
+  }
+
+  // A full message has been received.
+  #onMessageEnd(message, response) {
+    // Do nothing when tool is used so the interface still shows pending state.
+    if (response?.useTool)
+      return;
+    // Reset after message is received.
+    this.#resetUIState();
+    if (this.service.isAborted())
+      this.messagesView.abortPending();
+    this.messagesView.endPending();
   }
 
   // Browser bindings.

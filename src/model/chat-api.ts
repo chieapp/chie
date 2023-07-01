@@ -1,11 +1,17 @@
-import APIEndpoint from './api-endpoint';
-import WebAPI from './web-api';
+import APIEndpoint from '../model/api-endpoint';
+import Tool from '../model/tool';
+import WebAPI from '../model/web-api';
 
 export enum ChatRole {
   Assistant = 'Assistant',
   System = 'System',
   Tool = 'Tool',
   User = 'User',
+}
+
+export interface ChatToolCall {
+  name: string;
+  arg?: Record<string, string | number>;
 }
 
 export interface ChatLink {
@@ -20,14 +26,20 @@ export interface ChatStep {
 
 export interface ChatMessage {
   role: ChatRole;
-  content: string;
+  content?: string;
   steps?: (ChatStep | string)[];
   links?: ChatLink[];
+  // Used by Tool role to specify the name of tool.
+  toolName?: string;
+  // Used by Assistant role to specify which tool to execute.
+  tool?: ChatToolCall;
 }
 
 export interface ChatResponse {
   // This message is in progress, and waiting for more.
   pending: boolean;
+  // This is a function call.
+  useTool?: boolean;
   // Unique ID for each message.
   id?: string;
   // The content is omitted because of content filter.
@@ -38,10 +50,14 @@ export interface ChatResponse {
 
 export type onMessageDeltaCallback = (delta: Partial<ChatMessage>, response: ChatResponse) => void;
 
-export type ChatAPIOptions = {
-  signal?: AbortSignal,
-  onMessageDelta: onMessageDeltaCallback,
-};
+export interface ChatAPIOptions {
+  signal?: AbortSignal;
+  onMessageDelta: onMessageDeltaCallback;
+}
+
+export interface ChatCompletionAPIOptions extends ChatAPIOptions {
+  tools?: Tool[];
+}
 
 export abstract class ChatCompletionAPI extends WebAPI {
   constructor(endpoint: APIEndpoint) {
@@ -49,7 +65,7 @@ export abstract class ChatCompletionAPI extends WebAPI {
   }
 
   // Send the whole conversation history and get reply.
-  abstract sendConversation(history: ChatMessage[], options: ChatAPIOptions): Promise<void>;
+  abstract sendConversation(history: ChatMessage[], options: ChatCompletionAPIOptions): Promise<void>;
 }
 
 export abstract class ChatConversationAPI<T = object> extends WebAPI {

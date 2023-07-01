@@ -254,12 +254,11 @@ export class MultiCheckboxParamRow extends ParamRow<gui.Container> {
     if (this.selections.length > 0) {
       // Show a list of checkboxes.
       this.checkboxes = [];
-      for (const {value} of this.selections) {
+      for (const selection of this.selections) {
         const button = gui.Button.create({
-          title: value.displayName,
+          title: selection.name,
           type: 'checkbox',
         });
-        button.setTooltip(value.descriptionForHuman ?? value.descriptionForModel);
         button.onClick = () => this.onChange?.emit();
         this.checkboxes.push(button);
         this.editor.addChildView(button);
@@ -278,16 +277,16 @@ export class MultiCheckboxParamRow extends ParamRow<gui.Container> {
     const result = [];
     for (let i = 0; i < this.selections.length; ++i) {
       if (this.checkboxes[i].isChecked())
-        result.push(this.selections[i].name);
+        result.push(this.selections[i].value);
     }
     return result.length == 0 ? null : result;
   }
 
-  setValue(value: string[]) {
-    if (!this.checkboxes)
+  setValue(value?: string[]) {
+    if (!this.checkboxes || !value)
       return;
     for (let i = 0; i < this.selections.length; ++i) {
-      const checked = value.includes(this.selections[i].name);
+      const checked = value.includes(this.selections[i].value);
       this.checkboxes[i].setChecked(checked);
     }
   }

@@ -26,7 +26,7 @@ export class ToolManager {
   }
 
   getToolSelections(): Selection[] {
-    return Object.values(this.#tools).map(tool => ({name: tool.name, value: tool}));
+    return Object.values(this.#tools).map(tool => ({name: tool.displayName, value: tool.name}));
   }
 }
 

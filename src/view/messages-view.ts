@@ -211,7 +211,7 @@ interface MessageRenderJSON {
 }
 
 // Merge tool messages into assistant message.
-function mergeToolMessages(service: BaseChatService, result: MessageRenderJSON[], message: Partial<ChatMessage>, index: number, messages: ChatMessage[]) {
+function mergeToolMessages(service: BaseChatService, result: MessageRenderJSON[], message: Partial<ChatMessage>, index: number) {
   const lastJson = result.length > 0 ? result[result.length - 1] : null;
   if (message.role == ChatRole.Tool) {
     // Merge tool message into last message.

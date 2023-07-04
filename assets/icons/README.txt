@@ -17,10 +17,6 @@ https://www.iconfinder.com/iconsets/ui-basic-glyph
 came from:
 https://uxwing.com/chatgpt-icon/
 
-* bot.png
-came from:
-https://www.iconfinder.com/icons/9165780/bot_robot_icon
-
 * typing.gif
 came from:
 https://loading.io

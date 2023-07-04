@@ -14,7 +14,8 @@ export default class AppTray {
   #onExitCallback?: () => void;
 
   constructor() {
-    const image = gui.Image.createFromPath(fs.realpathSync(path.join(__dirname, '../../assets/icons/tray@2x.png')));
+    const iconName = process.platform == 'darwin' ? 'tray-mac@2x' : 'tray';
+    const image = gui.Image.createFromPath(fs.realpathSync(path.join(__dirname, `../../assets/icons/${iconName}.png`)));
     if (process.platform == 'darwin')
       image.setTemplate(true);
     this.tray = gui.Tray.createWithImage(image);

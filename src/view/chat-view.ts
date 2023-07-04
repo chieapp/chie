@@ -12,6 +12,7 @@ import alert from '../util/alert';
 import apiManager from '../controller/api-manager';
 import basicStyle from '../view/basic-style';
 import serviceManager from '../controller/service-manager';
+import toolManager from '../controller/tool-manager';
 import {APIError} from '../model/errors';
 import {
   ChatRole,
@@ -163,6 +164,7 @@ export default class ChatView extends BaseView<BaseChatService> {
     // Delay loading until the service is ready.
     await service.load();
     // Load messages.
+    this.#markdown = null;
     this.messagesView.loadChatService(service);
     this.onNewTitle.emit();
     this.#updateSwitchButton();
@@ -197,19 +199,19 @@ export default class ChatView extends BaseView<BaseChatService> {
       this.#resetUIState();
     }));
     if (this.service.pending) {
-      // When the we have started recieving message but there is nothing
-      // received yet, we should append a pending message.
-      if (!this.service.pendingMessage)
+      // When the we have started recieving message but there is no pending
+      // message in the messagesView, append one.
+      if (!this.messagesView.hasPendingMessage)
         this.#onMessageBegin();
       // Load pending message.
       if (this.service.pendingMessage)
         this.#onMessageDelta(this.service.pendingMessage, {pending: true});
       if (this.service.lastError)
         this.#onMessageError(this.service.lastError);
+      this.#resetUIState();
     } else {
       // If last message is from user, add a resend button.
-      if (this.service.history.length > 0 &&
-          this.service.history[this.service.history.length - 1].role == ChatRole.User)
+      if (this.service.getLastMessage()?.role == ChatRole.User)
         this.messagesView.setReplyActions(['resend']);
     }
     return true;
@@ -297,8 +299,7 @@ export default class ChatView extends BaseView<BaseChatService> {
     }
     // Show refresh button if last message is from user, this usually means
     // the last message failed to send.
-    if (this.service.history.length > 0 &&
-        this.service.history[this.service.history.length - 1].role == ChatRole.User) {
+    if (this.service.getLastMessage()?.role == ChatRole.User) {
       this.#setButtonMode('refresh');
       return;
     }
@@ -363,7 +364,7 @@ export default class ChatView extends BaseView<BaseChatService> {
     if (message.role == ChatRole.User)
       this.messagesView.appendMessage(this.service, message);
     else if (message.role == ChatRole.Tool)
-      this.messagesView.appendSteps(['Result']);
+      this.messagesView.appendSteps([`Result: ${message.toolResult}`]);
   }
 
   // Last error has been cleared for regeneration.
@@ -375,7 +376,7 @@ export default class ChatView extends BaseView<BaseChatService> {
   #onMessageBegin() {
     // When last message is a tool result, there is no need to append pending
     // message.
-    if (this.service.history[this.service.history.length - 1].role != ChatRole.User)
+    if (this.service.getLastMessage()?.role != ChatRole.User)
       return;
     // Add a bot message to indicate we are loading.
     this.messagesView.appendPendingMessage(this.service, {role: ChatRole.Assistant});
@@ -388,7 +389,7 @@ export default class ChatView extends BaseView<BaseChatService> {
   // Message being received.
   #onMessageDelta(delta: Partial<ChatMessage>, response: ChatResponse) {
     if (delta.tool)
-      this.messagesView.appendSteps([`Tool: ${delta.tool.name}(${JSON.stringify(delta.tool.arg)})`]);
+      this.messagesView.appendSteps([toolManager.getToolCallDescription(delta.tool)]);
     if (delta.steps)
       this.messagesView.appendSteps(delta.steps);
     if (!this.#markdown && (delta.links || delta.content))

@@ -31,6 +31,8 @@ export interface ChatMessage {
   links?: ChatLink[];
   // Used by Tool role to specify the name of tool.
   toolName?: string;
+  // Used by Tool role, stores human friendly summary of the content.
+  toolResult?: string;
   // Used by Assistant role to specify which tool to execute.
   tool?: ChatToolCall;
 }

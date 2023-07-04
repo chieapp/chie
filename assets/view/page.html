@@ -138,14 +138,18 @@
   };
   window.removeMessagesAfter = function(index) {
     var wasAtBottom = isPageBottom();
-    var count = messages.children.length - index;
-    for (var i = 0; i < count; ++i)
-      messages.removeChild(messages.lastElementChild);
+    for (var i = messages.children.length - 1; i >= 0; --i) {
+      var msg = messages.children[i];
+      var msgIndex = parseInt(msg.getAttribute('message-index'));
+      if (msgIndex < index)
+        break;
+      messages.removeChild(msg);
+    }
     if (wasAtBottom)
       scrollToBottom();
   };
   window.updateMessage = function(index, html) {
-    var message = document.getElementsByClassName('msg')[index];
+    var message = document.querySelectorAll('div[message-index="' + index + '"]')[0];
     if (!message) {
       console.error('No message for updating.');
       return;

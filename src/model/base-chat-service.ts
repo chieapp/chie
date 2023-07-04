@@ -7,6 +7,7 @@ import historyKeeper from '../controller/history-keeper';
 import assistantManager from '../controller/assistant-manager';
 import titleGenerator from '../controller/title-generator';
 import toolManager from '../controller/tool-manager';
+import {AbortError} from '../model/errors';
 import {
   ChatMessage,
   ChatResponse,
@@ -192,7 +193,10 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
     } finally {
       this.pending = false;
       // Generate a title for the conversation.
-      if (!this.customTitle && !this.titlePromise && !this.isAborted()) {
+      if (message.role == ChatRole.User &&
+          !this.customTitle &&
+          !this.titlePromise &&
+          !this.isAborted()) {
         this.titlePromise = this.generateTitle()
           .catch(() => { /* ignore error */ })
           .finally(() => this.titlePromise = null);
@@ -212,16 +216,24 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
       tool = toolManager.getToolByName(call.name);
       result = await tool.execute(this.aborter.signal, call.arg);
     } catch(error) {
-      this.onExecuteToolError.emit(error);
+      if (error.name != 'AbortError')
+        this.onExecuteToolError.emit(error);
       return;
     } finally {
       this.pending = false;
+    }
+    // Some tool does not handle abort signal and we have to manually abort
+    // after tool finishes execution.
+    if (this.isAborted()) {
+      this.onExecuteToolError.emit(new AbortError());
+      return;
     }
     // Send the result to API and wait for response.
     await this.sendMessage({
       role: ChatRole.Tool,
       content: result.resultForModel,
       toolName: tool.name,
+      toolResult: result.resultForHuman,
     });
   }
 
@@ -230,8 +242,9 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
   async regenerateLastResponse() {
     if (!this.canRegenerateLastResponse())
       throw new Error('Unable to regenerate last response.');
+    const lastMessage = this.getLastMessage();
     // If last message is from user, then we just need to resend.
-    if (this.history[this.history.length - 1].role == ChatRole.User) {
+    if (lastMessage.role == ChatRole.User) {
       this.pending = true;
       try {
         await this.invokeChatAPI();
@@ -241,8 +254,18 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
       return;
     }
     // For assistant message, we need to remove it and regenerate.
-    if (this.history[this.history.length - 1].role == ChatRole.Assistant)
-      return await this.regenerateFrom(-1);
+    if (lastMessage.role == ChatRole.Assistant ||
+        lastMessage.role == ChatRole.Tool) {
+      // Assistant and Tool messages are merged together, so find the index of
+      // last user message and restart regenerate from its reply.
+      let lastIndex = this.history.length;
+      while (--lastIndex >= 0) {
+        const {role} = this.history[lastIndex];
+        if (role != ChatRole.Assistant && role != ChatRole.Tool)
+          break;
+      }
+      return await this.regenerateFrom(lastIndex + 1);
+    }
     // We don't support other cases.
     throw new Error('Can not regenerate from last message');
   }
@@ -300,16 +323,25 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
   // Whether user can do regeneration for last message, can be used for
   // validating the reload button.
   canRegenerateLastResponse() {
-    if (this.history.length == 0)
-      return false;
     if (this.pending)
       return false;
-    if (this.history[this.history.length - 1].role == ChatRole.User)
+    const lastMessage = this.getLastMessage();
+    if (!lastMessage)
+      return false;
+    if (lastMessage.role == ChatRole.User)
       return true;
-    if (this.history[this.history.length - 1].role == ChatRole.Assistant &&
+    if ((lastMessage.role == ChatRole.Assistant ||
+         lastMessage.role == ChatRole.Tool) &&
         this.canRegenerateFrom())
       return true;
     return false;
+  }
+
+  // Helper to get last message in history.
+  getLastMessage() {
+    if (this.history.length == 0)
+      return null;
+    return this.history[this.history.length - 1];
   }
 
   // Titles.

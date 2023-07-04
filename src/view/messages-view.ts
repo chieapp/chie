@@ -6,9 +6,10 @@ import path from 'node:path';
 import {realpathSync} from 'node:fs';
 
 import BaseChatService from '../model/base-chat-service';
-import BrowserView, {style} from './browser-view';
+import BrowserView, {style} from '../view/browser-view';
 import StreamedMarkdown, {escapeText, highlightCode} from '../util/streamed-markdown';
-import basicStyle from './basic-style';
+import basicStyle from '../view/basic-style';
+import toolManager from '../controller/tool-manager';
 import {ChatRole, ChatMessage, ChatLink, ChatStep} from '../model/chat-api';
 import {config} from '../controller/configs';
 
@@ -41,7 +42,7 @@ export default class MessagesView extends BrowserView {
 
   // Load a chat service.
   loadChatService(service: BaseChatService) {
-    this.hasPendingMessage = service.pending;
+    this.hasPendingMessage = service.pending && service.getLastMessage()?.role != ChatRole.User;
     this.loadURL(`chie://chat/${service.id}/${encodeURIComponent(service.getTitle())}`);
   }
 
@@ -185,10 +186,8 @@ gui.Browser.registerProtocol('chie', (url) => {
       return gui.ProtocolStringJob.create('text/plain', `Can not find chat with id "${chatServiceId}" and title "${decodeURIComponent(title)}".`);
     // Render chat service.
     const messages = service.history.reduce(mergeToolMessages.bind(this, service), []);
-    if (service.pending && messages.length > 0 &&
-        messages[messages.length - 1].role != ChatRole.User) {
+    if (service.pending && service.getLastMessage()?.role != ChatRole.User)
       messages[messages.length - 1].pending = true;
-    }
     const html = getTemplate('page')({
       messages,
       style: Object.assign({}, style, basicStyle),
@@ -216,12 +215,12 @@ function mergeToolMessages(service: BaseChatService, result: MessageRenderJSON[]
   const lastJson = result.length > 0 ? result[result.length - 1] : null;
   if (message.role == ChatRole.Tool) {
     // Merge tool message into last message.
-    lastJson.steps.push('Result');
+    lastJson.steps.push(`Result: ${message.toolResult}`);
   } else {
     const json = messageToJSON(service, message, index);
     // Add step for tool execution.
     if (message.tool)
-      json.steps.push(`Tool: ${message.tool.name}(${JSON.stringify(message.tool.arg)})`);
+      json.steps.push(toolManager.getToolCallDescription(message.tool));
     // Merge messages from the same role into one.
     if (json.role == lastJson?.role) {
       lastJson.content += json.content;

@@ -1,4 +1,5 @@
 import Tool from '../model/tool';
+import {ChatToolCall} from '../model/chat-api';
 import {Selection} from '../model/param';
 
 export class ToolManager {
@@ -27,6 +28,12 @@ export class ToolManager {
 
   getToolSelections(): Selection[] {
     return Object.values(this.#tools).map(tool => ({name: tool.displayName, value: tool.name}));
+  }
+
+  getToolCallDescription(call: ChatToolCall) {
+    const tool = this.#tools[call.name];
+    const arg = Object.keys(call.arg).map(key => `${key}: ${JSON.stringify(call.arg[key])}`).join(', ');
+    return `Tool: ${tool?.displayName ?? call.name}(${arg})`;
   }
 }
 

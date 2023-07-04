@@ -91,7 +91,7 @@ export default class ChatService<P extends ChatServiceParams = ChatServiceParams
         conversation = [{role: ChatRole.System, content: this.params.systemPrompt}, ...conversation];
       await this.api.sendConversation(conversation, completionApiOptions);
     } else if (this.api instanceof ChatConversationAPI) {
-      await this.api.sendMessage(this.history[this.history.length - 1].content, apiOptions);
+      await this.api.sendMessage(this.getLastMessage().content, apiOptions);
     }
   }
 }

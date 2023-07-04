@@ -10,7 +10,9 @@ import {
 export class TitleGenerator {
   async generateForConversation(conversation: ChatMessage[], api: WebAPI, signal?: AbortSignal) {
     // Generate a prompt using stripped chat content.
-    const messages = conversation.map(m => `${m.role.toString()}: ${stripContent(m.content)}`);
+    const messages = conversation
+      .filter(m => m.role == ChatRole.User || (m.role == ChatRole.Assistant && m.content))
+      .map(m => `${m.role.toString()}: ${stripContent(m.content)}`);
     const promptText = `\
 Name the conversation based on following chat records:
 

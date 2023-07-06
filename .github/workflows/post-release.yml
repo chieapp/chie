@@ -1,0 +1,45 @@
+name: post-release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  post-release:
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed by google-github-actions.
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: projects/757369538258/locations/global/workloadIdentityPools/chieapp-identity-pool/providers/github
+          service_account: chieapp-github-actions@lib-yue.iam.gserviceaccount.com
+
+      - name: Write latest_version.json
+        run: |
+          VERSION=`node -e "process.stdout.write(require('./package.json').version)"`
+          echo "{\"version\":\"$VERSION\"}" > latest_version.json
+
+      - name: Upload latest_version.json
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: latest_version.json
+          destination: chieapp
+
+      - name: Prepre for publish
+        run: |
+          yarn
+          yarn prepack
+
+      - name: Publish types package
+        uses: JS-DevTools/npm-publish@v2
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          package: types

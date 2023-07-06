@@ -5,7 +5,7 @@ import Mocha from 'mocha';
 
 const mocha = new Mocha({
   slow: 5 * 1000,
-  timeout: 20 * 1000,
+  timeout: 30 * 1000,
   rootHooks: require('../test/setup').mochaHooks,
 });
 

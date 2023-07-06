@@ -1,10 +1,6 @@
-name: chie
+name: build
 
 on: push
-
-# Needed by action-gh-release.
-permissions:
-  contents: write
 
 jobs:
   build:
@@ -27,7 +23,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install the Apple Certificate
-        if: startsWith(matrix.os, 'macos')
+        if: ${{ startsWith(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/') }}
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
@@ -110,6 +106,9 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     needs: [build]
     runs-on: ubuntu-latest
+    permissions:
+      # Needed by action-gh-release.
+      contents: write
 
     steps:
       - name: Download Files

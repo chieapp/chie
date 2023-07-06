@@ -1,3 +1,2 @@
 * render markdown in worker
 * lazy main view creation / reuse same type of view in dashboard
-* fix yode arm64 bug unable to boostrap to asar

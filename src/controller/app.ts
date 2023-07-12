@@ -2,10 +2,10 @@ import gui from 'gui';
 
 import AppMenuBar from '../view/app-menu-bar';
 import AppTray from '../view/app-tray';
-import assistantManager from './assistant-manager';
+import assistantManager from '../controller/assistant-manager';
 import windowManager from '../controller/window-manager';
 import {ConfigStoreItem} from '../model/config-store';
-import {collectGarbage} from './gc-center';
+import {collectGarbage} from '../controller/gc-center';
 
 interface AppData {
   hideTrayIcon?: boolean;
@@ -21,10 +21,6 @@ export class App extends ConfigStoreItem {
 
   shortcutId?: number;
   dashboarShortcut?: string;
-
-  constructor() {
-    super();
-  }
 
   deserialize(data: AppData) {
     if (typeof data != 'object')  // accepts empty data

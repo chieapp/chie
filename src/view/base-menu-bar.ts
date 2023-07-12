@@ -1,13 +1,16 @@
 import gui from 'gui';
+import open from 'open';
 
-import AssistantsMenu from './assistants-menu';
+import AssistantsMenu from '../view/assistants-menu';
 import SignalsOwner from '../model/signals-owner';
+import autoUpdater from '../controller/auto-updater';
 import serviceManager from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
-import {BaseViewType} from './base-view';
+import {BaseViewType} from '../view/base-view';
 
 export default class BaseMenuBar extends SignalsOwner {
   static fileMenuItems = [
+    { type: 'separator' },
     {
       label: 'Settings...',
       accelerator: 'CmdOrCtrl+,',
@@ -43,6 +46,7 @@ export default class BaseMenuBar extends SignalsOwner {
 
   menu: gui.MenuBar;
 
+  #versionMenuItem?: gui.MenuItem;
   #viewMenu?: gui.Menu;
   #assistantsMenu?: AssistantsMenu;
   #assistantsMenuInView?: AssistantsMenu;
@@ -61,6 +65,46 @@ export default class BaseMenuBar extends SignalsOwner {
     super.destructor();
     this.#assistantsMenu?.destructor();
     this.#assistantsMenuInView?.destructor();
+  }
+
+  protected createVersionMenuItem() {
+    this.#versionMenuItem = gui.MenuItem.create('label');
+    this.#versionMenuItem.onClick = () => {
+      if (autoUpdater.latestVersion)
+        open(`https://github.com/chieapp/chie/releases/tag/v${autoUpdater.latestVersion}`);
+      else
+        autoUpdater.checkLatestVersion();
+    };
+
+    // Set menu item label based on autoUpdater status.
+    const update = () => {
+      if (autoUpdater.latestVersion) {
+        this.#versionMenuItem.setLabel(`New version v${autoUpdater.latestVersion} available...`);
+        this.#versionMenuItem.setEnabled(true);
+        return;
+      }
+      if (autoUpdater.latestVersion === null) {
+        this.#versionMenuItem.setLabel('No new version (check again)');
+        this.#versionMenuItem.setEnabled(true);
+        return;
+      }
+      if (autoUpdater.isCheckingLatestVersion) {
+        this.#versionMenuItem.setLabel('Checking latest version...');
+        this.#versionMenuItem.setEnabled(false);
+        return;
+      }
+      this.#versionMenuItem.setLabel('Check latest version');
+    };
+    update();
+
+    // Bind auto updater events.
+    this.connections.add(autoUpdater.onCheckVersion.connect(update));
+    this.connections.add(autoUpdater.onNewVersion.connect(update));
+    this.connections.add(autoUpdater.onNoNewVersion.connect(update));
+
+    // Insert.
+    const fileMenu = this.menu.itemAt(0).getSubmenu();
+    fileMenu.insert(this.#versionMenuItem, fileMenu.itemCount() - BaseMenuBar.fileMenuItems.length);
   }
 
   protected createViewMenu(items: object[]) {

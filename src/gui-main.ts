@@ -11,8 +11,9 @@ import Param from './model/param';
 import SettingsWindow from './view/settings-window';
 import apiManager from './controller/api-manager';
 import app from './controller/app';
-import extensionManager from './controller/extension-manager';
 import assistantManager from './controller/assistant-manager';
+import autoUpdater from './controller/auto-updater';
+import extensionManager from './controller/extension-manager';
 import serviceManager from './controller/service-manager';
 import toolManager from './controller/tool-manager';
 import windowManager from './controller/window-manager';
@@ -82,7 +83,8 @@ function guiMain() {
   config.addItem('extensions', extensionManager);
   config.addItem('apis', apiManager);
   config.addItem('assistants', assistantManager);
-  config.addItem('app', app);
+  config.addItem('autoUpdater', autoUpdater);
+  config.addItem('app', app);  // app always initializes at last
   config.initFromFileSync();
 
   // Register named windows.

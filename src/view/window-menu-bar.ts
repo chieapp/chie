@@ -13,6 +13,9 @@ export default class WindowMenuBar extends BaseMenuBar {
     ];
     super(template);
 
+    // Create "Check latest version" menu item.
+    this.createVersionMenuItem();
+
     // For dashboard create items for all registered views.
     const DashboardWindow = require('./dashboard-window').default;
     if (win instanceof DashboardWindow) {

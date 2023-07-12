@@ -21,6 +21,8 @@ export default class AppMenuBar extends BaseMenuBar {
     ];
     super(template);
 
+    // Create "Check latest version" menu item.
+    this.createVersionMenuItem();
     // Create "Assistants" menu.
     this.createAssistantsMenu();
     // Create "View" menu.

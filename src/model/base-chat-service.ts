@@ -80,7 +80,7 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
   pendingMessage?: Partial<ChatMessage>;
 
   // The aborter that can be used to abort current call.
-  aborter: AbortController;
+  aborter = new AbortController();
 
   // The promise of current load process.
   protected loadPromise?: Promise<void>;
@@ -309,7 +309,7 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
     if (this.pending)
       throw new Error('Can not clear when there is pending message being received.');
     this.history = [];
-    this.aborter = null;
+    this.aborter = new AbortController();
     this.customTitle = null;
     this.title = null;
     this.titlePromise = null;

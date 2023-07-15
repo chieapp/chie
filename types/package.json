@@ -1,6 +1,6 @@
 {
   "name": "chie",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "types": "./exports/chie.d.ts",
   "dependencies": {
     "gui": "0.13.13",

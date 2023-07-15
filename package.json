@@ -1,6 +1,6 @@
 {
   "name": "chieapp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "main": "dist/gui-main.js",
   "description": "An extensible desktop app for large language models like ChatGPT and New Bing",
   "build": {

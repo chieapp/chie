@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import gui from 'gui';
 
 import ChatService from './model/chat-service';

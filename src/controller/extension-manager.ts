@@ -21,7 +21,8 @@ export class ExtensionManager extends ConfigStoreItem {
     // Override how Node searches modules.
     const nodeModulePaths = Module['_nodeModulePaths'];
     Module['_nodeModulePaths'] = function(p) {
-      const fromNodeModule = p.indexOf('node_modules') > -1;
+      const nodeModulesIndex = p.indexOf('node_modules');
+      const fromNodeModule = nodeModulesIndex > -1 && nodeModulesIndex > sourceRootDir.length;
       const fromInternal = p.startsWith(sourceRootDir + path.sep);
       const paths = nodeModulePaths.call(this, p)
         .filter(mp => {

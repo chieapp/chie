@@ -1,8 +1,11 @@
 {
   "name": "chieapp",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "main": "dist/gui-main.js",
   "description": "An extensible desktop app for large language models like ChatGPT and New Bing",
+  "bin": {
+    "chie-cli": "dist/cli-main.js"
+  },
   "build": {
     "appId": "org.chie.chie",
     "productName": "Chie",

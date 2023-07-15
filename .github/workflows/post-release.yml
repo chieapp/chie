@@ -33,10 +33,15 @@ jobs:
           path: latest_version.json
           destination: chieapp
 
-      - name: Prepre for publish
+      - name: Install deps
         run: |
           yarn
           yarn prepack
+
+      - name: Publish chieapp package
+        uses: JS-DevTools/npm-publish@v2
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish types package
         uses: JS-DevTools/npm-publish@v2

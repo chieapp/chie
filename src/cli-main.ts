@@ -1,3 +1,7 @@
+#!/usr/bin/env node
+
+process.env.YODE_DISABLE_NODE_WARNING = 'true';
+
 import readline from 'node:readline/promises';
 import {createSpinner} from 'nanospinner';
 

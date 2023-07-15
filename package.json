@@ -1,8 +1,8 @@
 {
   "name": "chieapp",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "main": "dist/gui-main.js",
-  "description": "Extensive desktop client for ChatGPT",
+  "description": "An extensible desktop app for large language models like ChatGPT and New Bing",
   "build": {
     "appId": "org.chie.chie",
     "productName": "Chie",
@@ -28,8 +28,8 @@
     "build": "yackage build out",
     "dist": "yackage dist out"
   },
-  "license": "GPL-3.0",
-  "homepage": "https://github.com/chie/chie",
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://chie.app",
   "repository": {
     "type": "git",
     "url": "https://github.com/chie/chie.git"

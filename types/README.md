@@ -1,12 +1,11 @@
 # Chie API Types
 
 This package provides TypeScript type definitions for extensions developed for
-[Chie](https://chie.app), an extensible desktop app.
+[the Chie app](https://chie.app).
 
-These types are specifically designed to be used by TypeScript extensions for
-Chie. To use this package, add it to the `devDependencies` of your extension,
-specifying the version that corresponds to the Chie app version you are
-targeting. For an example of a bare-metal extension, you can refer to the
+To use this package, add it to the `devDependencies` field of your extension's
+`package.json` file, with the version that corresponds to the Chie app version
+you are targeting. For an example of a bare-metal extension, you can check the
 [chie-extension-empty](https://github.com/chieapp/chie-extension-empty)
 repository.
 

@@ -1,6 +1,6 @@
 {
   "name": "chieapp",
-  "version": "0.2.2",
+  "version": "0.0.1-dev",
   "main": "dist/gui-main.js",
   "description": "An extensible desktop app for large language models like ChatGPT and New Bing",
   "bin": {
@@ -21,13 +21,14 @@
     }
   },
   "scripts": {
-    "prepack": "tsc",
+    "prepack": "node types/generate-package-json.js && tsc",
     "start": "yode node_modules/ts-node/dist/bin.js src/gui-main.ts",
     "start-cli": "yode node_modules/ts-node/dist/bin.js src/cli-main.ts",
     "lint": "eslint --ignore-path .gitignore .",
     "test": "ts-node test/run.ts",
     "test-ui": "yode node_modules/ts-node/dist/bin.js test-ui/run.ts",
     "fontello": "fontello-cli open --config assets/view/fontello.json",
+    "build-types": "",
     "build": "yackage build out",
     "dist": "yackage dist out"
   },

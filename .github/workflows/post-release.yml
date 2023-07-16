@@ -22,6 +22,11 @@ jobs:
           workload_identity_provider: projects/757369538258/locations/global/workloadIdentityPools/chieapp-identity-pool/providers/github
           service_account: chieapp-github-actions@lib-yue.iam.gserviceaccount.com
 
+      - name: Set package version
+        run: |
+          npm config set git-tag-version=false
+          npm version $(git describe --tags)
+
       - name: Write latest_version.json
         run: |
           VERSION=`node -e "process.stdout.write(require('./package.json').version)"`

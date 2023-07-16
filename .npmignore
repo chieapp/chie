@@ -11,6 +11,9 @@ tsconfig.json
 *.swp
 *.zip
 
+gha-creds-*.json
+latest_version.json
+
 .fontello-session
 yarn.lock
 package-lock.json

@@ -39,6 +39,8 @@ jobs:
           destination: chieapp
 
       - name: Install deps
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           yarn
           yarn prepack

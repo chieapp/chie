@@ -30,6 +30,8 @@ jobs:
           npm version $(git describe --tags) || true
 
       - name: Build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -e
@@ -56,6 +58,8 @@ jobs:
 
       - name: Create Distribution
         if: ${{ !(startsWith(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/')) }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run dist -- --arch ${{ matrix.arch }}
 
       - name: Install the Apple Certificate
@@ -84,6 +88,7 @@ jobs:
       - name: Create App Bundle
         if: ${{ startsWith(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/') }}
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: npm run build -- --arch ${{ matrix.arch }} --identity "$APPLE_TEAM_ID"
 

@@ -1,4 +1,7 @@
-# Chie
+<h1>
+<a href="https://chie.app"><img src='https://chie.app/theme.png' width='24'></a>
+Chie
+</h1>
 
 An extensible desktop app for large language models like ChatGPT and New Bing.
 It works on macOS, Linux and Windows, and uses native UI on each platform.
@@ -20,16 +23,12 @@ happy to link your fork here.
 
 ## License
 
-Chie is currently licensed under the GPLv3. However, it will be relicensed to
-the MIT license on March 20th, 2028. This approach is intended to discourage
-closed-source software from taking advantage of the project in its early stages
-of development.
+Chie is currently licensed under the GPLv3, it will be relicensed to the MIT
+license on March 20th, 2028 (5 years after the first commit). I take this
+approach to discourage closed-source software from taking advantage of my work
+before it gets enough impacts.
 
-Please note that due to the future relicense, contributors will be required to
-sign an agreement.
-
-The files under `types/` are published under the public domain, allowing you to
-choose any license for Chie extensions.
+Due to the future relicense, contributors will be asked to sign an agreement.
 
 ## Contributor license agreement
 

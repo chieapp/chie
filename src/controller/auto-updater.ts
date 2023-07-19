@@ -17,6 +17,7 @@ export class AutoUpdater extends ConfigStoreItem {
   onNewVersion: Signal<(version: string) => void> = new Signal;
   onNoNewVersion: Signal<() => void> = new Signal;
 
+  currentVersion = require('../../package.json').version;
   latestVersion?: string;
   isCheckingLatestVersion?: boolean;
 
@@ -26,13 +27,14 @@ export class AutoUpdater extends ConfigStoreItem {
   deserialize(data: AutoUpdaterData) {
     if (!data)  // accepts empty data
       data = {};
-    if (data.latestVersion !== undefined)
+    if (data.latestVersion &&
+        semverCompare(data.latestVersion, this.currentVersion) > 0)
       this.latestVersion = data.latestVersion;
     if (data.lastCheckTime)
       this.#lastCheckTime = new Date(data.lastCheckTime);
     // Start version checker after deserialization, there is a little delay so
     // we don't do too much work on startup.
-    const check = this.checkLatestVersion.bind(this);
+    const check = this.checkLatestVersion.bind(this, {reportResult: false});
     const passedTime = Date.now() - Number(this.#lastCheckTime ?? 0);
     if (passedTime > ONE_DAY)
       setTimeout(check, 1000 * 10);
@@ -42,14 +44,14 @@ export class AutoUpdater extends ConfigStoreItem {
 
   serialize() {
     const data: AutoUpdaterData = {};
-    if (this.latestVersion !== undefined)
+    if (this.latestVersion)
       data.latestVersion = this.latestVersion;
     if (this.#lastCheckTime)
       data.lastCheckTime = this.#lastCheckTime.toJSON();
     return data;
   }
 
-  async checkLatestVersion() {
+  async checkLatestVersion(options: {reportResult?: boolean}) {
     if (this.isCheckingLatestVersion)
       return;
 
@@ -60,9 +62,8 @@ export class AutoUpdater extends ConfigStoreItem {
     this.onCheckVersion.emit(true);
 
     // Fetch and parse the remote latest_version.json file.
-    const currentVersion = require('../../package.json').version;
     const params = new URLSearchParams({
-      version: currentVersion,
+      version: this.currentVersion,
       platform: process.platform,
       locale: gui.Locale.getCurrentIdentifier(),
     });
@@ -71,12 +72,13 @@ export class AutoUpdater extends ConfigStoreItem {
     try {
       const response = await fetch(versionUrl);
       const {version} = await response.json();
-      if (semverCompare(version, currentVersion) > 0) {
+      if (semverCompare(version, this.currentVersion) > 0) {
         this.latestVersion = version;
         this.onNewVersion.emit(version);
       } else {
         this.latestVersion = null;
-        this.onNoNewVersion.emit();
+        if (options.reportResult)
+          this.onNoNewVersion.emit();
       }
     } catch (error) {
       this.latestVersion = undefined;

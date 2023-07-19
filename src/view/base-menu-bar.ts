@@ -73,7 +73,7 @@ export default class BaseMenuBar extends SignalsOwner {
       if (autoUpdater.latestVersion)
         open(`https://github.com/chieapp/chie/releases/tag/v${autoUpdater.latestVersion}`);
       else
-        autoUpdater.checkLatestVersion();
+        autoUpdater.checkLatestVersion({reportResult: true});
     };
 
     // Set menu item label based on autoUpdater status.

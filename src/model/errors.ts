@@ -2,7 +2,7 @@ export class AbortError extends Error {
   name = 'AbortError';
 }
 
-type APIErrorCode = 'refresh' | 'invalid-session' | 'other';
+type APIErrorCode = 'refresh' | 'relogin' | 'invalid-session' | 'other';
 
 export class APIError extends Error {
   name = 'APIError';

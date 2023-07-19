@@ -52,6 +52,8 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
     // Error happened.
     if (response.status == 403)
       throw new APIError('Access token expired.', 'refresh');
+    if (response.status == 401)
+      throw new APIError('Authentication token expired.', 'relogin');
     if (response.status != 200) {
       const detail = (await response.json()).detail;
       if (typeof detail == 'string')

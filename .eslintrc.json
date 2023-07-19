@@ -20,10 +20,10 @@
     "@typescript-eslint/no-inferrable-types": "off",
     "@typescript-eslint/no-var-requires": "off",
     "@typescript-eslint/semi": "error",
-    "semi": "off",
     "indent": [ "error", 2, {"SwitchCase": 1} ],
     "linebreak-style": [ "error", "unix" ],
-    "quotes": [ "error", "single" ]
+    "quotes": "off",
+    "semi": "off"
   },
   "overrides": [
   ]

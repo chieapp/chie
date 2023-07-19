@@ -16,7 +16,11 @@ import {config} from '../controller/configs';
 const actionsMap = {
   refresh: {
     name: 'Refresh token',
-    onClick: 'chie.refreshToken()',
+    onClick: "chie.refreshToken('refresh')",
+  },
+  relogin: {
+    name: 'Re-login',
+    onClick: "chie.refreshToken('login')",
   },
   clear: {
     name: 'Clear conversation',
@@ -98,7 +102,7 @@ export default class MessagesView extends BrowserView {
   }
 
   // Add buttons for actions.
-  setReplyActions(actions: ('refresh' | 'clear' | 'resend')[]) {
+  setReplyActions(actions: ('refresh' | 'relogin' | 'clear' | 'resend')[]) {
     const buttons: string[] = [];
     for (const name of actions) {
       const action = actionsMap[name];

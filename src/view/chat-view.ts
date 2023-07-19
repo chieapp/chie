@@ -420,6 +420,8 @@ export default class ChatView extends BaseView<BaseChatService> {
       const code = (error as APIError).code;
       if (code == 'refresh')
         this.messagesView.setReplyActions(['refresh']);
+      else if (code == 'relogin')
+        this.messagesView.setReplyActions(['relogin']);
       else if (code == 'invalid-session')
         this.messagesView.setReplyActions(['clear']);
     }
@@ -482,10 +484,10 @@ export default class ChatView extends BaseView<BaseChatService> {
     this.service.sendMessage({role: ChatRole.User, content});
   }
 
-  async #refreshToken() {
+  async #refreshToken(action: 'refresh' | 'login') {
     try {
       const record = apiManager.getAPIRecord(this.service.api.endpoint.type);
-      deepAssign(this.service.api.endpoint, await record.refresh());
+      deepAssign(this.service.api.endpoint, await record[action]());
       apiManager.updateEndpoint(this.service.api.endpoint);
       this.service.regenerateLastResponse();
     } catch (error) {

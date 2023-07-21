@@ -28,6 +28,9 @@ jobs:
           # Set the version field in package.json to git tag name.
           npm config set git-tag-version=false
           npm version $(git describe --tags) || true
+          # Use production icons.
+          npm pkg set 'build.icons.mac'='assets/build/icon.icns'
+          npm pkg set 'build.icons.win'='assets/build/icon.ico'
 
       - name: Build
         env:

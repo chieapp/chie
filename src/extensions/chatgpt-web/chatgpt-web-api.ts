@@ -111,7 +111,7 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
     const data = JSON.parse(message.data);
     if (data.conversation_id)
       this.session.conversationId = data.conversation_id;
-    if (data.message.author.role != 'assistant')
+    if (!data.message || data.message.author.role != 'assistant')
       return;
     // Push assistant message ID when seeing first delta.
     if (state.firstDelta) {

@@ -16,8 +16,8 @@
     ],
     "entitlements": "assets/build/entitlements.plist",
     "icons": {
-      "mac": "assets/build/icon.icns",
-      "win": "assets/build/icon.ico"
+      "mac": "assets/build/icon_dev.icns",
+      "win": "assets/build/icon_dev.ico"
     }
   },
   "scripts": {

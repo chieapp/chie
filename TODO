@@ -1,2 +1,0 @@
-* render markdown in worker
-* lazy main view creation / reuse same type of view in dashboard

@@ -1,3 +1,5 @@
+import WebAPI from '../model/web-api';
+
 export type ParamType = 'string' | 'selection' | 'multi-selection' | 'number' | 'boolean' | 'image' | 'paragraph' | 'shortcut';
 
 export interface Selection {
@@ -23,7 +25,7 @@ export default interface Param {
   value?: any;
 
   // Some preset values that users can choose from.
-  preset?: string[];
+  choices?: string[];
 
   // The range of number.
   range?: [number, number];
@@ -32,7 +34,7 @@ export default interface Param {
   title?: string;
 
   // Callback when user clicks on the button.
-  callback?: () => void;
+  activate?: () => void;
 
   // The param has a set of values to select.
   selections?: Selection[] | (() => Selection[]);
@@ -44,4 +46,7 @@ export default interface Param {
   constrainedBy?: string;
   // Filter function used to determine whether a selection is usable.
   constrain?: (controllingValue, value) => boolean;
+
+  // Used only by service parameter internally.
+  requiredAPIClass?: typeof WebAPI;
 }

@@ -48,8 +48,8 @@ export default class SwitcherButton extends IconButton {
   runMenu() {
     // Create items from params.
     let options: object[];
-    if (this.param.preset) {
-      options = this.param.preset.map(str => ({
+    if (this.param.choices) {
+      options = this.param.choices.map(str => ({
         label: str,
         onClick: () => {
           if (this.isAPIParam)
@@ -76,7 +76,7 @@ export default class SwitcherButton extends IconButton {
         onClick: this.#setParam.bind(this, selection.value),
       }));
     } else {
-      throw new Error(`Parameter ${this.param.displayName} does not have preset choices.`);
+      throw new Error(`Parameter "${this.param.displayName}" does not have choices.`);
     }
     // Popup menu under the button.
     const point = this.view.getBoundsInScreen();

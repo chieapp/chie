@@ -17,7 +17,7 @@ export function activate() {
         displayName: 'Model',
         hasSwitcher: true,
         value: 'gpt-3.5-turbo',
-        preset: [
+        choices: [
           'gpt-3.5-turbo',
           'gpt-4',
           'gpt-4-32k',

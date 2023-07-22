@@ -46,7 +46,7 @@ export default class APIParamsView extends ParamsView {
         params.push(...apiRecord.params.filter(p => !p.authOnly));
     }
 
-    super(params, nullable);
+    super(params, {nullable});
     this.apiRecord = apiRecord;
     this.showAuthParams = showAuthParams;
   }

@@ -48,7 +48,7 @@ export default class NewAPIWindow extends BaseWindow {
         selected: endpoint?.type,
         selections: apiManager.getAPISelections(),
       },
-    ]);
+    ], {nullable: false});
     this.apiSelector.onActivate.connect(this.#onSubmit.bind(this));
     this.contentView.addChildView(this.apiSelector.view);
 

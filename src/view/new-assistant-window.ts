@@ -105,7 +105,7 @@ export default class NewAssistantWindow extends BaseWindow {
           return false;
         },
       },
-    ]);
+    ], {nullable: false});
     this.serviceSelector.onActivate.connect(this.#onSubmit.bind(this));
     this.contentView.addChildView(this.serviceSelector.view);
 
@@ -251,24 +251,23 @@ export default class NewAssistantWindow extends BaseWindow {
       this.serviceParams = null;
     }
 
-    // Service may not have params.
-    const serviceRecord = this.serviceSelector.getValue('service');
-    if (!serviceRecord?.params) {
-      this.resizeVerticallyToFitContentView();
-      return;
-    }
-
-    // There are only options for ChatCompletionAPI for now.
-    // TODO(zcbenz): Add validate property to Param to make this automatic.
+    // Filter supported service params.
     const endpoint = this.serviceSelector.getValue('api');
     const apiClass = apiManager.getAPIRecord(endpoint.type).apiClass;
-    if (!matchClass(ChatCompletionAPI, apiClass)) {
+    const serviceRecord = this.serviceSelector.getValue('service');
+    const params = serviceRecord?.params?.filter(param => {
+      if (param.requiredAPIClass)
+        return matchClass(param.requiredAPIClass, apiClass);
+      else
+        return true;
+    });
+    if (!params || params.length == 0) {
       this.resizeVerticallyToFitContentView();
       return;
     }
 
-    // Create services view.
-    this.serviceParams = new ParamsView(serviceRecord.params, true);
+    // Create service params view.
+    this.serviceParams = new ParamsView(serviceRecord.params, {nullable: true});
     this.contentView.addChildViewAt(this.serviceParams.view, 1);
     if (this.assistant?.service.params)
       this.serviceParams.fillParams(this.assistant.service.params);

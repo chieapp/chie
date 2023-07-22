@@ -1,4 +1,4 @@
-import APIEndpoint from './api-endpoint';
+import APIEndpoint from '../model/api-endpoint';
 
 export default abstract class WebAPI {
   endpoint: APIEndpoint;

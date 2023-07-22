@@ -35,7 +35,7 @@ describe('ParamsView', () => {
           constrainedBy: 'service',
           constrain: () => true,
         },
-      ]);
+      ], {nullable: false});
       addFinalizer(paramsView, () => collected = true);
       paramsView.destructor();
     })();

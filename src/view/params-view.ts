@@ -30,7 +30,7 @@ abstract class ParamRow<T extends gui.View = gui.View> extends AppearanceAware {
 
   affects: ParamRow[] = [];
 
-  constructor(param: Param, editor: T, nullable: boolean = true) {
+  constructor(param: Param, editor: T, nullable: boolean) {
     super();
     this.param = param;
     this.editor = editor;
@@ -225,8 +225,8 @@ export class ComboBoxParamRow extends ParamRow<gui.ComboBox> {
     super(param, gui.ComboBox.create(), nullable);
     if (param.value && typeof param.value == 'string')
       this.setValue(param.value);
-    if (param.preset)
-      param.preset.forEach(p => this.editor.addItem(p));
+    if (param.choices)
+      param.choices.forEach(p => this.editor.addItem(p));
   }
 
   subscribeOnChange(callback: () => void) {
@@ -248,7 +248,7 @@ export class MultiCheckboxParamRow extends ParamRow<gui.Container> {
   checkboxes?: gui.Button[];
 
   constructor(param: Param) {
-    super(param, gui.Container.create());
+    super(param, gui.Container.create(), true);
     this.selections = param.selections instanceof Function ? param.selections() : param.selections;
     this.editor.setStyle({flexDirection: 'row', flexWrap: 'warp', gap: 5});
     if (this.selections.length > 0) {
@@ -266,7 +266,7 @@ export class MultiCheckboxParamRow extends ParamRow<gui.Container> {
     } else {
       // Show a button for action.
       this.button = gui.Button.create(`Add ${param.displayName}...`);
-      this.button.onClick = param.callback;
+      this.button.onClick = param.activate;
       this.editor.addChildView(this.button);
     }
   }
@@ -455,7 +455,7 @@ export default class ParamsView {
 
   onActivate: Signal<() => void> = new Signal;
 
-  constructor(params: Param[], nullable = false) {
+  constructor(params: Param[], {nullable}: {nullable: boolean}) {
     this.view.setStyle({gap: basicStyle.padding / 2});
     for (const param of params) {
       let row: ParamRow;
@@ -463,7 +463,7 @@ export default class ParamsView {
       if (param.constrainedBy)
         constrainedBy = this.rows[param.constrainedBy];
       if (param.type == 'string' || param.type == 'number') {
-        if (param.preset) {
+        if (param.choices) {
           row = new ComboBoxParamRow(param, nullable);
         } else {
           row = new EntryParamRow(param, nullable);
@@ -483,7 +483,6 @@ export default class ParamsView {
         row = new ShortcutParamRow(param, nullable);
         (row as ShortcutParamRow).shortcutEditor.onActivate = () => this.onActivate.emit();
       }
-      row.nullable = nullable;
       row.addToView(this.view);
       this.rows[param.name] = row;
     }

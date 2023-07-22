@@ -50,18 +50,21 @@ function guiMain() {
       displayName: 'Tools',
       selections: () => toolManager.getToolSelections(),
       title: 'Install extensions...',
-      callback: () => windowManager.showNamedWindow('settings'),
+      activate: () => windowManager.showNamedWindow('settings'),
+      requiredAPIClass: ChatCompletionAPI,
     },
     {
       name: 'systemPrompt',
       type: 'paragraph',
       displayName: 'System Prompt',
+      requiredAPIClass: ChatCompletionAPI,
     },
     {
       name: 'contextLength',
       type: 'number',
       displayName: 'Context Length',
       description: 'Maximum number of messages to send per request, default is no limit.',
+      requiredAPIClass: ChatCompletionAPI,
     },
   ];
   serviceManager.registerService({

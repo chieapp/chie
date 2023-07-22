@@ -19,6 +19,7 @@ export abstract class ConfigStoreItem {
 
 export default class ConfigStore extends ConfigStoreItem {
   inMemory = false;
+  initialized = false;
   #items: Record<string, ConfigStoreItem> = {};
 
   dir: string;
@@ -58,10 +59,11 @@ export default class ConfigStore extends ConfigStoreItem {
         throw e;
     }
     this.deserialize(config);
+    this.initialized = true;
   }
 
   async saveToFile() {
-    if (this.inMemory)
+    if (this.inMemory || !this.initialized)
       return;
     await this.#writer.write(JSON.stringify(this.serialize(), null, 2));
   }

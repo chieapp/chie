@@ -99,16 +99,15 @@ export default class DashboardWindow extends BaseWindow {
   saveState(): DashboardState {
     return Object.assign(super.saveState(), {
       selected: this.selectedView?.assistant.id,
-      splitViewState: this.#splitViewState,
       views: this.views.map(v => v.mainView.saveState()),
     });
   }
 
   restoreState(state: DashboardState) {
     super.restoreState(state);
-    this.#splitViewState = state.splitViewState;
-    if (!state.bounds)
+    if (!state.bounds) {
       this.window.setContentSize({width: 800, height: 600});
+    }
     if (state.views) {
       for (const i in state.views) {
         const view = this.views[i];
@@ -220,6 +219,7 @@ export default class DashboardWindow extends BaseWindow {
       return;
     if (this.#welcomeBoard) {
       this.contentView.removeChildView(this.#welcomeBoard.view);
+      this.#welcomeBoard.destructor();
       this.#welcomeBoard = null;
     }
     // Switch button state.
@@ -237,16 +237,15 @@ export default class DashboardWindow extends BaseWindow {
     if (this.#splitViewState && view.mainView instanceof SplitView)
       SplitView.prototype.restoreState.call(view.mainView, this.#splitViewState);
     // The main view size should keep unchanged when switching views.
-    if (this.selectedView?.mainView.constructor != view.mainView.constructor) {
-      const size = this.selectedView?.mainView.getMainViewSize();
-      if (size) {
-        const oldSize = this.selectedView.mainView.view.getBounds();
-        const newSize = view.mainView.getSizeFromMainViewSize(size);
-        if (newSize.width != oldSize.width) {
-          const bounds = this.window.getBounds();
-          bounds.width += newSize.width - oldSize.width;
-          this.window.setBounds(bounds);
-        }
+    const oldView = this.selectedView?.mainView;
+    if (oldView && oldView.constructor != view.mainView.constructor) {
+      const mainViewSize = oldView.getMainViewSize();
+      const oldSize = oldView.view.getBounds();
+      const newSize = view.mainView.getSizeFromMainViewSize(mainViewSize);
+      if (newSize.width != oldSize.width) {
+        const bounds = this.window.getBounds();
+        bounds.width += newSize.width - oldSize.width;
+        this.window.setBounds(bounds);
       }
     }
     this.selectedView = view;

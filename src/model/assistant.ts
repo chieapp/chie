@@ -113,7 +113,8 @@ export default class Assistant {
 
   // If the icon file is located outside app's bundle, copy it to user data dir.
   #copyIcon(icon: Icon) {
-    if (icon.filePath.startsWith(Icon.builtinIconsPath))
+    if (icon.filePath.startsWith(Icon.builtinIconsPath) ||
+        icon.filePath.startsWith(Icon.userIconsPath))
       return icon;
     const filename = crypto.randomUUID() + path.extname(icon.filePath);
     const filePath = path.join(Icon.userIconsPath, filename);

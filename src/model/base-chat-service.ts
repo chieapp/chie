@@ -180,9 +180,9 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
   async sendMessage(message: Partial<ChatMessage>) {
     if (this.pendingMessage)
       throw new Error('There is pending message being received.');
+    message.role = message.role ?? ChatRole.User;
     if (message.role == ChatRole.User && !message.content)
       throw new Error('Message from user must have content.');
-    message.role = message.role ?? ChatRole.User;
     this.history.push(message as ChatMessage);
     this.onUserMessage.emit(message as ChatMessage);
     this.saveHistory();
@@ -190,17 +190,11 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
     this.pending = true;
     try {
       await this.invokeChatAPI();
+      // Generate a title for the conversation after sending a user message.
+      if (message.role == ChatRole.User)
+        this.generateTitle();
     } finally {
       this.pending = false;
-      // Generate a title for the conversation.
-      if (message.role == ChatRole.User &&
-          !this.customTitle &&
-          !this.titlePromise &&
-          !this.isAborted()) {
-        this.titlePromise = this.generateTitle()
-          .catch(() => { /* ignore error */ })
-          .finally(() => this.titlePromise = null);
-      }
     }
   }
 
@@ -248,6 +242,11 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
       this.pending = true;
       try {
         await this.invokeChatAPI();
+        // Usually there is no need to generate title when doing regeneration,
+        // but it may happend that the first message failed to send and after
+        // resending there is no title generated.
+        if (!this.title)
+          this.generateTitle();
       } finally {
         this.pending = false;
       }
@@ -406,15 +405,17 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
     if (this.lastResponse.pending)
       this.notifyMessageDelta({}, {pending: false});
 
-    // Save message.
+    // Push the received message.
     const message = this.pendingMessage as ChatMessage;
     this.history.push(message);
-    this.saveHistory();
 
     // Clear pending state before emitting onMessage.
     this.pending = false;
     this.pendingMessage = null;
     this.onMessage.emit(message, this.lastResponse);
+
+    // Save to disk after emitting onMessage, which may modify history.
+    this.saveHistory();
 
     // TODO(zcbenz): Ask for user's confirmation before executing tools.
     if (this.lastResponse.useTool)
@@ -423,13 +424,20 @@ export default abstract class BaseChatService<T extends WebAPI = WebAPI, P exten
 
   // Generate a title for the chat.
   protected async generateTitle() {
-    let title = await titleGenerator.generateForConversation(this.history, this.api, this.aborter?.signal);
-    if (title.startsWith('"') && title.endsWith('"'))
-      title = title.slice(1, -1);
-    if (title.endsWith('.'))
-      title = title.slice(0, -1);
-    this.title = title;
-    this.notifyNewTitle(title);
+    if (this.lastError || this.customTitle || this.titlePromise || this.isAborted())
+      return;
+    return this.titlePromise = titleGenerator
+      .generateForConversation(this.history, this.api, this.aborter?.signal)
+      .then((title) => {
+        if (title.startsWith('"') && title.endsWith('"'))
+          title = title.slice(1, -1);
+        if (title.endsWith('.'))
+          title = title.slice(0, -1);
+        this.title = title;
+        this.notifyNewTitle(title);
+      })
+      .catch(() => { /* ignore error */ })
+      .finally(() => this.titlePromise = null);
   }
 
   // Error happened when requesting chat response.

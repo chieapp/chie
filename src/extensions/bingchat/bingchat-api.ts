@@ -1,7 +1,7 @@
 import WebSocket from 'ws';
 import crypto from 'node:crypto';
 import {
-  APIEndpoint,
+  APICredential,
   APIError,
   AbortError,
   ChatAPIOptions,
@@ -34,10 +34,10 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
   #lastContentLength: number;
   #lastLinks: {name: string, url: string}[];
 
-  constructor(endpoint: APIEndpoint) {
-    if (endpoint.type != 'BingChat')
-      throw new Error('Expect BingChat API endpoint in BingChatAPI.');
-    super(endpoint);
+  constructor(credential: APICredential) {
+    if (credential.type != 'BingChat')
+      throw new Error('Expect BingChat API credential in BingChatAPI.');
+    super(credential);
   }
 
   async sendMessage(text: string, options: ChatAPIOptions) {
@@ -71,7 +71,7 @@ export default class BingChatAPI extends ChatConversationAPI<SessionData> {
       signal: options.signal,
       headers: {
         ...edgeBrowserHeaders,
-        cookie: this.endpoint.cookie,
+        cookie: this.credential.cookie,
       },
     });
     const body = await response.json();

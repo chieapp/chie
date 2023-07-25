@@ -10,8 +10,8 @@ import {addFinalizer, gcUntil} from './util';
 describe('MultiChatsView', function() {
   let service: MultiChatsService;
   beforeEach(() => {
-    const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-    const api = apiManager.createAPIForEndpoint(endpoint) as ChatCompletionAPI;
+    const credential = apiManager.getCredentialsByType('DummyCompletionAPI')[0];
+    const api = apiManager.createAPIForCredential(credential) as ChatCompletionAPI;
     service = new MultiChatsService({name: 'Test', api});
   });
   afterEach(() => {

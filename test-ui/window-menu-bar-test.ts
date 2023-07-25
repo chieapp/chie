@@ -23,8 +23,8 @@ describe('WindowMenuBar', () => {
     (() => {
       const win = new BaseWindow();
       const menubar = new WindowMenuBar(win);
-      const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const assistant = assistantManager.createAssistant('TestChat 1', 'MultiChatsService', endpoint, ChatView);
+      const credential = apiManager.getCredentialsByType('DummyCompletionAPI')[0];
+      const assistant = assistantManager.createAssistant('TestChat 1', 'MultiChatsService', credential, ChatView);
       addFinalizer(menubar, () => collected = true);
       assistantManager.removeAssistantById(assistant.id);
       menubar.destructor();

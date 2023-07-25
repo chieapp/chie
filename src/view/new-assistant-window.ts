@@ -1,6 +1,6 @@
 import gui from 'gui';
 
-import APIEndpoint from '../model/api-endpoint';
+import APICredential from '../model/api-credential';
 import APIParamsView from '../view/api-params-view';
 import Assistant from '../model/assistant';
 import BaseWindow from '../view/base-window';
@@ -16,7 +16,6 @@ import basicStyle from '../view/basic-style';
 import serviceManager, {ServiceRecord} from '../controller/service-manager';
 import windowManager from '../controller/window-manager';
 import {BaseViewType} from '../view/base-view';
-import {ChatCompletionAPI} from '../model/chat-api';
 import {WebServiceOptions} from '../model/web-service';
 import {isEmptyObject, matchClass} from '../util/object-utils';
 
@@ -71,8 +70,8 @@ export default class NewAssistantWindow extends BaseWindow {
         name: 'api',
         type: 'selection',
         displayName: 'API',
-        selected: assistant?.service.api.endpoint.name,
-        selections: apiManager.getEndpointSelections(),
+        selected: assistant?.service.api.credential.name,
+        selections: apiManager.getCredentialSelections(),
       },
       {
         name: 'service',
@@ -81,8 +80,8 @@ export default class NewAssistantWindow extends BaseWindow {
         selected: assistant?.service.constructor.name,
         selections: serviceManager.getServiceSelections(),
         constrainedBy: 'api',
-        constrain: (endpoint: APIEndpoint, record: ServiceRecord) => {
-          const apiClass = apiManager.getAPIRecord(endpoint.type).apiClass;
+        constrain: (credential: APICredential, record: ServiceRecord) => {
+          const apiClass = apiManager.getAPIRecord(credential.type).apiClass;
           for (const A of record.apiClasses) {
             if (matchClass(A, apiClass))
               return true;
@@ -109,17 +108,17 @@ export default class NewAssistantWindow extends BaseWindow {
     this.serviceSelector.onActivate.connect(this.#onSubmit.bind(this));
     this.contentView.addChildView(this.serviceSelector.view);
 
-    // Create helper button to add or edit api endpoint.
+    // Create helper button to add or edit api credential.
     let apiButton: gui.Button;
     if (assistant) {
-      apiButton = gui.Button.create('Edit API endpoint...');
+      apiButton = gui.Button.create('Edit API credential...');
       apiButton.onClick = () => {
-        const win = new NewAPIWindow(assistant.service.api.endpoint);
+        const win = new NewAPIWindow(assistant.service.api.credential);
         win.window.center();
         win.window.activate();
       };
     } else {
-      apiButton = gui.Button.create('Create new API endpoint...');
+      apiButton = gui.Button.create('Create new API credential...');
       apiButton.onClick = () => windowManager.showNamedWindow('newAPI');
     }
     apiButton.setStyle({
@@ -196,10 +195,10 @@ export default class NewAssistantWindow extends BaseWindow {
   }
 
   #hasCustomAPIParams() {
-    const endpoint = this.serviceSelector.getValue('api');
-    if (!endpoint)
+    const credential = this.serviceSelector.getValue('api');
+    if (!credential)
       return false;
-    const apiRecord = apiManager.getAPIRecord(endpoint.type);
+    const apiRecord = apiManager.getAPIRecord(credential.type);
     return apiRecord?.params?.length > 0;
   }
 
@@ -216,8 +215,8 @@ export default class NewAssistantWindow extends BaseWindow {
       throw new Error('Can not create duplicate APIParamsView.');
 
     // Create params view and fill with service.params.
-    const endpoint = this.serviceSelector.getValue('api');
-    const apiRecord = apiManager.getAPIRecord(endpoint.type);
+    const credential = this.serviceSelector.getValue('api');
+    const apiRecord = apiManager.getAPIRecord(credential.type);
     this.apiParams = new APIParamsView({
       apiRecord,
       showAuthParams: false,
@@ -252,8 +251,8 @@ export default class NewAssistantWindow extends BaseWindow {
     }
 
     // Filter supported service params.
-    const endpoint = this.serviceSelector.getValue('api');
-    const apiClass = apiManager.getAPIRecord(endpoint.type).apiClass;
+    const credential = this.serviceSelector.getValue('api');
+    const apiClass = apiManager.getAPIRecord(credential.type).apiClass;
     const serviceRecord = this.serviceSelector.getValue('service');
     const params = serviceRecord?.params?.filter(param => {
       if (param.requiredAPIClass)
@@ -281,11 +280,11 @@ export default class NewAssistantWindow extends BaseWindow {
   }
 
   #updateDefaultIcon() {
-    // Get default icon of endpoint.
-    const endpoint = this.serviceSelector.getValue('api');
-    if (!endpoint)
+    // Get default icon of credential.
+    const credential = this.serviceSelector.getValue('api');
+    if (!credential)
       return;
-    const icon = apiManager.getAPIRecord(endpoint.type).icon;
+    const icon = apiManager.getAPIRecord(credential.type).icon;
     // Update the icon view.
     const row = this.serviceSelector.getRow('icon') as IconParamRow;
     if (!row.hasCustomIcon())
@@ -331,7 +330,7 @@ export default class NewAssistantWindow extends BaseWindow {
       const assistant = assistantManager.createAssistant(
         name,
         (this.serviceSelector.getValue('service') as ServiceRecord).serviceClass.name,
-        (this.serviceSelector.getValue('api') as APIEndpoint),
+        (this.serviceSelector.getValue('api') as APICredential),
         (this.serviceSelector.getValue('view') as BaseViewType),
         options);
       assistant.setShortcut(this.serviceSelector.getValue('shortcut'));

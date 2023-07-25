@@ -1,4 +1,4 @@
-import APIEndpoint from '../model/api-endpoint';
+import APICredential from '../model/api-credential';
 import Tool from '../model/tool';
 import WebAPI from '../model/web-api';
 
@@ -62,8 +62,8 @@ export interface ChatCompletionAPIOptions extends ChatAPIOptions {
 }
 
 export abstract class ChatCompletionAPI extends WebAPI {
-  constructor(endpoint: APIEndpoint) {
-    super(endpoint);
+  constructor(credential: APICredential) {
+    super(credential);
   }
 
   // Send the whole conversation history and get reply.
@@ -73,8 +73,8 @@ export abstract class ChatCompletionAPI extends WebAPI {
 export abstract class ChatConversationAPI<T = object> extends WebAPI {
   session?: T;
 
-  constructor(endpoint: APIEndpoint) {
-    super(endpoint);
+  constructor(credential: APICredential) {
+    super(credential);
   }
 
   // Send a single user message and get reply.
@@ -93,7 +93,7 @@ export abstract class ChatConversationAPI<T = object> extends WebAPI {
 }
 
 // Defines static properties on ChatConversationAPI.
-type ChatConversationAPIConstructorType<T> = new (endpoint: APIEndpoint) => ChatConversationAPI<T>;
+type ChatConversationAPIConstructorType<T> = new (credential: APICredential) => ChatConversationAPI<T>;
 
 export interface ChatConversationAPIType<T = object> extends ChatConversationAPIConstructorType<T> {
   isHighlyRateLimited?: boolean;

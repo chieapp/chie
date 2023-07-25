@@ -1,6 +1,6 @@
 import Serializable from './serializable';
 
-export default class APIEndpoint implements Serializable {
+export default class APICredential implements Serializable {
   id?: string;
   type: string;
   name: string;
@@ -9,26 +9,26 @@ export default class APIEndpoint implements Serializable {
   cookie?: string;
   params?: Record<string, string>;
 
-  static deserialize(data: Partial<APIEndpoint>): APIEndpoint {
+  static deserialize(data: Partial<APICredential>): APICredential {
     if (!data ||
         typeof data != 'object' ||
         typeof data.type != 'string' ||
         typeof data.name != 'string') {
-      throw new Error(`Invalid APIEndpoint data: ${JSON.stringify(data)}`);
+      throw new Error(`Invalid APICredential data: ${JSON.stringify(data)}`);
     }
     if ('params' in data) {
       if (typeof data.params != 'object')
-        throw new Error('The params of APIEndpoint must be Record');
+        throw new Error('The params of APICredential must be Record');
     }
-    return new APIEndpoint(data);
+    return new APICredential(data);
   }
 
-  constructor(init: Partial<APIEndpoint>) {
+  constructor(init: Partial<APICredential>) {
     Object.assign(this, init);
   }
 
   serialize() {
-    const data: Partial<APIEndpoint> = {type: this.type, name: this.name, url: this.url};
+    const data: Partial<APICredential> = {type: this.type, name: this.name, url: this.url};
     if (this.url)
       data.url = this.url;
     if (this.key)

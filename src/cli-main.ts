@@ -23,32 +23,39 @@ async function cliMain() {
 
   extensionManager.activateBuiltinExtensions();
 
-  let endpointName;
+  let credentialName;
   for (let i = 2; i < process.argv.length; ++i) {
     const arg = process.argv[i];
     if (arg == '-h')
       help();
     if (arg == '-l')
       list();
-    if (arg == '--endpoint')
-      endpointName = process.argv[i + 1];
+    if (arg == '--credential')
+      credentialName = process.argv[i + 1];
   }
 
-  // Find an endpoint that supports chat service.
-  const endpoint = apiManager.getEndpoints()
-    // Only search from chatable endpoints.
-    .filter(endpoint => {
-      const {apiClass} = apiManager.getAPIRecord(endpoint.type);
-      return matchClass(ChatCompletionAPI, apiClass) ||
-             matchClass(ChatConversationAPI, apiClass);
+  // Find an credential that supports chat service.
+  const credential = apiManager.getCredentials()
+    // Only search from chatable credentials.
+    .filter(credential => {
+      try {
+        const {apiClass} = apiManager.getAPIRecord(credential.type);
+        return matchClass(ChatCompletionAPI, apiClass) ||
+               matchClass(ChatConversationAPI, apiClass);
+      } catch (error) {
+        if (error.message.includes('not exist'))
+          return false;
+        else
+          throw error;
+      }
     })
     // Return the one matches name.
-    .find(endpoint => endpointName ? endpoint.name == endpointName : true);
-  if (!endpoint)
-    throw new Error('Can not find an API endpoint that supports chatting.');
+    .find(credential => credentialName ? credential.name == credentialName : true);
+  if (!credential)
+    throw new Error('Can not find an API credential that supports chatting.');
 
   // Chat and exit.
-  await enterConversation(endpoint);
+  await enterConversation(credential);
   process.exit(0);
 }
 
@@ -58,25 +65,25 @@ function help() {
 
   Options:
 
-    -h                  show help
-    -l                  list all API endpoints
-    --endpoint <name>   chat with the specified API endpoint
+    -h                    show help
+    -l                    list all API credentials
+    --credential <name>   chat with the specified API credential
   `);
   process.exit(0);
 }
 
 function list() {
-  console.log('API Endpoints:');
-  for (const endpoint of apiManager.getEndpoints())
-    console.log('  ' + endpoint.name);
+  console.log('API Credentials:');
+  for (const credential of apiManager.getCredentials())
+    console.log('  ' + credential.name);
   process.exit(0);
 }
 
-async function enterConversation(endpoint) {
-  console.log('Start chatting with', endpoint.name + ':');
+async function enterConversation(credential) {
+  console.log('Start chatting with', credential.name + ':');
   const chat = new ChatService({
-    name: endpoint.name,
-    api: apiManager.createAPIForEndpoint(endpoint) as ChatServiceSupportedAPIs,
+    name: credential.name,
+    api: apiManager.createAPIForCredential(credential) as ChatServiceSupportedAPIs,
   });
 
   // Create terminal chat interface.

@@ -268,9 +268,9 @@ export default class DashboardWindow extends BaseWindow {
         }
       },
       {
-        label: 'Edit API endpoint...',
+        label: 'Edit API credential...',
         onClick: () => {
-          const win = new NewAPIWindow(view.assistant.service.api.endpoint);
+          const win = new NewAPIWindow(view.assistant.service.api.credential);
           win.window.center();
           win.window.activate();
         }

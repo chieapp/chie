@@ -258,7 +258,7 @@ export default class ChatView extends BaseView<BaseChatService> {
         }
       }
     }
-    const apiRecord = apiManager.getAPIRecord(this.service.api.endpoint.type);
+    const apiRecord = apiManager.getAPIRecord(this.service.api.credential.type);
     if (apiRecord?.params) {
       for (const param of apiRecord.params) {
         if (param.hasSwitcher) {
@@ -486,9 +486,9 @@ export default class ChatView extends BaseView<BaseChatService> {
 
   async #refreshToken(action: 'refresh' | 'login') {
     try {
-      const record = apiManager.getAPIRecord(this.service.api.endpoint.type);
-      deepAssign(this.service.api.endpoint, await record[action]());
-      apiManager.updateEndpoint(this.service.api.endpoint);
+      const record = apiManager.getAPIRecord(this.service.api.credential.type);
+      deepAssign(this.service.api.credential, await record[action]());
+      apiManager.updateCredential(this.service.api.credential);
       this.service.regenerateLastResponse();
     } catch (error) {
       if (error.name != 'CancelledError')

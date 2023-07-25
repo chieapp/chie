@@ -1,4 +1,4 @@
-export * from '../model/api-endpoint';
+export * from '../model/api-credential';
 export * from '../model/base-chat-service';
 export * from '../model/base-multi-chats-service';
 export * from '../model/chat-api';
@@ -7,7 +7,7 @@ export * from '../model/errors';
 export * from '../model/multi-chats-service';
 export * from '../model/tool';
 export * from '../view/base-view';
-export {default as APIEndpoint} from '../model/api-endpoint';
+export {default as APICredential} from '../model/api-credential';
 export {default as BaseChatService} from '../model/base-chat-service';
 export {default as BaseMultiChatsService} from '../model/base-multi-chats-service';
 export {default as BaseView} from '../view/base-view';

@@ -9,8 +9,8 @@ import {addFinalizer, gcUntil} from './util';
 describe('ChatView', () => {
   let service: ChatService;
   beforeEach(() => {
-    const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-    const api = apiManager.createAPIForEndpoint(endpoint) as ChatCompletionAPI;
+    const credential = apiManager.getCredentialsByType('DummyCompletionAPI')[0];
+    const api = apiManager.createAPIForCredential(credential) as ChatCompletionAPI;
     service = new ChatService({name: 'Test', api});
   });
   afterEach(() => {

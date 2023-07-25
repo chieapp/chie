@@ -18,9 +18,9 @@ describe('DashboardWindow', async () => {
   it('can be garbage collected', async () => {
     let collected = false;
     (() => {
-      const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      assistantManager.createAssistant('TestChat 1', 'MultiChatsService', endpoint, ChatView);
-      assistantManager.createAssistant('TestChat 2', 'MultiChatsService', endpoint, ChatView);
+      const credential = apiManager.getCredentialsByType('DummyCompletionAPI')[0];
+      assistantManager.createAssistant('TestChat 1', 'MultiChatsService', credential, ChatView);
+      assistantManager.createAssistant('TestChat 2', 'MultiChatsService', credential, ChatView);
       const dashboard = new DashboardWindow();
       addFinalizer(dashboard, () => collected = true);
       dashboard.switchTo(1);
@@ -32,8 +32,8 @@ describe('DashboardWindow', async () => {
   it('can be garbage collected after sending message', async () => {
     let collected = false;
     await (async () => {
-      const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const assistant = assistantManager.createAssistant('TestChat 1', 'MultiChatsService', endpoint, ChatView);
+      const credential = apiManager.getCredentialsByType('DummyCompletionAPI')[0];
+      const assistant = assistantManager.createAssistant('TestChat 1', 'MultiChatsService', credential, ChatView);
       const dashboard = new DashboardWindow();
       dashboard.restoreState({});
       await (assistant.service as MultiChatsService).chats[0].sendMessage({role: ChatRole.User, content: 'message'});
@@ -44,12 +44,12 @@ describe('DashboardWindow', async () => {
   });
 
   it('keep sane when adding/removing assistants', async () => {
-    const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
+    const credential = apiManager.getCredentialsByType('DummyCompletionAPI')[0];
     const dashboard = new DashboardWindow();
     assert.equal(dashboard.views.length, 0);
-    const i1 = assistantManager.createAssistant('TestChat 1', 'MultiChatsService', endpoint, ChatView);
-    const i2 = assistantManager.createAssistant('TestChat 2', 'MultiChatsService', endpoint, ChatView);
-    const i3 = assistantManager.createAssistant('TestChat 3', 'MultiChatsService', endpoint, ChatView);
+    const i1 = assistantManager.createAssistant('TestChat 1', 'MultiChatsService', credential, ChatView);
+    const i2 = assistantManager.createAssistant('TestChat 2', 'MultiChatsService', credential, ChatView);
+    const i3 = assistantManager.createAssistant('TestChat 3', 'MultiChatsService', credential, ChatView);
     assert.equal(dashboard.views.length, 3);
     assert.equal(dashboard.selectedView, dashboard.views[2]);
     assistantManager.removeAssistantById(i2.id);
@@ -67,8 +67,8 @@ describe('DashboardWindow', async () => {
     let collected = false;
     const dashboard = new DashboardWindow();
     (() => {
-      const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const assistant = assistantManager.createAssistant('TestChat 1', 'MultiChatsService', endpoint, ChatView);
+      const credential = apiManager.getCredentialsByType('DummyCompletionAPI')[0];
+      const assistant = assistantManager.createAssistant('TestChat 1', 'MultiChatsService', credential, ChatView);
       addFinalizer(assistant.service, () => collected = true);
       assistantManager.removeAssistantById(assistant.id);
     })();

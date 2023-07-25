@@ -19,8 +19,8 @@ describe('AppTray', () => {
     let collected = false;
     (() => {
       const tray = new AppTray();
-      const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const assistant = assistantManager.createAssistant('TestChat 1', 'MultiChatsService', endpoint, ChatView);
+      const credential = apiManager.getCredentialsByType('DummyCompletionAPI')[0];
+      const assistant = assistantManager.createAssistant('TestChat 1', 'MultiChatsService', credential, ChatView);
       addFinalizer(tray, () => collected = true);
       assistantManager.removeAssistantById(assistant.id);
       tray.destructor();

@@ -1,6 +1,6 @@
 import gui from 'gui';
 
-import APIEndpoint from '../model/api-endpoint';
+import APICredential from '../model/api-credential';
 import APIParamsView from './api-params-view';
 import BaseWindow from './base-window';
 import ButtonsArea from './buttons-area';
@@ -15,7 +15,7 @@ import windowManager from '../controller/window-manager';
 import {deepAssign, matchClass} from '../util/object-utils';
 
 export default class NewAPIWindow extends BaseWindow {
-  endpoint?: APIEndpoint;
+  credential?: APICredential;
 
   apiSelector: ParamsView;
   apiParams?: APIParamsView;
@@ -23,9 +23,9 @@ export default class NewAPIWindow extends BaseWindow {
   submitButton: gui.Button;
   loginButton?: gui.Button;
 
-  constructor(endpoint?: APIEndpoint) {
+  constructor(credential?: APICredential) {
     super({pressEscToClose: true});
-    this.endpoint = endpoint;
+    this.credential = credential;
 
     this.contentView.setStyle({
       gap: basicStyle.padding / 2,
@@ -39,31 +39,31 @@ export default class NewAPIWindow extends BaseWindow {
         name: 'name',
         type: 'string',
         displayName: 'Name',
-        value: endpoint?.name,
+        value: credential?.name,
       },
       {
         name: 'type',
         type: 'selection',
         displayName: 'API Type',
-        selected: endpoint?.type,
+        selected: credential?.type,
         selections: apiManager.getAPISelections(),
       },
     ], {nullable: false});
     this.apiSelector.onActivate.connect(this.#onSubmit.bind(this));
     this.contentView.addChildView(this.apiSelector.view);
 
-    if (!endpoint) {
+    if (!credential) {
       this.createCheckbox = gui.Button.create({
         type: 'checkbox',
-        title: 'Create an assistant for this API endpoint...'
+        title: 'Create an assistant for this API credential...'
       });
       this.createCheckbox.setChecked(true);
       this.createCheckbox.setStyle({marginLeft: valueMarginLeft});
       this.apiSelector.view.addChildViewAt(this.createCheckbox, 1);
     }
 
-    this.#updateAPIParamsView(endpoint);
-    if (endpoint)
+    this.#updateAPIParamsView(credential);
+    if (credential)
       this.apiSelector.getRow('type').editor.setEnabled(false);
     else
       this.apiSelector.getRow('type').subscribeOnChange(this.#updateAPIParamsView.bind(this));
@@ -71,7 +71,7 @@ export default class NewAPIWindow extends BaseWindow {
     const buttonsArea = new ButtonsArea();
     buttonsArea.view.setStyle({flex: 1, paddingTop: basicStyle.padding / 2});
     this.contentView.addChildView(buttonsArea.view);
-    this.submitButton = buttonsArea.addButton(endpoint ? 'OK' : 'Add');
+    this.submitButton = buttonsArea.addButton(credential ? 'OK' : 'Add');
     this.submitButton.makeDefault();
     this.submitButton.onClick = this.#onSubmit.bind(this);
     buttonsArea.addCloseButton();
@@ -79,7 +79,7 @@ export default class NewAPIWindow extends BaseWindow {
     this.apiSelector.getRow('name').editor.focus();
     this.resizeToFitContentView({width: 540});
 
-    this.window.setTitle(endpoint ? `Edit API Endpoint: ${endpoint.name}` : 'Add New API Endpoint');
+    this.window.setTitle(credential ? `Edit API Credential: ${credential.name}` : 'Add New API Credential');
   }
 
   destructor() {
@@ -92,7 +92,7 @@ export default class NewAPIWindow extends BaseWindow {
     return null;  // do not remember state
   }
 
-  #updateAPIParamsView(endpoint?: APIEndpoint) {
+  #updateAPIParamsView(credential?: APICredential) {
     if (this.apiParams)
       this.contentView.removeChildView(this.apiParams.view);
     if (this.loginButton)
@@ -101,8 +101,8 @@ export default class NewAPIWindow extends BaseWindow {
       apiRecord: this.apiSelector.getValue('type'),
       showAuthParams: true,
     });
-    if (endpoint)
-      this.apiParams.fillEndpoint(endpoint);
+    if (credential)
+      this.apiParams.fillCredential(credential);
     this.contentView.addChildViewAt(this.apiParams.view, 1);
     // Show a login button.
     if (this.apiParams.apiRecord.auth == 'login') {
@@ -144,24 +144,24 @@ export default class NewAPIWindow extends BaseWindow {
       this.apiSelector.requestAttention('name');
       return;
     }
-    if (this.endpoint) {
-      // Edit endpoint.
-      this.endpoint.name = name;
-      deepAssign(this.endpoint, this.apiParams.readEndpoint());
-      apiManager.updateEndpoint(this.endpoint);
+    if (this.credential) {
+      // Edit credential.
+      this.credential.name = name;
+      deepAssign(this.credential, this.apiParams.readCredential());
+      apiManager.updateCredential(this.credential);
     } else {
-      if (apiManager.getEndpoints().find(e => e.name == name)) {
-        alert('There is already an API endpoint with the same name.');
+      if (apiManager.getCredentials().find(e => e.name == name)) {
+        alert('There is already an API credential with the same name.');
         this.apiSelector.requestAttention('name');
         return;
       }
-      // Create a new endpoint.
+      // Create a new credential.
       const apiRecord = this.apiSelector.getValue('type');
-      const endpoint = new APIEndpoint(deepAssign({
+      const credential = new APICredential(deepAssign({
         name,
         type: apiRecord.name,
-      }, this.apiParams.readEndpoint()));
-      apiManager.addEndpoint(endpoint);
+      }, this.apiParams.readCredential()));
+      apiManager.addCredential(credential);
       if (this.createCheckbox?.isChecked()) {
         // Find a service type supporting the API.
         const serviceRecord = serviceManager.getRegisteredServices().find(service => {
@@ -172,9 +172,9 @@ export default class NewAPIWindow extends BaseWindow {
           return false;
         });
         if (!serviceRecord)
-          throw new Error('Unable to find a service type for the endpoint.');
+          throw new Error('Unable to find a service type for the credential.');
         // Create a new assistant.
-        assistantManager.createAssistant(name, serviceRecord.serviceClass.name, endpoint, serviceRecord.viewClasses[0]);
+        assistantManager.createAssistant(name, serviceRecord.serviceClass.name, credential, serviceRecord.viewClasses[0]);
         // Close new assistant window since it is no longer needed.
         windowManager.getNamedWindow('newAssistant')?.close();
         // Show the added assistant.

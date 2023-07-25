@@ -1,6 +1,6 @@
 import {createParser} from 'eventsource-parser';
 import {
-  APIEndpoint,
+  APICredential,
   APIError,
   ChatCompletionAPI,
   ChatCompletionAPIOptions,
@@ -10,23 +10,23 @@ import {
 } from 'chie';
 
 export default class ChatGPTAPI extends ChatCompletionAPI {
-  constructor(endpoint: APIEndpoint) {
-    if (endpoint.type != 'ChatGPT API')
-      throw new Error('Expect ChatGPT API endpoint in ChatGPTAPI.');
-    super(endpoint);
+  constructor(credential: APICredential) {
+    if (credential.type != 'ChatGPT API')
+      throw new Error('Expect ChatGPT API credential in ChatGPTAPI.');
+    super(credential);
   }
 
   async sendConversation(history: ChatMessage[], options: ChatCompletionAPIOptions) {
     // Start request.
     const headers = {'Content-Type': 'application/json'};
-    if (this.endpoint.key)
-      headers['Authorization'] = `Bearer ${this.endpoint.key}`;
-    const response = await fetch(this.endpoint.url, {
+    if (this.credential.key)
+      headers['Authorization'] = `Bearer ${this.credential.key}`;
+    const response = await fetch(this.credential.url, {
       body: JSON.stringify(this.#getRequestBody(history, options)),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.endpoint.key}`,
+        'Authorization': `Bearer ${this.credential.key}`,
       },
       signal: options.signal,
     });

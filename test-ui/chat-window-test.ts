@@ -15,8 +15,8 @@ describe('ChatWindow', () => {
   it('can be garbage collected', async () => {
     let collected = false;
     (() => {
-      const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const assistant = assistantManager.createAssistant('TestChat', 'ChatService', endpoint, ChatView);
+      const credential = apiManager.getCredentialsByType('DummyCompletionAPI')[0];
+      const assistant = assistantManager.createAssistant('TestChat', 'ChatService', credential, ChatView);
       const chatWindow = new ChatWindow(assistant);
       addFinalizer(chatWindow, () => collected = true);
       chatWindow.window.close();
@@ -27,8 +27,8 @@ describe('ChatWindow', () => {
   it('can be garbage collected after sending message', async () => {
     let collected = false;
     await (async () => {
-      const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-      const assistant = assistantManager.createAssistant('TestChat', 'ChatService', endpoint, ChatView);
+      const credential = apiManager.getCredentialsByType('DummyCompletionAPI')[0];
+      const assistant = assistantManager.createAssistant('TestChat', 'ChatService', credential, ChatView);
       const chatWindow = new ChatWindow(assistant);
       await (assistant.service as ChatService).sendMessage({role: ChatRole.User, content: 'message'});
       addFinalizer(chatWindow, () => collected = true);

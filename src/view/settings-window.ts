@@ -1,6 +1,6 @@
 import gui from 'gui';
 
-import APIEndpoint from '../model/api-endpoint';
+import APICredential from '../model/api-credential';
 import BaseWindow from '../view/base-window';
 import EditableTable from '../view/editable-table';
 import Extension from '../model/extension';
@@ -15,7 +15,7 @@ import windowManager from '../controller/window-manager';
 
 export default class SettingsWindow extends BaseWindow {
   tab: gui.Tab;
-  apisTable: EditableTable<APIEndpoint>;
+  apisTable: EditableTable<APICredential>;
   extensionsTable: EditableTable<Extension>;
   shortcutEditor: ShortcutEditor;
 
@@ -92,7 +92,7 @@ export default class SettingsWindow extends BaseWindow {
   }
 
   #createAPISetting() {
-    this.apisTable = new EditableTable<APIEndpoint>([
+    this.apisTable = new EditableTable<APICredential>([
       {title: 'Type', key: 'type'},
       {title: 'Name', key: 'name'},
     ]);
@@ -101,9 +101,9 @@ export default class SettingsWindow extends BaseWindow {
       padding: basicStyle.padding,
     });
 
-    this.apisTable.onRemoveRow.connect((index, endpoint) => apiManager.removeEndpointById(endpoint.id));
-    this.apisTable.onEditRow.connect((index, endpoint) => {
-      const win = new NewAPIWindow(endpoint);
+    this.apisTable.onRemoveRow.connect((index, credential) => apiManager.removeCredentialById(credential.id));
+    this.apisTable.onEditRow.connect((index, credential) => {
+      const win = new NewAPIWindow(credential);
       win.window.center();
       win.window.activate();
     });
@@ -111,12 +111,12 @@ export default class SettingsWindow extends BaseWindow {
     const addButton = this.apisTable.buttonsArea.addButton('Add');
     addButton.onClick = () => windowManager.showNamedWindow('newAPI');
 
-    // Fill table with existing endpoints.
-    const update = () => this.apisTable.setData(apiManager.getEndpoints());
+    // Fill table with existing credentials.
+    const update = () => this.apisTable.setData(apiManager.getCredentials());
     update();
-    this.connections.add(apiManager.onAddEndpoint.connect(update));
-    this.connections.add(apiManager.onUpdateEndpoint.connect(update));
-    this.connections.add(apiManager.onRemoveEndpoint.connect(update));
+    this.connections.add(apiManager.onAddCredential.connect(update));
+    this.connections.add(apiManager.onUpdateCredential.connect(update));
+    this.connections.add(apiManager.onRemoveCredential.connect(update));
 
     return this.apisTable.view;
   }

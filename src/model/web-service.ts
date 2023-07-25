@@ -40,8 +40,8 @@ export default class WebService<T extends WebAPI = WebAPI, P extends object = ob
         typeof data.api != 'string') {
       throw new Error(`Unknown WebService : ${JSON.stringify(data)}`);
     }
-    const endpoint = apiManager.getEndpointById(data.api);
-    const api = apiManager.createAPIForEndpoint(endpoint);
+    const credential = apiManager.getCredentialById(data.api);
+    const api = apiManager.createAPIForCredential(credential);
     const options: WebServiceOptions<WebAPI> = {name: data.name, api};
     if (typeof data.icon == 'string')
       options.icon = new Icon({chieURL: data.icon});
@@ -66,7 +66,7 @@ export default class WebService<T extends WebAPI = WebAPI, P extends object = ob
   serialize() {
     const data: WebServiceData = {
       name: this.name,
-      api: this.api.endpoint.id,
+      api: this.api.credential.id,
     };
     if (this.icon)
       data.icon = this.icon.getChieURL();

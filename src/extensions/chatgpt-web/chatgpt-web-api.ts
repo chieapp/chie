@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 
 import {createParser} from 'eventsource-parser';
 import {
-  APIEndpoint,
+  APICredential,
   APIError,
   ChatAPIOptions,
   ChatConversationAPI,
@@ -21,10 +21,10 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
   static canRemoveFromServer = true;
   static canRemoveMessagesAfter = true;
 
-  constructor(endpoint: APIEndpoint) {
-    if (endpoint.type != 'ChatGPT Web')
-      throw new Error('Expect ChatGPT Web API endpoint in ChatGPTWebAPI.');
-    super(endpoint);
+  constructor(credential: APICredential) {
+    if (credential.type != 'ChatGPT Web')
+      throw new Error('Expect ChatGPT Web API credential in ChatGPTWebAPI.');
+    super(credential);
   }
 
   async sendMessage(text: string, options: ChatAPIOptions) {
@@ -32,7 +32,7 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
       this.session = {messageIds: [ crypto.randomUUID() ]};
 
     const messageId = crypto.randomUUID();
-    const response = await fetch(this.endpoint.url, {
+    const response = await fetch(this.credential.url, {
       body: JSON.stringify({
         action: 'variant',
         model: this.getParam('model'),
@@ -76,7 +76,7 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
   async removeFromServer() {
     if (!this.session?.conversationId)
       return;
-    const response = await fetch(`${this.endpoint.url}/${this.session.conversationId}`, {
+    const response = await fetch(`${this.credential.url}/${this.session.conversationId}`, {
       body: JSON.stringify({is_visible: false}),
       method: 'PATCH',
       headers: this.#getHeaders(),
@@ -94,7 +94,7 @@ export default class ChatGPTWebAPI extends ChatConversationAPI<SessionData> {
       'Content-Type': 'application/json',
       'User-Agent': this.getParam('userAgent'),
       Authorization: `Bearer ${this.getParam('token')}`,
-      cookie: this.endpoint.cookie,
+      cookie: this.credential.cookie,
       referer: 'https://chat.openai.com/',
       authority: 'chat.openai.com',
     };

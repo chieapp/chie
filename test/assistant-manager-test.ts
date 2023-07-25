@@ -1,6 +1,6 @@
 import {assert} from 'chai';
 
-import APIEndpoint from '../src/model/api-endpoint';
+import APICredential from '../src/model/api-credential';
 import ChatView from '../src/view/chat-view';
 import ChatService from '../src/model/chat-service';
 import apiManager from '../src/controller/api-manager';
@@ -14,19 +14,19 @@ describe('AssistantManager', () => {
   });
 
   it('createAssistant checks API compatibility', () => {
-    const endpoint = APIEndpoint.deserialize({
+    const credential = APICredential.deserialize({
       name: 'Some API',
       type: 'DummyConversationAPI',
       url: '',
     });
     assert.throws(
-      () => assistantManager.createAssistant('TestChat', 'MultiChatsService', endpoint, ChatView),
+      () => assistantManager.createAssistant('TestChat', 'MultiChatsService', credential, ChatView),
       'Service "MultiChatsService" does not support API type "DummyConversationAPI".');
   });
 
   it('serialize and restore assistants', () => {
-    const endpoint = apiManager.getEndpointsByType('DummyConversationAPI')[0];
-    const assistant = assistantManager.createAssistant('TestChat', 'ChatService', endpoint, ChatView);
+    const credential = apiManager.getCredentialsByType('DummyConversationAPI')[0];
+    const assistant = assistantManager.createAssistant('TestChat', 'ChatService', credential, ChatView);
     assert.equal(assistant, assistantManager.getAssistants()[0]);
     // Force a re-initialization by deserializing from serialized data.
     assistantManager.deserialize(assistantManager.serialize());

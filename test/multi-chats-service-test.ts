@@ -10,8 +10,8 @@ describe('MultiChatsService', () => {
   let service: MultiChatsService;
   beforeEach(() => {
     config.inMemory = false;
-    const endpoint = apiManager.getEndpointsByType('DummyCompletionAPI')[0];
-    const api = apiManager.createAPIForEndpoint(endpoint) as ChatCompletionAPI;
+    const credential = apiManager.getCredentialsByType('DummyCompletionAPI')[0];
+    const api = apiManager.createAPIForCredential(credential) as ChatCompletionAPI;
     service = new MultiChatsService({name: 'Test', api});
   });
   afterEach(() => {
@@ -24,7 +24,7 @@ describe('MultiChatsService', () => {
     await chat.sendMessage({content: 'Message'});
     assert.deepEqual(service.serialize(), {
       name: 'Test',
-      api: service.api.endpoint.id,
+      api: service.api.credential.id,
       icon: 'chie://app-file/assets/icons/bot.png',
       chats: [ {moment: chat.moment} ],
     });
@@ -43,7 +43,7 @@ describe('MultiChatsService', () => {
     await historyKeeper.flush();
     const data = {
       name: 'Test',
-      api: service.api.endpoint.id,
+      api: service.api.credential.id,
       icon: 'chie://app-file/assets/icons/bot.png',
       chats: [ {moment, title: 'Test from disk'} ],
     };

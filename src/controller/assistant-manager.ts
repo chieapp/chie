@@ -1,6 +1,6 @@
 import {Signal} from 'typed-signals';
 
-import APIEndpoint from '../model/api-endpoint';
+import APICredential from '../model/api-credential';
 import Assistant from '../model/assistant';
 import Icon from '../model/icon';
 import WebService, {
@@ -92,8 +92,8 @@ export class AssistantManager extends ConfigStoreItem {
     return data;
   }
 
-  createAssistant(name: string, serviceName: string, endpoint: APIEndpoint, viewClass: BaseViewType, options?: Partial<WebServiceOptions>) {
-    const service = serviceManager.createService(name, serviceName, endpoint, options);
+  createAssistant(name: string, serviceName: string, credential: APICredential, viewClass: BaseViewType, options?: Partial<WebServiceOptions>) {
+    const service = serviceManager.createService(name, serviceName, credential, options);
     // Do runtime check of API type compatibility.
     const {viewClasses} = serviceManager.getServiceByName(serviceName);
     if (!viewClasses.find(V => matchClass(V, viewClass)))

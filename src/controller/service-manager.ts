@@ -1,4 +1,4 @@
-import APIEndpoint from '../model/api-endpoint';
+import APICredential from '../model/api-credential';
 import BaseView, {BaseViewType} from '../view/base-view';
 import Param from '../model/param';
 import WebAPI from '../model/web-api';
@@ -7,7 +7,7 @@ import apiManager, {sortByPriority} from '../controller/api-manager';
 import {Selection} from '../model/param';
 import {deepAssign, matchClass} from '../util/object-utils';
 
-type WebAPIType = (new (endpoint) => WebAPI) | (abstract new (endpoint) => WebAPI);
+type WebAPIType = (new (credential) => WebAPI) | (abstract new (credential) => WebAPI);
 
 export type ServiceRecord = {
   name?: string,
@@ -86,16 +86,16 @@ export class ServiceManager {
     return this.#views.map(v => ({name: v.name, value: v}));
   }
 
-  createService(name: string, serviceName: string, endpoint: APIEndpoint, options?: Partial<WebServiceOptions>): WebService {
+  createService(name: string, serviceName: string, credential: APICredential, options?: Partial<WebServiceOptions>): WebService {
     if (!(serviceName in this.#services))
       throw new Error(`Service with name "${serviceName}" does not exist.`);
     // Do runtime check of API type compatibility.
-    const {icon, apiClass} = apiManager.getAPIRecord(endpoint.type);
+    const {icon, apiClass} = apiManager.getAPIRecord(credential.type);
     const {apiClasses, serviceClass} = this.#services[serviceName];
     if (!apiClasses.find(A => matchClass(A, apiClass)))
-      throw new Error(`Service "${serviceName}" does not support API type "${endpoint.type}".`);
+      throw new Error(`Service "${serviceName}" does not support API type "${credential.type}".`);
     // Create service.
-    const serviceOptions = deepAssign({name, api: new apiClass(endpoint), icon}, options);
+    const serviceOptions = deepAssign({name, api: new apiClass(credential), icon}, options);
     return new serviceClass(serviceOptions);
   }
 }

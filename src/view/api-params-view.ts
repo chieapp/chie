@@ -1,4 +1,4 @@
-import APIEndpoint from '../model/api-endpoint';
+import APICredential from '../model/api-credential';
 import Param from '../model/param';
 import ParamsView from './params-view';
 import {APIRecord} from '../controller/api-manager';
@@ -51,19 +51,19 @@ export default class APIParamsView extends ParamsView {
     this.showAuthParams = showAuthParams;
   }
 
-  fillEndpoint(endpoint: APIEndpoint) {
-    if (endpoint.url)
-      this.getRow('url').setValue(endpoint.url);
-    if (endpoint.key)
-      this.getRow('key').setValue(endpoint.key);
-    if (endpoint.cookie)
-      this.getRow('cookie').setValue(endpoint.cookie);
-    if (endpoint.params)
-      this.fillParams(endpoint.params);
+  fillCredential(credential: APICredential) {
+    if (credential.url)
+      this.getRow('url').setValue(credential.url);
+    if (credential.key)
+      this.getRow('key').setValue(credential.key);
+    if (credential.cookie)
+      this.getRow('cookie').setValue(credential.cookie);
+    if (credential.params)
+      this.fillParams(credential.params);
   }
 
-  readEndpoint(): Partial<APIEndpoint> {
-    const result: Partial<APIEndpoint> = {};
+  readCredential(): Partial<APICredential> {
+    const result: Partial<APICredential> = {};
     if (this.showAuthParams) {
       if (this.apiRecord.url)
         result.url = this.getValue('url');

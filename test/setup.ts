@@ -1,4 +1,4 @@
-import APIEndpoint from '../src/model/api-endpoint';
+import APICredential from '../src/model/api-credential';
 import ChatService from '../src/model/chat-service';
 import ChatView from '../src/view/chat-view';
 import MultiChatsService from '../src/model/multi-chats-service';
@@ -13,8 +13,8 @@ import {
 } from '../src/model/chat-api';
 
 class DummyCompletionAPI extends ChatCompletionAPI {
-  constructor(endpoint) {
-    super(endpoint);
+  constructor(credential) {
+    super(credential);
   }
   async sendConversation(history, {onMessageDelta}) {
     onMessageDelta({role: ChatRole.Assistant, content: 'Reply'}, {pending: false});
@@ -22,8 +22,8 @@ class DummyCompletionAPI extends ChatCompletionAPI {
 }
 
 class DummyConversationAPI extends ChatConversationAPI {
-  constructor(endpoint) {
-    super(endpoint);
+  constructor(credential) {
+    super(credential);
   }
   async sendMessage(text, {onMessageDelta}) {
     onMessageDelta({role: ChatRole.Assistant, content: 'Reply'}, {pending: false});
@@ -66,11 +66,11 @@ export const mochaHooks = {
       apiClasses: [ChatCompletionAPI, ChatConversationAPI],
       viewClasses: [ChatView],
     });
-    apiManager.addEndpoint(new APIEndpoint({
+    apiManager.addCredential(new APICredential({
       name: 'API 1',
       type: 'DummyCompletionAPI',
     }));
-    apiManager.addEndpoint(new APIEndpoint({
+    apiManager.addCredential(new APICredential({
       name: 'API 2',
       type: 'DummyConversationAPI',
     }));

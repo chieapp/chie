@@ -96,7 +96,7 @@ export abstract class ChatConversationAPI<T = object> extends WebAPI {
 type ChatConversationAPIConstructorType<T> = new (credential: APICredential) => ChatConversationAPI<T>;
 
 export interface ChatConversationAPIType<T = object> extends ChatConversationAPIConstructorType<T> {
-  isHighlyRateLimited?: boolean;
+  badSummarizer?: boolean;
   canRemoveFromServer?: boolean;
   canRemoveMessagesAfter?: boolean;
 }

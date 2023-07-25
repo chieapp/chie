@@ -29,7 +29,7 @@ type SessionData = {
 };
 
 export default class BingChatAPI extends ChatConversationAPI<SessionData> {
-  static isHighlyRateLimited = true;
+  static badSummarizer = true;
 
   #lastContentLength: number;
   #lastLinks: {name: string, url: string}[];

@@ -34,7 +34,7 @@ The conversation is named:
         onMessageDelta(delta) { title += delta.content ?? ''; }
       });
     } else if (api instanceof ChatConversationAPI &&
-               !(api.constructor as ChatConversationAPIType).isHighlyRateLimited) {
+               !(api.constructor as ChatConversationAPIType).badSummarizer) {
       // Spawn a new conversation to ask for title generation,
       const newapi = api.clone() as ChatConversationAPI;
       await newapi.sendMessage(promptText, {

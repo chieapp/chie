@@ -69,6 +69,8 @@ export default class StreamedMarkdown {
     this.renderer.heading = (text: string, level: number) => {
       return `<h4>${'#'.repeat(level)} ${text}</h4>`;
     };
+    // Support image resizing.
+    this.renderer.image = imageExtension;
     // Escape all html tags.
     this.renderer.html = escape;
   }
@@ -175,4 +177,15 @@ function findStartOfDifference(a: string, b: string) {
   if (i > 1 && a.slice(i - 1, i) == '<')
     return i - 1;
   return i;
+}
+
+// Make Marked support specifying image size in pixels in this format:
+//
+// ![alt](src "=800x600")
+function imageExtension(src, title, alt) {
+  const exec = /=\s*(\d*)\s*x\s*(\d*)\s*$/.exec(title);
+  let res = '<img src="' + escape(src) + '" alt="' + escape(alt);
+  if (exec && exec[1]) res += '" height="' + exec[1];
+  if (exec && exec[2]) res += '" width="' + exec[2];
+  return res + '">';
 }

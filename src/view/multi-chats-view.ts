@@ -37,13 +37,13 @@ export default class MultiChatsView extends SplitView<BaseMultiChatsService> {
       },
       {
         label: 'Show Previous Chat',
-        accelerator: 'CmdOrCtrl+[',
+        accelerator: 'CmdOrCtrl+Shift+[',
         validate: (view: MultiChatsView) => view.service.chats.length > 1,
         onClick: (view: MultiChatsView) => view.showPreviousChat(),
       },
       {
         label: 'Show Next Chat',
-        accelerator: 'CmdOrCtrl+]',
+        accelerator: 'CmdOrCtrl+Shift+]',
         validate: (view: MultiChatsView) => view.service.chats.length > 1,
         onClick: (view: MultiChatsView) => view.showNextChat(),
       },

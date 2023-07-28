@@ -140,6 +140,16 @@ export default class DashboardWindow extends BaseWindow {
     this.#onSelect(this.views[index]);
   }
 
+  switchToNext(forward: boolean) {
+    if (this.views.length == 0)
+      return;
+    if (!this.selectedView)
+      return this.switchTo(0);
+    const index = this.views.indexOf(this.selectedView);
+    const newIndex = ((forward ? index + 1 : index - 1) + this.views.length) % this.views.length;
+    this.switchTo(newIndex);
+  }
+
   #createViewForAssistant(assistant: Assistant) {
     // Create a button in sidebar.
     const button = new ToggleButton(assistant.service.icon.getImage());

@@ -128,7 +128,6 @@ export default class BaseMenuBar extends SignalsOwner {
         },
         {
           label: 'New Assistant...',
-          accelerator: 'Shift+CmdOrCtrl+N',
           onClick: () => windowManager.showNamedWindow('newAssistant'),
         },
         { type: 'separator' },
@@ -146,14 +145,26 @@ export default class BaseMenuBar extends SignalsOwner {
       throw new Error('Assistant items already created');
     if (!this.#viewMenu)
       throw new Error('There is no View menu');
-    const DashboardWindow = require('./dashboard-window').default;
+    this.#viewMenu.append(gui.MenuItem.create('separator'));
+    this.#viewMenu.append(gui.MenuItem.create({
+      label: 'Switch to Previous Assistant',
+      accelerator: 'CmdOrCtrl+[',
+      validate: isDashboard,
+      onClick: () => getDashboard()?.switchToNext(false),
+    }));
+    this.#viewMenu.append(gui.MenuItem.create({
+      label: 'Switch to Next Assistant',
+      accelerator: 'CmdOrCtrl+]',
+      validate: isDashboard,
+      onClick: () => getDashboard()?.switchToNext(true),
+    }));
     this.#viewMenu.append(gui.MenuItem.create('separator'));
     this.#assistantsMenuInView = new AssistantsMenu(this.#viewMenu, this.#viewMenu.itemCount(), 'CmdOrCtrl', (assistant) => ({
       label: `Switch to ${assistant.service.name}`,
-      validate: () => windowManager.getCurrentWindow() instanceof DashboardWindow,
+      validate: isDashboard,
       onClick: () => {
-        const win = windowManager.getCurrentWindow() as typeof DashboardWindow;
-        if (win instanceof DashboardWindow)
+        const win = getDashboard();
+        if (win)
           win.switchTo(win.views.findIndex(v => v.assistant == assistant));
       }
     }));
@@ -212,4 +223,18 @@ export default class BaseMenuBar extends SignalsOwner {
       }
     }));
   }
+}
+
+function isDashboard() {
+  const DashboardWindow = require('./dashboard-window').default;
+  return windowManager.getCurrentWindow() instanceof DashboardWindow;
+}
+
+function getDashboard() {
+  const DashboardWindow = require('./dashboard-window').default;
+  const win = windowManager.getCurrentWindow() as typeof DashboardWindow;
+  if (win instanceof DashboardWindow)
+    return win as typeof DashboardWindow;
+  else
+    return null;
 }

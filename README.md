@@ -3,7 +3,7 @@
 Chie
 </h1>
 
-An extensible desktop app for large language models like ChatGPT and New Bing.
+An extensible desktop app for large language models like ChatGPT and Bing Chat.
 It works on macOS, Linux and Windows, and uses native UI on each platform.
 
 * [Introduce the Chie app (with screenshots)](https://chie.app/posts/introduce-the-chie-app/)

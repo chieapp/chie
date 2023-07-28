@@ -2,6 +2,7 @@
 
 import gui from 'gui';
 
+import AboutWindow from './view/about-window';
 import ChatService from './model/chat-service';
 import ChatView from './view/chat-view';
 import DashboardWindow from './view/dashboard-window';
@@ -93,6 +94,7 @@ function guiMain() {
   config.initFromFileSync();
 
   // Register named windows.
+  windowManager.registerNamedWindow('about', AboutWindow);
   windowManager.registerNamedWindow('dashboard', DashboardWindow);
   windowManager.registerNamedWindow('settings', SettingsWindow);
   windowManager.registerNamedWindow('newAssistant', NewAssistantWindow);

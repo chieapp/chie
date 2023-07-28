@@ -9,6 +9,13 @@ import windowManager from '../controller/window-manager';
 import {BaseViewType} from '../view/base-view';
 
 export default class BaseMenuBar extends SignalsOwner {
+  static aboutMenuItem = {
+    label: `About ${require('../../package.json').build.productName}`,
+    onClick: () => {
+      const windowManager = require('../controller/window-manager').default;
+      windowManager.showNamedWindow('about');
+    },
+  };
   static fileMenuItems = [
     { type: 'separator' },
     {

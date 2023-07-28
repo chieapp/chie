@@ -9,7 +9,7 @@ export default class AppMenuBar extends BaseMenuBar {
       {
         label: require('../../package.json').build.productName,
         submenu: [
-          { role: 'about' },
+          BaseMenuBar.aboutMenuItem,
           { type: 'separator' },
           { role: 'hide' },
           { role: 'hide-others' },

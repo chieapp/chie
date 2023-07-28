@@ -9,15 +9,15 @@
   "build": {
     "appId": "org.chie.chie",
     "productName": "Chie",
-    "copyright": "Copyright © 2023 Cheng Zhao",
+    "copyright": "Copyright © 2023 Cheng. All rights reserved.",
     "unpackDir": "assets/icons",
     "ignore": [
       "assets/build"
     ],
     "entitlements": "assets/build/entitlements.plist",
     "icons": {
-      "mac": "assets/build/icon_dev.icns",
-      "win": "assets/build/icon_dev.ico"
+      "mac": "assets/build/icon-dev.icns",
+      "win": "assets/build/icon-dev.ico"
     }
   },
   "scripts": {

@@ -84,30 +84,27 @@ export default class BaseMenuBar extends SignalsOwner {
     };
 
     // Set menu item label based on autoUpdater status.
-    const update = () => {
+    const update = ({reportResult}: {reportResult: boolean}) => {
       if (autoUpdater.latestVersion) {
         this.#versionMenuItem.setLabel(`New version v${autoUpdater.latestVersion} available...`);
         this.#versionMenuItem.setEnabled(true);
         return;
       }
-      if (autoUpdater.latestVersion === null) {
+      if (reportResult && autoUpdater.latestVersion === null) {
         this.#versionMenuItem.setLabel('No new version (check again)');
         this.#versionMenuItem.setEnabled(true);
         return;
       }
-      if (autoUpdater.isCheckingLatestVersion) {
+      if (reportResult && autoUpdater.isCheckingLatestVersion) {
         this.#versionMenuItem.setLabel('Checking latest version...');
         this.#versionMenuItem.setEnabled(false);
         return;
       }
       this.#versionMenuItem.setLabel('Check latest version');
     };
-    update();
-
+    update({reportResult: false});
     // Bind auto updater events.
     this.connections.add(autoUpdater.onCheckVersion.connect(update));
-    this.connections.add(autoUpdater.onNewVersion.connect(update));
-    this.connections.add(autoUpdater.onNoNewVersion.connect(update));
 
     // Insert.
     const fileMenu = this.menu.itemAt(0).getSubmenu();

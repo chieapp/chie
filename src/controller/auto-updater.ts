@@ -13,9 +13,7 @@ interface AutoUpdaterData {
 
 // Currently this class only acts as a version checker.
 export class AutoUpdater extends ConfigStoreItem {
-  onCheckVersion: Signal<(isChecking: boolean) => void> = new Signal;
-  onNewVersion: Signal<(version: string) => void> = new Signal;
-  onNoNewVersion: Signal<() => void> = new Signal;
+  onCheckVersion: Signal<(options: {reportResult: boolean}, isChecking: boolean) => void> = new Signal;
 
   currentVersion = require('../../package.json').version;
   latestVersion?: string;
@@ -58,8 +56,9 @@ export class AutoUpdater extends ConfigStoreItem {
     // Cancel pending check.
     clearTimeout(this.#versionCheckerTimer);
 
+    const reportResult = options.reportResult ?? false;
     this.isCheckingLatestVersion = true;
-    this.onCheckVersion.emit(true);
+    this.onCheckVersion.emit({reportResult}, true);
 
     // Fetch and parse the remote latest_version.json file.
     const params = new URLSearchParams({
@@ -72,14 +71,10 @@ export class AutoUpdater extends ConfigStoreItem {
     try {
       const response = await fetch(versionUrl);
       const {version} = await response.json();
-      if (semverCompare(version, this.currentVersion) > 0) {
+      if (semverCompare(version, this.currentVersion) > 0)
         this.latestVersion = version;
-        this.onNewVersion.emit(version);
-      } else {
+      else
         this.latestVersion = null;
-        if (options.reportResult)
-          this.onNoNewVersion.emit();
-      }
     } catch (error) {
       this.latestVersion = undefined;
       console.error('Failed to fetch latest version:', versionUrl);
@@ -91,7 +86,7 @@ export class AutoUpdater extends ConfigStoreItem {
     this.isCheckingLatestVersion = false;
     this.saveConfig();
 
-    this.onCheckVersion.emit(false);
+    this.onCheckVersion.emit({reportResult}, false);
   }
 }
 

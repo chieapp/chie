@@ -132,7 +132,7 @@ export default class BaseMenuBar extends SignalsOwner {
         },
         {
           label: 'New Assistant...',
-          onClick: () => windowManager.showNamedWindow('newAssistant'),
+          onClick: () => windowManager.showNewAssistantWindowOrError(),
         },
         { type: 'separator' },
       ],

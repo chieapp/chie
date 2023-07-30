@@ -3,6 +3,8 @@ import gui from 'gui';
 import Assistant from '../model/assistant';
 import BaseWindow from '../view/base-window';
 import WindowStore, {WindowStoreData} from '../model/window-store';
+import alert from '../util/alert';
+import apiManager from '../controller/api-manager';
 import assistantManager from './assistant-manager';
 import {collectGarbage} from './gc-center';
 import {ConfigStoreItem} from '../model/config-store';
@@ -75,6 +77,14 @@ export class WindowManager extends ConfigStoreItem {
 
   showNamedWindow(name: string) {
     return this.#namedWindows.showWindow(name);
+  }
+
+  showNewAssistantWindowOrError() {
+    const hasCredential = apiManager.getCredentials().length > 0;
+    if (hasCredential)
+      this.showNamedWindow('newAssistant');
+    else
+      alert('Can not create new assistant before adding API credentials.');
   }
 
   getCurrentWindow() {

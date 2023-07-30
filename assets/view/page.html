@@ -183,6 +183,9 @@
       throw new Error('Can not append error when there is no pending message.');
     var wasAtBottom = isPageBottom();
     text.innerHTML += '<div class="error">' + error + '</div>';
+    var actionMenu = text.parentNode.getElementsByClassName('action-menu');
+    if (actionMenu)
+      text.parentNode.removeChild(actionMenu[0]);
     endPending();
     if (wasAtBottom)
       scrollToBottom();

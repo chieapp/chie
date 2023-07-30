@@ -124,6 +124,7 @@ export default class MessagesView extends BrowserView {
   appendError(error: string) {
     this.hasPendingMessage = false;
     this.pushJavaScript(`window.appendError(${JSON.stringify(error)})`);
+    this.setReplyActions(['resend']);
   }
 
   // Add (aborted) label to the pending message.

@@ -36,6 +36,8 @@ export default class ChatGPTAPI extends ChatCompletionAPI {
       const body = await response.json();
       if (!body.error)
         throw new APIError(`Unexpected open from ChatGPT API: ${body}`);
+      if (body.error.message.includes('You exceeded your current quota'))
+        throw new APIError(body.error.message + ' (This error can usually be solved by linking a valid credit card to your OpenAI account.)');
       throw new APIError(body.error.message);
     }
 

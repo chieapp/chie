@@ -82,7 +82,7 @@ export class AutoUpdater extends ConfigStoreItem {
 
     // Check version at 1 day interval.
     this.#lastCheckTime = new Date();
-    this.#versionCheckerTimer = setTimeout(this.checkLatestVersion.bind(this), ONE_DAY);
+    this.#versionCheckerTimer = setTimeout(this.checkLatestVersion.bind(this, {reportResult: false}), ONE_DAY);
     this.isCheckingLatestVersion = false;
     this.saveConfig();
 

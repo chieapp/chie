@@ -83,6 +83,9 @@ describe('AssistantManager', () => {
     assert.equal(fs.readdirSync(currentUserIconsPath).length, 2);
     assistant.setTrayIcon(null);
     assert.equal(fs.readdirSync(currentUserIconsPath).length, 1);
+    // Release file lock of image.
+    assistant.destructor();
+    assert.isEmpty(fs.readdirSync(currentUserIconsPath));
   });
 
   it('serialize and restore tray icons', async () => {
@@ -93,5 +96,8 @@ describe('AssistantManager', () => {
     const newAssistant = assistantManager.getAssistants()[0];
     assert.deepEqual(assistant.trayIcon, newAssistant.trayIcon);
     assert.equal(fs.readdirSync(currentUserIconsPath).length, 1);
+    // Release file lock of image.
+    newAssistant.destructor();
+    assert.isEmpty(fs.readdirSync(currentUserIconsPath));
   });
 });

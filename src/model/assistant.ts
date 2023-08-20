@@ -133,6 +133,6 @@ export default class Assistant {
   // If the icon file is managed by us, remove it.
   #removeIcon(icon: Icon) {
     if (icon.filePath.startsWith(Icon.userIconsPath))
-      fs.removeSync(icon.filePath);
+      icon.removeFile();
   }
 }

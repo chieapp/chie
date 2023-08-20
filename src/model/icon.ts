@@ -1,3 +1,4 @@
+import fs from 'fs-extra';
 import gui from 'gui';
 import path from 'node:path';
 import {config} from '../controller/configs';
@@ -52,5 +53,11 @@ export default class Icon {
     if (!this.#image)
       this.#image = gui.Image.createFromPath(realpathSync(this.filePath));
     return this.#image;
+  }
+
+  removeFile() {
+    if (process.platform == 'win32' && this.#image)
+      this.#image.clear();
+    fs.removeSync(this.filePath);
   }
 }

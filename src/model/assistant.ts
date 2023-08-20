@@ -26,8 +26,12 @@ export default class Assistant {
     this.id = id;
     this.service = service;
     this.viewClass = viewClass;
-    if (service.icon)
+    // When icon is from somewhere not managed, copy it to users dir.
+    if (service.icon &&
+        !service.icon.filePath.startsWith(Icon.builtinIconsPath) &&
+        !service.icon.filePath.startsWith(Icon.userIconsPath)) {
       service.icon = this.#copyIcon(service.icon);
+    }
   }
 
   destructor() {
@@ -38,6 +42,10 @@ export default class Assistant {
   }
 
   setIcon(icon: Icon) {
+    if (!(icon instanceof Icon))
+      throw new Error('Must pass Icon to the setIcon method.');
+    if (this.service.icon?.filePath == icon.filePath)
+      return;
     this.#removeIcon(this.service.icon);
     this.service.setIcon(this.#copyIcon(icon));
   }
@@ -55,7 +63,8 @@ export default class Assistant {
   }
 
   setTrayIcon(trayIcon: Icon | null) {
-    if (this.trayIcon == trayIcon)  // ignore when icon is not changed
+    if (this.trayIcon == trayIcon ||
+        this.trayIcon?.filePath == trayIcon?.filePath)
       return;
     if (this.tray) {  // remove existing tray
       this.tray.remove();
@@ -113,8 +122,7 @@ export default class Assistant {
 
   // If the icon file is located outside app's bundle, copy it to user data dir.
   #copyIcon(icon: Icon) {
-    if (icon.filePath.startsWith(Icon.builtinIconsPath) ||
-        icon.filePath.startsWith(Icon.userIconsPath))
+    if (icon.filePath.startsWith(Icon.builtinIconsPath))
       return icon;
     const filename = crypto.randomUUID() + path.extname(icon.filePath);
     const filePath = path.join(Icon.userIconsPath, filename);
@@ -125,6 +133,6 @@ export default class Assistant {
   // If the icon file is managed by us, remove it.
   #removeIcon(icon: Icon) {
     if (icon.filePath.startsWith(Icon.userIconsPath))
-      fs.remove(icon.filePath);
+      fs.removeSync(icon.filePath);
   }
 }

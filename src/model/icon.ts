@@ -17,8 +17,8 @@ export default class Icon {
       const u = new URL(options.chieURL);
       if (u.host == 'app-file')
         this.filePath = path.join(__dirname, `../../${u.pathname}`);
-      else if (u.host == 'user-file')
-        this.filePath = path.join(config.dir, u.pathname);
+      else if (u.host == 'user-icon')
+        this.filePath = path.join(Icon.userIconsPath, u.pathname);
       else
         throw new Error(`Invalid chie URL: ${options.chieURL}`);
       this.#chieURL = options.chieURL;
@@ -41,7 +41,7 @@ export default class Icon {
       if (this.filePath.startsWith(Icon.builtinIconsPath))
         this.#chieURL = 'chie://app-file/assets/icons' + this.filePath.substr(Icon.builtinIconsPath.length).replaceAll('\\', '/');
       else if (this.filePath.startsWith(Icon.userIconsPath))
-        this.#chieURL = 'chie://user-file/icons' + this.filePath.substr(Icon.userIconsPath.length).replaceAll('\\', '/');
+        this.#chieURL = 'chie://user-icon' + this.filePath.substr(Icon.userIconsPath.length).replaceAll('\\', '/');
       else
         throw new Error('Can not convert arbitrary file path to chie url.');
     }

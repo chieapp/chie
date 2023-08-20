@@ -9,10 +9,13 @@ export function deepAssign<T extends AnyObject, S extends AnyObject>(target: T, 
     const value = source[key];
     if (typeof value == 'object' && value !== null) {
       // eslint-disable-next-line no-prototype-builtins
-      if (target.hasOwnProperty(key))
+      if (target.hasOwnProperty(key) &&
+          typeof target[key as keyof T] == 'object' &&
+          target[key as keyof T] !== null) {
         deepAssign(target[key], value);
-      else
+      } else {
         target[key as keyof T] = value;
+      }
     } else {
       target[key as keyof T] = value;
     }
